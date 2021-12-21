@@ -8,8 +8,8 @@ User should be able to:
 * use photos deployed somewhere else (Google Photo, Flickr, etc)
 * add comments to separate photos
 * add comments to films
-* set filming location for separate photos and whole films
-* set filming dates with different precision (approx year, approx date, etc)
+* set filming location for separate photos and whole films with different precesion (somewhere in Moscow, somewhere in Egypt, etc)
+* set filming dates with different precision (approx decade, approx year, approx date, etc)
 
 Would be nice to have:
 ---

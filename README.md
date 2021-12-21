@@ -13,5 +13,6 @@ User should be able to:
 
 Would be nice to have:
 ---
-* faces detection and search
-* objects identification and search
+* persons identification and search
+* keep persons database
+* other objects identification and search (find all cats for example) 

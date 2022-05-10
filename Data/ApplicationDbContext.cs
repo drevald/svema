@@ -4,10 +4,14 @@ using Microsoft.EntityFrameworkCore;
 namespace svema.Data;
 
 public class ApplicationDbContext : DbContext {
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) {
+        //super(options);
+    }
+
     
     public DbSet<Blog> Blogs { get; set; }
     public DbSet<Post> Posts { get; set; }
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseNpgsql("Host=postgres;Database=svema;Username=postgres;Password=password");
 

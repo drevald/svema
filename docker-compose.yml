@@ -1,0 +1,23 @@
+version: '3.3'
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=svema
+    volumes:
+      - data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  web:
+    build: .
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/svema
+      - PORT=7777
+    ports:
+      - "7777:7777"
+    depends_on:
+      - postgres
+volumes:
+  data:

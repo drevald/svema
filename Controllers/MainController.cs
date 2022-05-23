@@ -29,4 +29,23 @@ public class MainController: Controller {
         return Ok("hi there");
     }
 
+    [HttpGet("blogs")]
+    public async Task<IActionResult> GetBlogs() {
+        System.Console.Write("GETTING\n");
+        var result = await dbContext.Blogs.ToListAsync();
+        System.Console.Write("GOT\n");
+        return View();
+    }
+
+    [HttpPost("blogs")]
+    public Task<IActionResult> PostBlogs(Blog blog) {
+        System.Console.Write("POSTING\n");
+        dbContext.Add(blog);            
+        dbContext.SaveChanges();
+        System.Console.Write("POSTED\n");
+        return null;
+    }
+
+
+
 }

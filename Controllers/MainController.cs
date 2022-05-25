@@ -47,6 +47,16 @@ public class MainController: Controller {
         return null;
     }
 
+    [HttpGet("shots")]
+    public async Task<IActionResult> GetShots() {
+        var result = await dbContext.Shots.ToListAsync();
+        return View();
+    }
 
+    [HttpGet("shot")]
+    public async Task<IActionResult> GetShot() {
+        var result = await dbContext.Shots.ToListAsync();
+        return View();
+    }
 
 }

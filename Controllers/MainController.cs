@@ -16,33 +16,34 @@ public class MainController: Controller {
 
     [HttpGet("")]
     public async Task<IActionResult> Index() {
-        var blog = new Blog () {
+        // var blog = new Blog () {
 
-        };
-        dbContext.Add(blog);            
-        dbContext.SaveChanges();
+        // };
+        // dbContext.Add(blog);            
+        // dbContext.SaveChanges();
 
-        var result = await dbContext.Blogs.ToListAsync(); 
-        System.Console.WriteLine(">>>>>>>");
-        System.Console.WriteLine(result);
-        System.Console.WriteLine("<<<<<<<");
+        var result = await dbContext.Shots.ToListAsync(); 
+        // System.Console.WriteLine(">>>>>>>");
+        // System.Console.WriteLine(result);
+        // System.Console.WriteLine("<<<<<<<");
         return Ok("hi there");
     }
 
-    [HttpGet("blogs")]
-    public async Task<IActionResult> GetBlogs() {
-        System.Console.Write("GETTING\n");
-        var result = await dbContext.Blogs.ToListAsync();
-        System.Console.Write("GOT\n");
-        return View();
+    [HttpGet("films")]
+    public async Task<IActionResult> GetFilms() {
+        // System.Console.Write("GETTING\n");
+        var result = await dbContext.Films.ToListAsync();
+        // System.Console.Write("GOT\n");
+        //return View();
+        return Ok("");
     }
 
-    [HttpPost("blogs")]
-    public Task<IActionResult> PostBlogs(Blog blog) {
-        System.Console.Write("POSTING\n");
-        dbContext.Add(blog);            
-        dbContext.SaveChanges();
-        System.Console.Write("POSTED\n");
+    [HttpPost("films")]
+    public Task<IActionResult> PostFilm(Film film) {
+        // System.Console.Write("POSTING\n");
+        // dbContext.Add(blog);            
+        // dbContext.SaveChanges();
+        // System.Console.Write("POSTED\n");
         return null;
     }
 

@@ -1,5 +1,12 @@
-<htm>
+@model IEnumerable<svema.Data.Album>
+<html>
     <body>
-        HELLO AGAIN
-    </body>
+        <a href="add_album">Add Album</a>
+        <a href="upload_album">Upload Album</a>
+        <ul>
+            @foreach(var album in Model)  {
+                <li><a href="/edit_album/@album.AlbumId">@album.Name</a></li>
+            }
+        </ul>
+    </body>    
 </html>

@@ -16,3 +16,7 @@ Would be nice to have:
 * persons identification and search
 * keep persons database
 * other objects identification and search (find all cats for example) 
+
+
+dotnet ef migration add     - make migrations
+dotnet ef database update   - apply migrations

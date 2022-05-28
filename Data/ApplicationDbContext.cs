@@ -10,7 +10,7 @@ public class ApplicationDbContext : DbContext {
         //super(options);
     }
 
-    public DbSet<Film> Films {get; set;}
+    public DbSet<Album> Albums {get; set;}
     public DbSet<Shot> Shots {get; set;}
     public DbSet<Location> Location {get; set;}
     public DbSet<Person> Person {get; set;}
@@ -22,8 +22,8 @@ public class ApplicationDbContext : DbContext {
 
 }
 
-public class Film {
-    public int FilmId {get; set;}
+public class Album {
+    public int AlbumId {get; set;}
     public string Name {get; set;}
     public Location Location {get; set;}
     public DateTime Date {get; set;}
@@ -33,7 +33,7 @@ public class Film {
 public class Shot {
     public int ShotId {get; set;}
     public string Name {get; set;}
-    public Film Film {get; set;}    
+    public Album Album {get; set;}    
     public DateTime Date {get; set;}
     public byte[] Preview {get; set;}
     public string SourceUri {get; set;} 

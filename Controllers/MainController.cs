@@ -20,30 +20,48 @@ public class MainController: Controller {
 
     [HttpGet("")]
     public async Task<IActionResult> Index() {
-        // var blog = new Blog () {
-
-        // };
-        // dbContext.Add(blog);            
-        // dbContext.SaveChanges();
-
-        var result = await dbContext.Shots.ToListAsync(); 
-        // System.Console.WriteLine(">>>>>>>");
-        // System.Console.WriteLine(result);
-        // System.Console.WriteLine("<<<<<<<");
-        return Ok("hi there");
+        var albums = await dbContext.Albums.ToListAsync(); 
+        return View(albums);
     }
+
+    [HttpGet("upload_album")]
+    public IActionResult UploadAlbum() {
+        return View();
+    }
+
+    [HttpPost("upload_album")]
+    public IActionResult StoreAlbum(List<IFormFile> files) {
+        System.Console.Write("STORE ALBUM\n");
+        return Ok("");
+    }
+
+    [HttpGet("add_album")]
+    public IActionResult AddAlbum() {
+        return View();
+    }
+
+    [HttpPost("add_album")]
+    public async Task<IActionResult> StoreAlbum(Album album) {
+        dbContext.Add(album);
+        await dbContext.SaveChangesAsync();
+        return Redirect("/");
+    }
+
+    // [HttpGet("edit_album")]
+    // public async Task<IActionResult> EditAlbum() {
+    // }
 
     [HttpGet("films")]
     public async Task<IActionResult> GetFilms() {
         // System.Console.Write("GETTING\n");
-        var result = await dbContext.Films.ToListAsync();
+        var result = await dbContext.Albums.ToListAsync();
         // System.Console.Write("GOT\n");
         //return View();
-        return Ok("");
+        return Redirect("/");
     }
 
     [HttpPost("films")]
-    public Task<IActionResult> PostFilm(Film film) {
+    public Task<IActionResult> PostFilm(Album album) {
         // System.Console.Write("POSTING\n");
         // dbContext.Add(blog);            
         // dbContext.SaveChanges();

@@ -109,31 +109,26 @@ public class MainController: Controller {
         return View();
     }
 
+    [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
-        System.Console.Write("ALBUM ID IS " + albumId);
+        Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
-        foreach (var formFile in files) {
-            System.Console.Write("\n=============\n");
-            System.Console.Write(formFile.Name);
-            System.Console.Write("\n");
-            System.Console.Write(formFile.FileName);
-            System.Console.Write("\n");
-            System.Console.Write(formFile.ContentDisposition);
-            System.Console.Write("\n=============\n");
+        foreach (var formFile in files) {            
             if (formFile.Length > 0) {
-                // full path to file in temp location
-                var filePath = Path.GetTempFileName(); //we are using Temp file name just for the example. Add your own file path.
-                filePaths.Add(filePath);
-                using (var stream = new FileStream(filePath + ".TMP", FileMode.Create)) {
-                    System.Console.Write(filePath);
+                using (var stream = new MemoryStream()) {
                     await formFile.CopyToAsync(stream);
+                    Shot shot = new Shot();
+                    shot.Name = formFile.FileName;
+                    shot.Album = album;
+                    shot.Preview = stream.GetBuffer();
+                    dbContext.Shots.Add(shot);
+                    await dbContext.SaveChangesAsync();
                 }
             }
         }
-
-        return Ok(new { count = files.Count, size, filePaths });
+        return Redirect("/view_album?id=" + albumId);
     }
 
 

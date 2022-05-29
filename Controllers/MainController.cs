@@ -35,39 +35,61 @@ public class MainController: Controller {
         return Ok("");
     }
 
+    [HttpGet("edit_album")]
+    public async Task<IActionResult> EditAlbum(int id) {
+        System.Console.Write("EDIT ALBUM");
+        Album album = await dbContext.Albums.FindAsync(id);
+        return View(album);
+    }
+
     [HttpGet("add_album")]
     public IActionResult AddAlbum() {
         return View();
     }
 
     [HttpPost("add_album")]
-    public async Task<IActionResult> StoreAlbum(Album album) {
+    public async Task<IActionResult> CreateAlbum(Album album) {
+        System.Console.Write("STORING ALBUM (" + album.AlbumId + ")");
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
     }
 
-    // [HttpGet("edit_album")]
-    // public async Task<IActionResult> EditAlbum() {
-    // }
-
-    [HttpGet("films")]
-    public async Task<IActionResult> GetFilms() {
-        // System.Console.Write("GETTING\n");
-        var result = await dbContext.Albums.ToListAsync();
-        // System.Console.Write("GOT\n");
-        //return View();
+    [HttpPost("edit_album")]
+    public async Task<IActionResult> StoreAlbum(Album album) {
+        System.Console.Write("STORING ALBUM (" + album.AlbumId + ")");
+        dbContext.Update(album);
+        await dbContext.SaveChangesAsync();
         return Redirect("/");
     }
 
-    [HttpPost("films")]
-    public Task<IActionResult> PostFilm(Album album) {
-        // System.Console.Write("POSTING\n");
-        // dbContext.Add(blog);            
-        // dbContext.SaveChanges();
-        // System.Console.Write("POSTED\n");
-        return null;
+    [HttpGet("delete_album")]
+    public async Task<IActionResult> DeleteAlbum(int id) {
+        Album album = await dbContext.Albums.FindAsync(id);
+        dbContext.Albums.Remove(album);
+        await dbContext.SaveChangesAsync();
+        return Redirect("/");
     }
+
+    [HttpGet("view_album")]
+    public async Task<IActionResult> ViewAlbum(int id) {
+        IEnumerable<Shot> shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        ViewBag.shots = shots;
+        ViewBag.albumId = id;
+        return View();
+    }
+
+
+    // [HttpGet("films")]
+    // public async Task<IActionResult> GetFilms() {
+    //     var result = await dbContext.Albums.ToListAsync();
+    //     return Redirect("/");
+    // }
+
+    // [HttpPost("films")]
+    // public Task<IActionResult> PostFilm(Album album) {
+    //     return null;
+    // }
 
     [HttpGet("shots")]
     public async Task<IActionResult> GetShots() {
@@ -81,16 +103,16 @@ public class MainController: Controller {
         return View();
     }
 
-    [HttpGet("upload")]
-    public IActionResult UploadFile() {
+    [HttpGet("upload_shots")]
+    public IActionResult UploadFile(int id) {
+        ViewBag.albumId = id;
         return View();
     }
 
-    [HttpPost("upload")]
-    public async Task<IActionResult> StoreFile(List<IFormFile> files) {
-
+    [HttpPost("upload_shots")]
+    public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
+        System.Console.Write("ALBUM ID IS " + albumId);
         long size = files.Sum(f => f.Length);
-
         var filePaths = new List<string>();
         foreach (var formFile in files) {
             System.Console.Write("\n=============\n");
@@ -111,8 +133,6 @@ public class MainController: Controller {
             }
         }
 
-        // process uploaded files
-        // Don't rely on or trust the FileName property without validation.
         return Ok(new { count = files.Count, size, filePaths });
     }
 

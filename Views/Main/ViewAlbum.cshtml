@@ -1,0 +1,10 @@
+  
+<html>
+    <body>
+        <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
+        <br>
+        @foreach(var shot in @ViewBag.shots)  {
+            <span><img width=100 height=100>@shot.Name<a href="/view_album?id=@shot.ShotId">View</a><a href="/edit_album?id=@shot.ShotId">Edit</a><a href="/delete_album?id=@shot.ShotId">Delete</a></span>
+        }
+    </body>    
+</html>

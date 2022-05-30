@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 using svema.Data;
 
@@ -117,19 +119,26 @@ public class MainController: Controller {
         var filePaths = new List<string>();
         foreach (var formFile in files) {            
             if (formFile.Length > 0) {
-                using (var stream = new MemoryStream()) {
-                    await formFile.CopyToAsync(stream);
-                    Shot shot = new Shot();
-                    shot.Name = formFile.FileName;
-                    shot.Album = album;
-                    shot.Preview = stream.GetBuffer();
-                    dbContext.Shots.Add(shot);
-                    await dbContext.SaveChangesAsync();
-                }
+
+                using var stream = new MemoryStream();
+                using var outputStream = new MemoryStream();
+                await formFile.CopyToAsync(stream);
+                stream.Position = 0;
+                using var image = Image.Load(stream);
+                image.Mutate(x => x.Resize(100, 100));
+                ImageExtensions.SaveAsJpeg(image, outputStream);
+
+                Shot shot = new Shot();
+                shot.Name = formFile.FileName;
+                shot.Album = album;
+                shot.Preview = outputStream.GetBuffer();
+                dbContext.Shots.Add(shot);
+
+                await dbContext.SaveChangesAsync();
+                
             }
         }
         return Redirect("/view_album?id=" + albumId);
     }
-
 
 }

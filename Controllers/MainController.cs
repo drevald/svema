@@ -81,22 +81,19 @@ public class MainController: Controller {
         return View();
     }
 
-
-    // [HttpGet("films")]
-    // public async Task<IActionResult> GetFilms() {
-    //     var result = await dbContext.Albums.ToListAsync();
-    //     return Redirect("/");
-    // }
-
-    // [HttpPost("films")]
-    // public Task<IActionResult> PostFilm(Album album) {
-    //     return null;
-    // }
-
     [HttpGet("shots")]
     public async Task<IActionResult> GetShots() {
         var result = await dbContext.Shots.ToListAsync();
         return View();
+    }
+
+    [HttpGet("preview")]
+    public async Task<IActionResult> Preview(int id) {
+        var result = await dbContext.Shots.FindAsync(id);
+        var stream = new MemoryStream();
+        stream.Write(result.Preview, 0, result.Preview.Length);
+        stream.Position = 0;
+        return new FileStreamResult(stream, "image/jpeg");
     }
 
     [HttpGet("shot")]

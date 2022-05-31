@@ -131,7 +131,7 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ShotId"));
 
-                    b.Property<int?>("AlbumId")
+                    b.Property<int>("AlbumId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("Date")
@@ -192,8 +192,10 @@ namespace svema.Migrations
             modelBuilder.Entity("svema.Data.Shot", b =>
                 {
                     b.HasOne("svema.Data.Album", "Album")
-                        .WithMany()
-                        .HasForeignKey("AlbumId");
+                        .WithMany("Shots")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("svema.Data.Location", "Location")
                         .WithMany()
@@ -202,6 +204,11 @@ namespace svema.Migrations
                     b.Navigation("Album");
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("svema.Data.Album", b =>
+                {
+                    b.Navigation("Shots");
                 });
 #pragma warning restore 612, 618
         }

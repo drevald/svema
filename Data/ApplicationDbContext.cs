@@ -17,9 +17,6 @@ public class ApplicationDbContext : DbContext {
     public DbSet<User> User {get; set;}
     public DbSet<Comment> Comment {get; set;}
 
-    // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    //         => optionsBuilder.UseNpgsql("Host=localhost;Database=svema;Username=postgres;Password=password");
-
 }
 
 public class Album {
@@ -28,16 +25,19 @@ public class Album {
     public Location Location {get; set;}
     public DateTime Date {get; set;}
     public string DatePrecision {get; set;}
+    public ICollection<Shot> Shots {get;}
 }
 
 public class Shot {
     public int ShotId {get; set;}
     public string Name {get; set;}
     public Album Album {get; set;}    
+    public int AlbumId {get; set;}
     public DateTime Date {get; set;}
     public byte[] Preview {get; set;}
     public string SourceUri {get; set;} 
-    public Location Location {get; set;}
+    public Location Location {get; set;}    
+        
 }
 
 public class Location {

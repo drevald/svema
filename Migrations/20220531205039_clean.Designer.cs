@@ -12,8 +12,8 @@ using svema.Data;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20220525212435_aaa")]
-    partial class aaa
+    [Migration("20220531205039_clean")]
+    partial class clean
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -24,13 +24,13 @@ namespace svema.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("svema.Data.Film", b =>
+            modelBuilder.Entity("svema.Data.Album", b =>
                 {
-                    b.Property<int>("FilmId")
+                    b.Property<int>("AlbumId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("FilmId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AlbumId"));
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone");
@@ -44,11 +44,41 @@ namespace svema.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
-                    b.HasKey("FilmId");
+                    b.HasKey("AlbumId");
 
                     b.HasIndex("LocationId");
 
-                    b.ToTable("Films");
+                    b.ToTable("Albums");
+                });
+
+            modelBuilder.Entity("svema.Data.Comment", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CommentId"));
+
+                    b.Property<int?>("AuthorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FilmId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ShotId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.ToTable("Comment");
                 });
 
             modelBuilder.Entity("svema.Data.Location", b =>
@@ -76,6 +106,25 @@ namespace svema.Migrations
                     b.ToTable("Location");
                 });
 
+            modelBuilder.Entity("svema.Data.Person", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PersonId"));
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable("Person");
+                });
+
             modelBuilder.Entity("svema.Data.Shot", b =>
                 {
                     b.Property<int>("ShotId")
@@ -84,11 +133,11 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ShotId"));
 
+                    b.Property<int>("AlbumId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("FilmId")
-                        .HasColumnType("integer");
 
                     b.Property<int?>("LocationId")
                         .HasColumnType("integer");
@@ -104,14 +153,27 @@ namespace svema.Migrations
 
                     b.HasKey("ShotId");
 
-                    b.HasIndex("FilmId");
+                    b.HasIndex("AlbumId");
 
                     b.HasIndex("LocationId");
 
                     b.ToTable("Shots");
                 });
 
-            modelBuilder.Entity("svema.Data.Film", b =>
+            modelBuilder.Entity("svema.Data.User", b =>
+                {
+                    b.Property<int>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("UserId"));
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("User");
+                });
+
+            modelBuilder.Entity("svema.Data.Album", b =>
                 {
                     b.HasOne("svema.Data.Location", "Location")
                         .WithMany()
@@ -120,19 +182,35 @@ namespace svema.Migrations
                     b.Navigation("Location");
                 });
 
+            modelBuilder.Entity("svema.Data.Comment", b =>
+                {
+                    b.HasOne("svema.Data.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId");
+
+                    b.Navigation("Author");
+                });
+
             modelBuilder.Entity("svema.Data.Shot", b =>
                 {
-                    b.HasOne("svema.Data.Film", "Film")
-                        .WithMany()
-                        .HasForeignKey("FilmId");
+                    b.HasOne("svema.Data.Album", "Album")
+                        .WithMany("Shots")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("svema.Data.Location", "Location")
                         .WithMany()
                         .HasForeignKey("LocationId");
 
-                    b.Navigation("Film");
+                    b.Navigation("Album");
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("svema.Data.Album", b =>
+                {
+                    b.Navigation("Shots");
                 });
 #pragma warning restore 612, 618
         }

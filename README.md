@@ -18,5 +18,5 @@ Would be nice to have:
 * other objects identification and search (find all cats for example) 
 
 
-dotnet ef migration add     - make migrations
+dotnet ef migrations add     - make migrations
 dotnet ef database update   - apply migrations

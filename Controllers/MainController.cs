@@ -26,17 +26,6 @@ public class MainController: Controller {
         return View(albums);
     }
 
-    [HttpGet("upload_album")]
-    public IActionResult UploadAlbum() {
-        return View();
-    }
-
-    [HttpPost("upload_album")]
-    public IActionResult StoreAlbum(List<IFormFile> files) {
-        System.Console.Write("STORE ALBUM\n");
-        return Ok("");
-    }
-
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
         System.Console.Write("EDIT ALBUM");
@@ -68,7 +57,7 @@ public class MainController: Controller {
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id) {
         Album album = await dbContext.Albums.FindAsync(id);
-        dbContext.Albums.Remove(album);
+        dbContext.Remove(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
     }

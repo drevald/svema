@@ -37,6 +37,7 @@ public class Shot {
     public byte[] Preview {get; set;}
     public string SourceUri {get; set;} 
     public Location Location {get; set;}    
+    public string MD5 {get; set;}
         
 }
 

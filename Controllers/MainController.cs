@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
@@ -16,8 +19,11 @@ public class MainController: Controller {
 
     ApplicationDbContext dbContext;
 
-    public MainController (ApplicationDbContext dbContext) {
+    IConfiguration config;
+
+    public MainController (ApplicationDbContext dbContext, IConfiguration config) {
         this.dbContext = dbContext;
+        this.config = config;
     }
 
     [HttpGet("")]
@@ -86,10 +92,18 @@ public class MainController: Controller {
     }
 
     [HttpGet("shot")]
-    public async Task<IActionResult> GetShot() {
-        var result = await dbContext.Shots.ToListAsync();
-        return View();
+    public async Task<IActionResult> Shot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        var stream = System.IO.File.OpenRead(shot.SourceUri);
+        stream.Position = 0;
+        return new FileStreamResult(stream, "image/jpeg");
     }
+
+    // [HttpGet("shot")]
+    // public async Task<IActionResult> GetShot() {
+    //     var result = await dbContext.Shots.ToListAsync();
+    //     return View();
+    // }
 
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id) {
@@ -103,6 +117,8 @@ public class MainController: Controller {
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
+        using var md5 = MD5.Create();
+
         foreach (var formFile in files) {            
             if (formFile.Length > 0) {
 
@@ -118,10 +134,16 @@ public class MainController: Controller {
                 shot.Name = formFile.FileName;
                 shot.Album = album;
                 shot.Preview = outputStream.GetBuffer();
+                stream.Position = 0;
+                shot.MD5 = Encoding.Default.GetString(md5.ComputeHash(stream));
                 dbContext.Shots.Add(shot);
-
                 await dbContext.SaveChangesAsync();
-                
+
+                stream.Position = 0;
+                System.IO.File.WriteAllBytes(config["STORAGE_DIR"] + shot.ShotId, stream.GetBuffer());                
+                shot.SourceUri = config["STORAGE_DIR"] + shot.ShotId;
+                await dbContext.SaveChangesAsync();
+
             }
         }
         return Redirect("/view_album?id=" + albumId);

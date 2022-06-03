@@ -1,0 +1,14 @@
+@{Layout = "_Layout";}
+<table width="100%">
+    <tr>
+        <td width="240" bgcolor="#666666">
+            <a href="/create_location">Create</a>
+        </td>
+        <td bgcolor="#eeeeee">         
+        @foreach(var location in @ViewBag.locations)  {
+            @location.Name<br>
+        }
+        </td>        
+    </tr>
+</table>
+

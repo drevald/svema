@@ -1,0 +1,28 @@
+@{Layout = "_Layout";}
+<table width="100%">
+    <tr>
+        <td width="240" bgcolor="#666666">
+        <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
+        </td>
+        <td bgcolor="#eeeeee">
+        @foreach(var error in @ViewBag.errors)  {
+            @error<br/>
+        }              
+        <form method="post" enctype="multipart/form-data" asp-controller="StoreFile" asp-action="store">
+            <input type="hidden" name="albumId" value="@ViewBag.albumId"/>
+            <div class="form-group">
+                <div class="col-md-10">
+                    <p>Upload one or more files using this form:</p>
+                    <input type="file" name="files" multiple/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-10">
+                    <input type="submit" value="Upload" />
+                </div>
+            </div>
+        </form>
+        <a href="/view_album?id=@ViewBag.albumId">OK</a>        
+        </td>        
+    </tr>
+</table>

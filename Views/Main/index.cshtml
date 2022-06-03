@@ -1,13 +1,11 @@
-
 @model IEnumerable<svema.Data.Album>
-@{
-    Layout = "_Layout";
-}
-<html>
-    <body>
+@{Layout = "_Layout";}
+<table>
+    <tr>
+        <td width="240">
         <a href="add_album">Add Album</a>
-        <a href="upload_album">Upload Album</a>
-        <br>
+        </td>
+        <td width="100%">
         @foreach(var album in Model)  {
             <table style="display:inline">
                 <tr><td><a href="/view_album?id=@album.AlbumId"><img width=200 height=200></a></td></tr>
@@ -19,5 +17,6 @@
                 </td></tr>                
             </table>
         }
-    </body>    
-</html>
+        </td>        
+    </tr>
+</table>

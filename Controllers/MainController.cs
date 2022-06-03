@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -113,46 +114,56 @@ public class MainController: Controller {
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
         using var md5 = MD5.Create();
+        var errors = new Dictionary<string, string>();
 
         foreach (var formFile in files) {            
             if (formFile.Length > 0) {
 
-                using var stream = new MemoryStream();
-                using var outputStream = new MemoryStream();
-                await formFile.CopyToAsync(stream);
-                stream.Position = 0;
-                using var image = Image.Load(stream);
-                float ratio = (float)image.Width/(float)image.Height;
-                System.Console.Write("ratio is " + ratio);
-                if (ratio > 1 ) {
-                    image.Mutate(x => x.Resize((int)(200 * ratio), 200));
-                } else {
-                    image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
-                }
-                System.Console.Write("Resized to " + image.Size());
-                image.Mutate(x => x.Crop(200, 200));
-                System.Console.Write("Cropped to " + image.Size());
-                ImageExtensions.SaveAsJpeg(image, outputStream);
+                try {
+                    using var stream = new MemoryStream();
+                    using var outputStream = new MemoryStream();
+                    await formFile.CopyToAsync(stream);
+                    stream.Position = 0;
+                    using var image = Image.Load(stream);
+                    float ratio = (float)image.Width/(float)image.Height;
+                    System.Console.Write("ratio is " + ratio);
+                    if (ratio > 1 ) {
+                        image.Mutate(x => x.Resize((int)(200 * ratio), 200));
+                    } else {
+                        image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
+                    }
+                    System.Console.Write("Resized to " + image.Size());
+                    image.Mutate(x => x.Crop(200, 200));
+                    System.Console.Write("Cropped to " + image.Size());
+                    ImageExtensions.SaveAsJpeg(image, outputStream);
 
-                Shot shot = new Shot();
-                shot.ContentType = formFile.ContentType;
-                shot.Name = formFile.FileName;
-                shot.Album = album;
-                shot.Preview = outputStream.GetBuffer();
-                stream.Position = 0;
+                    Shot shot = new Shot();
+                    shot.ContentType = formFile.ContentType;
+                    shot.Name = formFile.FileName;
+                    shot.Album = album;
+                    shot.Preview = outputStream.GetBuffer();
+                    stream.Position = 0;
 
-                shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                dbContext.Shots.Add(shot);
-                await dbContext.SaveChangesAsync();
+                    shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                    dbContext.Shots.Add(shot);
+                    await dbContext.SaveChangesAsync();
 
-                stream.Position = 0;
-                System.IO.File.WriteAllBytes(config["STORAGE_DIR"] + shot.ShotId, stream.GetBuffer());                
-                shot.SourceUri = config["STORAGE_DIR"] + shot.ShotId;
-                await dbContext.SaveChangesAsync();
-
+                    stream.Position = 0;
+                    System.IO.File.WriteAllBytes(config["STORAGE_DIR"] + shot.ShotId, stream.GetBuffer());                
+                    shot.SourceUri = config["STORAGE_DIR"] + shot.ShotId;
+                    await dbContext.SaveChangesAsync();
+                }   catch (DbUpdateException e) {
+                    System.Console.Write("The error is " + e.Data);
+                    errors.Add(formFile.FileName, e.InnerException.Message);
+                }   catch (Exception e) {
+                    errors.Add(formFile.FileName, e.Message);
+                } 
             }
         }
-        return Redirect("/view_album?id=" + albumId);
+        ViewBag.albumId = albumId;        
+        ViewBag.errors = errors;
+        return View();
+
     }
 
 }

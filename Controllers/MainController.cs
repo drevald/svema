@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -96,14 +97,8 @@ public class MainController: Controller {
         var shot = await dbContext.Shots.FindAsync(id);
         var stream = System.IO.File.OpenRead(shot.SourceUri);
         stream.Position = 0;
-        return new FileStreamResult(stream, "image/jpeg");
+        return new FileStreamResult(stream, shot.ContentType);
     }
-
-    // [HttpGet("shot")]
-    // public async Task<IActionResult> GetShot() {
-    //     var result = await dbContext.Shots.ToListAsync();
-    //     return View();
-    // }
 
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id) {
@@ -131,11 +126,13 @@ public class MainController: Controller {
                 ImageExtensions.SaveAsJpeg(image, outputStream);
 
                 Shot shot = new Shot();
+                shot.ContentType = formFile.ContentType;
                 shot.Name = formFile.FileName;
                 shot.Album = album;
                 shot.Preview = outputStream.GetBuffer();
                 stream.Position = 0;
-                shot.MD5 = Encoding.Default.GetString(md5.ComputeHash(stream));
+
+                shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
                 dbContext.Shots.Add(shot);
                 await dbContext.SaveChangesAsync();
 

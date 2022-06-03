@@ -6,7 +6,7 @@
         <br>
         @foreach(var album in Model)  {
             <table style="display:inline">
-                <tr><td><img width=200 height=200></td></tr>
+                <tr><td><a href="/view_album?id=@album.AlbumId"><img width=200 height=200></a></td></tr>
                 <tr><td>@album.Name</td></tr>
                 <tr><td>
                     <a href="/view_album?id=@album.AlbumId">View</a>&nbsp;

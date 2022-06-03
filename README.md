@@ -17,7 +17,6 @@ Would be nice to have:
 * keep persons database
 * other objects identification and search (find all cats for example) 
 
-
 dotnet ef database drop     - clean database
 dotnet ef migrations add    - make migrations
 dotnet ef database update   - apply migrations

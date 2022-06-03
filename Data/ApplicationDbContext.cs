@@ -10,22 +10,29 @@ public class ApplicationDbContext : DbContext {
         //super(options);
     }
 
+    protected override void OnModelCreating(ModelBuilder builder) {
+        builder.Entity<Shot>(entity => {
+            entity.HasIndex(e => e.MD5).IsUnique(true);
+        });
+    }
+
     public DbSet<Album> Albums {get; set;}
     public DbSet<Shot> Shots {get; set;}
-    public DbSet<Location> Location {get; set;}
-    public DbSet<Person> Person {get; set;}
-    public DbSet<User> User {get; set;}
-    public DbSet<Comment> Comment {get; set;}
+    public DbSet<Location> Locations {get; set;}
+    public DbSet<Person> Persons {get; set;}
+    public DbSet<User> Users {get; set;}
 
 }
 
 public class Album {
     public int AlbumId {get; set;}
     public string Name {get; set;}
-    public Location Location {get; set;}
     public DateTime Date {get; set;}
     public string DatePrecision {get; set;}
     public ICollection<Shot> Shots {get;}
+    public ICollection<Location> Locations {get; set;}
+    public ICollection<ShotComment> Comments {get; set;}
+
 }
 
 public class Shot {
@@ -38,32 +45,46 @@ public class Shot {
     public string SourceUri {get; set;} 
     public Location Location {get; set;}    
     public string MD5 {get; set;}
+    public ICollection<Person> Persons {get; set;}
+    public string ContentType {get; set;}
+    public ICollection<ShotComment> Comments {get; set;}
         
 }
 
 public class Location {
-    public int LocationId {get; set;}
+    public int Id {get; set;}
     public string Name {get; set;}
     public float Longitude {get; set;}
     public float Latitude {get; set;}
     public int LocationPrecisionMeters {get; set;}
+    public ICollection<Album> Albums {get; set;}
 }
 
 public class Person {
     public int PersonId {get; set;}
     public string FirstName {get; set;}
     public string LastName {get; set;} 
+    public ICollection<Shot> Shots {get; set;}
 }
 
 public class User {
     public int UserId {get; set;}
 }
 
-public class Comment {
-    public int CommentId {get; set;}
+public class ShotComment {
+    public int Id {get; set;}
     public User Author {get; set;}
-    public int FilmId {get; set;}
     public int ShotId {get; set;}
+    public Shot Shot {get; set;}
+    public DateTime Timestamp {get; set;}
+    public string Text {get; set;}
+}
+
+public class AlbumComment {
+    public int Id {get; set;}
+    public User Author {get; set;}
+    public Album Album {get; set;}
+    public int AlbumId {get; set;}
     public DateTime Timestamp {get; set;}
     public string Text {get; set;}
 }

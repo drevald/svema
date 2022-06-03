@@ -22,21 +22,6 @@ namespace svema.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("AlbumLocation", b =>
-                {
-                    b.Property<int>("AlbumsAlbumId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LocationsId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("AlbumsAlbumId", "LocationsId");
-
-                    b.HasIndex("LocationsId");
-
-                    b.ToTable("AlbumLocation");
-                });
-
             modelBuilder.Entity("PersonShot", b =>
                 {
                     b.Property<int>("PersonsPersonId")
@@ -72,6 +57,29 @@ namespace svema.Migrations
                     b.HasKey("AlbumId");
 
                     b.ToTable("Albums");
+                });
+
+            modelBuilder.Entity("svema.Data.AlbumLocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlbumId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LocationId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlbumId");
+
+                    b.HasIndex("LocationId");
+
+                    b.ToTable("AlbumLocations");
                 });
 
             modelBuilder.Entity("svema.Data.Location", b =>
@@ -209,21 +217,6 @@ namespace svema.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AlbumLocation", b =>
-                {
-                    b.HasOne("svema.Data.Album", null)
-                        .WithMany()
-                        .HasForeignKey("AlbumsAlbumId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("svema.Data.Location", null)
-                        .WithMany()
-                        .HasForeignKey("LocationsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("PersonShot", b =>
                 {
                     b.HasOne("svema.Data.Person", null)
@@ -237,6 +230,25 @@ namespace svema.Migrations
                         .HasForeignKey("ShotsShotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("svema.Data.AlbumLocation", b =>
+                {
+                    b.HasOne("svema.Data.Album", "Album")
+                        .WithMany("AlbumLocations")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("svema.Data.Location", "Location")
+                        .WithMany("AlbumLocations")
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Album");
+
+                    b.Navigation("Location");
                 });
 
             modelBuilder.Entity("svema.Data.Shot", b =>
@@ -279,9 +291,16 @@ namespace svema.Migrations
 
             modelBuilder.Entity("svema.Data.Album", b =>
                 {
+                    b.Navigation("AlbumLocations");
+
                     b.Navigation("Comments");
 
                     b.Navigation("Shots");
+                });
+
+            modelBuilder.Entity("svema.Data.Location", b =>
+                {
+                    b.Navigation("AlbumLocations");
                 });
 
             modelBuilder.Entity("svema.Data.Shot", b =>

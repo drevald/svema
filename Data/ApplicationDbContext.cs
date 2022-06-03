@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext {
     public DbSet<Location> Locations {get; set;}
     public DbSet<Person> Persons {get; set;}
     public DbSet<User> Users {get; set;}
+    public DbSet<AlbumLocation> AlbumLocations {get; set;}
 
 }
 
@@ -30,9 +31,17 @@ public class Album {
     public DateTime Date {get; set;}
     public string DatePrecision {get; set;}
     public ICollection<Shot> Shots {get;}
-    public ICollection<Location> Locations {get; set;}
+    public ICollection<AlbumLocation> AlbumLocations {get; set;}
     public ICollection<ShotComment> Comments {get; set;}
 
+}
+
+public class AlbumLocation {
+    public int Id {get; set;}
+    public Album Album {get; set;}
+    public int AlbumId {get; set;}
+    public Location Location {get; set;}
+    public int LocationId {get; set;}
 }
 
 public class Shot {
@@ -57,7 +66,7 @@ public class Location {
     public float Longitude {get; set;}
     public float Latitude {get; set;}
     public int LocationPrecisionMeters {get; set;}
-    public ICollection<Album> Albums {get; set;}
+    public ICollection<AlbumLocation> AlbumLocations {get; set;}
 }
 
 public class Person {

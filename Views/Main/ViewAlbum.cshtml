@@ -2,12 +2,22 @@
 <table width="100%">
     <tr>
         <td width="240" bgcolor="#666666">
-        <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
+            Name:@ViewBag.album.Name<br/>
+            Locations:<br/>
+            @if (@ViewBag.Locations != null) {
+                @foreach(var location in @ViewBag.locations) {
+                    @location.Name <br/>
+                }
+            }
+            <a href="/add_location">Set Location</a><br/>                                     
+            <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
         </td>
         <td bgcolor="#eeeeee">         
         @foreach(var shot in @ViewBag.shots)  {
             <table style="display:inline">
-                <tr><td><a href="/shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td></tr>
+                <tr>
+                    <td><a href="/shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td>
+                </tr>
                 <tr><td>@shot.Name</td></tr>
                 <tr><td>
                     <a href="/shot?id=@shot.ShotId">View</a>&nbsp;

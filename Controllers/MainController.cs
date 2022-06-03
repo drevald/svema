@@ -72,7 +72,11 @@ public class MainController: Controller {
 
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id) {
-        IEnumerable<Shot> shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        var album = await dbContext.Albums.FindAsync(id);
+        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).ToListAsync();
+        ViewBag.locations = locations;        
+        ViewBag.album = album;
         ViewBag.shots = shots;
         ViewBag.albumId = id;
         return View();
@@ -163,7 +167,21 @@ public class MainController: Controller {
         ViewBag.albumId = albumId;        
         ViewBag.errors = errors;
         return View();
-
     }
+
+    [HttpGet("add_location")]
+    public async Task<IActionResult> AddLocation(int id) {
+        var locations = await dbContext.Locations.ToListAsync();
+        var albumLocations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).ToListAsync();
+        ViewBag.locations = locations;
+        ViewBag.albumLocations = albumLocations;
+        return View();
+    }
+
+    [HttpGet("create_location")]
+    public IActionResult CreateLocation() {
+        return View();
+    }
+
 
 }

@@ -122,7 +122,16 @@ public class MainController: Controller {
                 await formFile.CopyToAsync(stream);
                 stream.Position = 0;
                 using var image = Image.Load(stream);
-                image.Mutate(x => x.Resize(100, 100));
+                float ratio = (float)image.Width/(float)image.Height;
+                System.Console.Write("ratio is " + ratio);
+                if (ratio > 1 ) {
+                    image.Mutate(x => x.Resize((int)(200 * ratio), 200));
+                } else {
+                    image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
+                }
+                System.Console.Write("Resized to " + image.Size());
+                image.Mutate(x => x.Crop(200, 200));
+                System.Console.Write("Cropped to " + image.Size());
                 ImageExtensions.SaveAsJpeg(image, outputStream);
 
                 Shot shot = new Shot();

@@ -175,13 +175,28 @@ public class MainController: Controller {
         var albumLocations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).ToListAsync();
         ViewBag.locations = locations;
         ViewBag.albumLocations = albumLocations;
+        var albumLocation = new AlbumLocation();
         return View();
     }
 
-    [HttpGet("create_location")]
-    public IActionResult CreateLocation() {
-        return View();
+    [HttpPost("add_location")]
+    public async Task<IActionResult> StoreLocation(Location location) {
+        dbContext.Locations.Add(location);
+        await dbContext.SaveChangesAsync();
+        return Redirect("/add_location");
     }
+
+    // [HttpGet("create_location")]
+    // public IActionResult CreateLocation() {
+    //     return View();
+    // }
+
+    // [HttpPost("create_location")]
+    // public async Task<IActionResult> StoreLocation(Location location) {
+    //     dbContext.Locations.Add(location);
+    //     await dbContext.SaveChangesAsync();
+    //     return Redirect("/add_location");
+    // }
 
 
 }

@@ -1,14 +1,97 @@
+@model svema.Data.Location
 @{Layout = "_Layout";}
+
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
+<script type="text/javascript">
+
+ymaps.ready(init);
+
+var myMap;
+var place;
+var myPlacemark;
+var circle;
+
+function init () {
+
+    myMap = new ymaps.Map("map", {
+    center: [54.7, 32],
+        zoom: 8
+    });
+
+    place = new ymaps.GeoObject({
+        geometry: {type: "Point",coordinates: [54.7, 32]},
+        properties: {iconContent: 'New Point'}
+    }, {preset: 'islands#blackStretchyIcon',draggable: true
+    });
+
+    circle = new ymaps.Circle([[54.7, 32], 1000], {}, {
+        geodesic: true
+    });
+
+    myMap.events.add('click', function (e) {
+        var coords = e.get('coords');
+        place.geometry.setCoordinates(coords);
+        circle.geometry.setCoordinates(coords);
+        document.all['Latitude'].value = coords[0];
+        document.all['Longitude'].value = coords[1];
+    });
+
+    place.events.add(['mapchange','dragend'], 
+        function (e) {
+            coords = place.geometry.getCoordinates();
+            circle.geometry.setCoordinates(coords);
+            document.all['Latitude'].value = coords[0];
+            document.all['Longitude'].value = coords[1];
+        }
+    ); 
+
+    circle.events.add(['mapchange','dragend'], 
+        function (e) {
+            coords = circle.geometry.getCoordinates();
+            document.all['Latitude'].value = coords[0];
+            document.all['Longitude'].value = coords[1];
+        }
+    ); 
+
+    myPlacemark = new ymaps.Placemark([55.8, 37.6]);
+
+    myMap.geoObjects.add(myPlacemark);
+    myMap.geoObjects.add(place.geometry.getCoordinates());
+    myMap.geoObjects.add(circle);
+
+}
+   
+function show(lat, lon) {
+    myPlacemark.geometry.setCoordinates([lat, lon]);
+}
+
+</script>
 <table width="100%">
     <tr>
         <td width="240" bgcolor="#666666">
             <a href="/create_location">Create</a>
         </td>
-        <td bgcolor="#eeeeee">         
-        @foreach(var location in @ViewBag.locations)  {
-            @location.Name<br>
-        }
-        </td>        
+        <td bgcolor="#eeeeee">     
+        <div id="map" style="width: 640;height: 320;"></div>            
+        <form method="post">
+            Name <input asp-for="Name" id="name" name="Name" /><br/>
+            Latitude<input asp-for="Latitude" id="Latitude" name="Latitude"/><br/>
+            Longitude<input asp-for="Longitude" id="Longitude" name="Longitude"/><br/>
+            Precision<input asp-for="LocationPrecisionMeters" id="precision" name="LocationPrecisionMeters"/><br/>
+            <input type="submit"/>
+        </form>
+        </td>   
+        <td bgcolor="#eeeeee" width="100%" valign="top">
+            <table width="300">
+            @foreach(var location in @ViewBag.locations)  {
+                <tr>
+                    <td width="100%">@location.Name</td>
+                    @* <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude);"></td> *@
+                    <td><input type="button" value="show" onClick="javascript:show(37.6, 55.8);"></td>
+                    <td><input type="button" value="select"></td>
+                </tr>
+            }
+            </table>
+        </td>
     </tr>
 </table>
-

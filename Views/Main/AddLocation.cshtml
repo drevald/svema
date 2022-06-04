@@ -16,13 +16,13 @@ function init () {
     myMap = new ymaps.Map("map", {
     center: [54.7, 32],
         zoom: 8
-    });
+    }),
 
-    place = new ymaps.GeoObject({
+    myGeoObject = new ymaps.GeoObject({
         geometry: {type: "Point",coordinates: [54.7, 32]},
         properties: {iconContent: 'New Point'}
     }, {preset: 'islands#blackStretchyIcon',draggable: true
-    });
+    })
 
     circle = new ymaps.Circle([[54.7, 32], 1000], {}, {
         geodesic: true
@@ -30,15 +30,15 @@ function init () {
 
     myMap.events.add('click', function (e) {
         var coords = e.get('coords');
-        place.geometry.setCoordinates(coords);
+        myGeoObject.geometry.setCoordinates(coords);
         circle.geometry.setCoordinates(coords);
         document.all['Latitude'].value = coords[0];
         document.all['Longitude'].value = coords[1];
     });
 
-    place.events.add(['mapchange','dragend'], 
+    myGeoObject.events.add(['mapchange','dragend'], 
         function (e) {
-            coords = place.geometry.getCoordinates();
+            coords = myGeoObject.geometry.getCoordinates();
             circle.geometry.setCoordinates(coords);
             document.all['Latitude'].value = coords[0];
             document.all['Longitude'].value = coords[1];
@@ -48,15 +48,15 @@ function init () {
     circle.events.add(['mapchange','dragend'], 
         function (e) {
             coords = circle.geometry.getCoordinates();
-            document.all['Latitude'].value = coords[0];
-            document.all['Longitude'].value = coords[1];
+            document.all['latitude'].value = coords[0];
+            document.all['longitude'].value = coords[1];
         }
     ); 
 
     myPlacemark = new ymaps.Placemark([55.8, 37.6]);
 
     myMap.geoObjects.add(myPlacemark);
-    myMap.geoObjects.add(place.geometry.getCoordinates());
+    myMap.geoObjects.add(place);
     myMap.geoObjects.add(circle);
 
 }

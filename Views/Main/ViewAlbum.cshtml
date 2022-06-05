@@ -6,7 +6,7 @@
             Locations:<br/>
             @if (@ViewBag.Locations != null) {
                 @foreach(var location in @ViewBag.locations) {
-                    @location.Name <br/>
+                    @location.Location.Name <br/>
                 }
             }
             <a href="add_location?albumId=@ViewBag.albumId">Set Location</a><br/>                                     

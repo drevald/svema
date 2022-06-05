@@ -7,6 +7,7 @@
 ymaps.ready(init);
 
 var myGeoObject;
+var circle;
 
 function init () {
 
@@ -17,11 +18,11 @@ function init () {
 
     myGeoObject = new ymaps.GeoObject({
         geometry: {type: "Point",coordinates: [54.7, 32]},
-        properties: {iconContent: 'New Point'}
+        properties: {iconContent: ''}
     }, {preset: 'islands#blackStretchyIcon',draggable: true
     })
 
-    var circle = new ymaps.Circle([[54.7, 32], 10000], {}, {
+    circle = new ymaps.Circle([[54.7, 32], 10000], {}, {
         geodesic: true
     });
 
@@ -49,11 +50,16 @@ function init () {
 
 }
    
-function show(lat, lon) {
+function show(lat, lon, name) {
+    circle.geometry.setCoordinates([lat, lon]);
     myGeoObject.geometry.setCoordinates([lat, lon]);
-//    myGeoObject.feature.properties.iconContent("Content");
-    myMap.center.setCoordinates([lat, lon]);
-    myMap.setZoom(16);
+    myGeoObject.properties.set('iconContent', name);
+    myMap.setCenter([lat, lon]);
+    myMap.setZoom(8);
+}
+
+function precision(radius) {
+    circle.geometry.setRadius(radius);
 }
 
 </script>
@@ -65,10 +71,15 @@ function show(lat, lon) {
         <td bgcolor="#eeeeee">     
         <div id="map" style="width: 640;height: 320;"></div>            
         <form method="post">
-            Name <input asp-for="Name" id="name" name="Name" /><br/>
+            <input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
+            Name <input asp-for="Name" id="Name" name="Name" /><br/>
             Latitude<input asp-for="Latitude" id="Latitude" name="Latitude"/><br/>
             Longitude<input asp-for="Longitude" id="Longitude" name="Longitude"/><br/>
-            Precision<input asp-for="LocationPrecisionMeters" id="precision" name="LocationPrecisionMeters"/><br/>
+            Precision
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:precision(100);"/>100
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:precision(1000);"/>1000
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:precision(10000);"/>10000
+            <br/>
             <input type="submit"/>
         </form>
         </td>   
@@ -77,9 +88,9 @@ function show(lat, lon) {
             @foreach(var location in @ViewBag.locations)  {
                 <tr>
                     <td width="100%">@location.Name</td>
-                    @* <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude);"></td> *@
-                    <td><input type="button" value="show" onClick="javascript:show(37.6, 55.8);"></td>
-                    <td><input type="button" value="select"></td>
+                    <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name');"></td> 
+                    <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
+                    <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
                 </tr>
             }
             </table>

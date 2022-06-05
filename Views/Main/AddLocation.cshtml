@@ -58,7 +58,7 @@ function show(lat, lon, name) {
     myMap.setZoom(8);
 }
 
-function precision(radius) {
+function prec(radius) {
     circle.geometry.setRadius(radius);
 }
 
@@ -76,9 +76,12 @@ function precision(radius) {
             Latitude<input asp-for="Latitude" id="Latitude" name="Latitude"/><br/>
             Longitude<input asp-for="Longitude" id="Longitude" name="Longitude"/><br/>
             Precision
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:precision(100);"/>100
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:precision(1000);"/>1000
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:precision(10000);"/>10000
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
+            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
             <br/>
             <input type="submit"/>
         </form>

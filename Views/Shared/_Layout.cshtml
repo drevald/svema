@@ -1,15 +1,29 @@
 <html>
     <header>        
+        <style>
+            body {
+                font-family: Verdana, Geneva, Tahoma, sans-serif;
+                font-size: large;
+                font-color: #eeeeee;
+                margin: 0;
+            }
+            td {
+                font-family: Verdana, Geneva, Tahoma, sans-serif;
+                font-size: large;
+                font-color: #eeeeee;
+                vertical-align: top;
+            }
+        </style>
     </header>
     <body>
-        <table width="100%" height="100%">
+        <table width="100%" height="100%" spacing="0" padding="0" border="0">
             <tr>
-                <td colspan="2" height="50" bgcolor="#333333">
+                <td height="50" bgcolor="green" style="padding:30px;spacing:0px">
                     <a href="/" style="color:#eeeeee">HOME</a>
                 </td>
             </tr>
             <tr>
-                <td width="100%" bgcolor="#eeeeee" valign="top">
+                <td width="100%" valign="top" style="padding:0px;spacing:0px" >
                     @RenderBody()
                 </td>
             </tr>

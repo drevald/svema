@@ -207,5 +207,4 @@ public class MainController: Controller {
         return Redirect("/view_album?id=" + albumId);
     }
 
-
 }

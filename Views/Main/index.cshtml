@@ -1,6 +1,6 @@
 @model IEnumerable<svema.Data.Album>
 @{Layout = "_Layout";}
-<table>
+<table border="0">
     <tr>
         <td width="240">
         <a href="add_album">Add Album</a>
@@ -15,6 +15,7 @@
                     <a href="/edit_album?id=@album.AlbumId">Edit</a>&nbsp;
                     <a href="/delete_album?id=@album.AlbumId">Delete</a>
                 </td></tr>                
+                <tr><td>&nbsp;</td></tr>                
             </table>
         }
         </td>        

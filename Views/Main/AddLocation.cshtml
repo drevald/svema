@@ -63,31 +63,33 @@ function prec(radius) {
 }
 
 </script>
-<table width="100%">
+<table width="100%" height="100%" spacing="0" padding="0" border="0">
     <tr>
-        <td width="240" bgcolor="#666666">
-            <a href="/create_location">Create</a>
+        <td width="240" bgcolor="#666666" style="padding:30px" >
+            &nbsp;
         </td>
-        <td bgcolor="#eeeeee">     
-        <div id="map" style="width: 640;height: 320;"></div>            
-        <form method="post">
-            <input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
-            Name <input asp-for="Name" id="Name" name="Name" /><br/>
-            Latitude<input asp-for="Latitude" id="Latitude" name="Latitude"/><br/>
-            Longitude<input asp-for="Longitude" id="Longitude" name="Longitude"/><br/>
-            Precision
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
-            <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
-            <br/>
-            <input type="submit"/>
-        </form>
-        </td>   
-        <td bgcolor="#eeeeee" width="100%" valign="top">
-            <table width="300">
+        <td bgcolor="#eeeeee" style="padding:30px" width="0">         
+            <div id="map" style="width: 640;height: 320;"></div>            
+            <table>
+                <form method="post">
+                    <tr><input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
+                    <tr><td style="font-size:small">Name</td><td style="font-size:small"><input asp-for="Name" id="Name" name="Name" /></td></tr>
+                    <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
+                    <tr><td style="font-size:small">Longitude</td><td style="font-size:small"><input asp-for="Longitude" id="Longitude" name="Longitude"/></td></tr>
+                    <tr><td style="font-size:small">Precision</td><td style="font-size:small">
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
+                    </td></tr>
+                    <tr><td  style="font-size:small">&nbsp;</td><td  style="font-size:small"><input type="submit"/></td></tr>
+                </form>
+            </table>
+        </td>
+        <td bgcolor="#eeeeee" style="padding:30px;text-align:left">
+            <table>
             @foreach(var location in @ViewBag.locations)  {
                 <tr>
                     <td width="100%">@location.Name</td>
@@ -95,7 +97,7 @@ function prec(radius) {
                     <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
                     <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
                 </tr>
-            }
+            }            
             </table>
         </td>
     </tr>

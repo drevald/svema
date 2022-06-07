@@ -17,18 +17,6 @@ Would be nice to have:
 * keep persons database
 * other objects identification and search (find all cats for example) 
 
-Environment variables used in application:
-
-DB_CONNECTION   - sample database connection
-STORAGE_DIR     - directory for content storage
-
-sample:
-DB_CONNECTION=Host=localhost;Username=postgres;Password=password;Database=svema;Port=5432
-STORAGE_DIR=D:\SVEMA\
-
-How to update database after model change:
-
-dotnet ef database drop     - clean database - for non prod
+dotnet ef database drop     - clean database
 dotnet ef migrations add    - make migrations
 dotnet ef database update   - apply migrations
-

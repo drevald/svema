@@ -1,29 +1,30 @@
 @{Layout = "_Layout";}
-<table width="100%">
+<table width="100%" spacing="0" padding="0" border="0">
     <tr>
-        <td width="240" bgcolor="#666666">
-            Name:@ViewBag.album.Name<br/>
+        <td width="240" bgcolor="#666666" style="padding:30px" >
+            Name:@ViewBag.album.Name<br/><br/>
             Locations:<br/>
             @if (@ViewBag.Locations != null) {
                 @foreach(var location in @ViewBag.locations) {
-                    @location.Location.Name <br/>
+                    @location.Location.Name<br/>
                 }
             }
-            <a href="add_location?albumId=@ViewBag.albumId">Set Location</a><br/>                                     
+            <a href="add_location?albumId=@ViewBag.albumId">Add Location</a><br/><br/>
             <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
         </td>
-        <td bgcolor="#eeeeee">         
+        <td bgcolor="#eeeeee" style="padding:30px" >         
         @foreach(var shot in @ViewBag.shots)  {
-            <table style="display:inline">
+            <table style="display:inline;margin-right:30px;margin-bottom:30px" border="0">
                 <tr>
                     <td><a href="/shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td>
                 </tr>
                 <tr><td>@shot.Name</td></tr>
-                <tr><td>
+                <tr><td style="font-size:small">
                     <a href="/shot?id=@shot.ShotId">View</a>&nbsp;
                     <a href="/edit_album?id=@shot.ShotId">Edit</a>&nbsp;
                     <a href="/delete_album?id=@shot.ShotId">Delete</a>
-                </td></tr>                
+                </td></tr>
+                <tr><td>&nbsp;</td></tr>                
             </table>
         }
         </td>        

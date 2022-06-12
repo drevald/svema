@@ -5,9 +5,17 @@
             Name:@ViewBag.album.Name<br/><br/>
             Locations:<br/>
             @if (@ViewBag.Locations != null) {
+                <table style="margin:10px">
                 @foreach(var location in @ViewBag.locations) {
-                    @location.Location.Name<br/>
+                    <tr>
+                        <td>@location.Location.Name</td>
+                        <td>
+                            <a href="/album_location_delete?albumLocationId=@location.Id">Delete</a>&nbsp;
+                            <a href="/album_location_view?albumLocationId=@location.Id">View</a>
+                        </td>
+                    </tr>
                 }
+                </table>
             }
             <a href="add_location?albumId=@ViewBag.albumId">Add Location</a><br/><br/>
             <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>

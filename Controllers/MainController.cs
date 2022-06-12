@@ -180,17 +180,11 @@ public class MainController: Controller {
     [HttpGet("add_location")]
     public async Task<IActionResult> AddLocation(int albumId) {
         var locations = await dbContext.Locations.ToListAsync();
-        var albumLocations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == albumId).ToListAsync();
         var album = await dbContext.Albums.FindAsync(albumId);
         ViewBag.album = album;
         ViewBag.locations = locations;
-        ViewBag.albumLocations = albumLocations;
         var albumLocation = new AlbumLocation();
-        if (albumLocations.Count() == 0) {
-            return View(new Location());
-        } else {
-            return View(albumLocations.First().Location);
-        }
+        return View(new Location());
     }
 
     [HttpPost("add_location")]
@@ -206,6 +200,24 @@ public class MainController: Controller {
         albumLocation.AlbumId = albumId;
         albumLocation.LocationId = locationId;  
         dbContext.AlbumLocations.Add(albumLocation);
+        await dbContext.SaveChangesAsync();
+        return Redirect("/view_album?id=" + albumId);
+    }
+    
+    [HttpGet("album_location_view")]
+    public async Task<IActionResult> ViewAlbumLocation(int albumLocationId) {
+        var albumLocation = await dbContext.AlbumLocations.FindAsync(albumLocationId);
+        var locations = await dbContext.Locations.ToListAsync();
+        var location = await dbContext.Locations.FindAsync(albumLocation.LocationId);
+        ViewBag.locations = locations;
+        return Redirect("/add_location?albumId=" + albumLocation.AlbumId);
+    }
+
+    [HttpGet("album_location_delete")]
+    public async Task<IActionResult> DeleteAlbumLocation(int albumLocationId) {
+        var albumLocation = await dbContext.AlbumLocations.FindAsync(albumLocationId);
+        var albumId = albumLocation.AlbumId;
+        dbContext.Remove(albumLocation);
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);
     }

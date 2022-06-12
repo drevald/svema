@@ -1,6 +1,5 @@
 @model svema.Data.Location
 @{Layout = "_Layout";}
-
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
 <script type="text/javascript">
 
@@ -10,19 +9,19 @@ var myGeoObject;
 var circle;
 
 function init () {
-
+  
     myMap = new ymaps.Map("map", {
-    center: [54.7, 32],
-        zoom: 8
+    center: [@Model.Latitude, @Model.Longitude],
+        zoom: @Model.Zoom
     }),
 
     myGeoObject = new ymaps.GeoObject({
-        geometry: {type: "Point",coordinates: [54.7, 32]},
-        properties: {iconContent: ''}
+        geometry: {type: "Point",coordinates: [@Model.Latitude, @Model.Longitude]},
+        properties: {iconContent: '@Model.Name'}
     }, {preset: 'islands#blackStretchyIcon',draggable: true
     })
 
-    circle = new ymaps.Circle([[54.7, 32], 10000], {}, {
+    circle = new ymaps.Circle([[@Model.Latitude, @Model.Longitude], @Model.LocationPrecisionMeters], {}, {
         geodesic: true
     });
 
@@ -30,9 +29,9 @@ function init () {
         var coords = e.get('coords');
         myGeoObject.geometry.setCoordinates(coords);
         circle.geometry.setCoordinates(coords);
-        document.all['LocationPrecisionMeters'].value = myMap.getZoom();
         document.all['Latitude'].value = coords[0];
         document.all['Longitude'].value = coords[1];
+        document.all['Zoom'].value = myMap.getZoom();
     });
 
     myGeoObject.events.add(['mapchange','dragend'], 
@@ -42,6 +41,7 @@ function init () {
             document.all['LocationPrecisionMeters'].value = myMap.getZoom();
             document.all['Latitude'].value = coords[0];
             document.all['Longitude'].value = coords[1];
+            document.all['Zoom'].value = myMap.getZoom();
         }
     ); 
 
@@ -50,12 +50,18 @@ function init () {
 
 }
    
-function show(lat, lon, name) {
+function show(lat, lon, name, zoom, prec) {
     circle.geometry.setCoordinates([lat, lon]);
     myGeoObject.geometry.setCoordinates([lat, lon]);
     myGeoObject.properties.set('iconContent', name);
     myMap.setCenter([lat, lon]);
-    myMap.setZoom(8);
+    myMap.setZoom(zoom);
+    document.all['Name'].value = name;
+    document.all['LocationPrecisionMeters'].value = myMap.getZoom();
+    document.all['Latitude'].value = lat;
+    document.all['Longitude'].value = lon;
+    document.all['Zoom'].value = zoom;  
+    @* document.all['LocationPrecisionMeters'][2].setChecked(true); *@
 }
 
 function prec(radius) {
@@ -68,11 +74,12 @@ function prec(radius) {
         <td width="240" bgcolor="#666666" style="padding:30px" >
             &nbsp;
         </td>
-        <td bgcolor="#eeeeee" style="padding:30px" width="0">         
+        <td bgcolor="#eeeeee" style="padding:30px" width="640">         
             <div id="map" style="width: 640;height: 320;"></div>            
             <table>
                 <form method="post">
-                    <tr><input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
+                    <input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
+                    <input type="hidden" asp-for="Zoom" name="Zoom" id="Zoom" />
                     <tr><td style="font-size:small">Name</td><td style="font-size:small"><input asp-for="Name" id="Name" name="Name" /></td></tr>
                     <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
                     <tr><td style="font-size:small">Longitude</td><td style="font-size:small"><input asp-for="Longitude" id="Longitude" name="Longitude"/></td></tr>
@@ -93,7 +100,7 @@ function prec(radius) {
             @foreach(var location in @ViewBag.locations)  {
                 <tr>
                     <td width="100%">@location.Name</td>
-                    <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name');"></td> 
+                    <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
                     <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
                     <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
                 </tr>

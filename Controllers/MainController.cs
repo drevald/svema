@@ -4,7 +4,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -187,7 +186,11 @@ public class MainController: Controller {
         ViewBag.locations = locations;
         ViewBag.albumLocations = albumLocations;
         var albumLocation = new AlbumLocation();
-        return View();
+        if (albumLocations.Count() == 0) {
+            return View(new Location());
+        } else {
+            return View(albumLocations.First().Location);
+        }
     }
 
     [HttpPost("add_location")]

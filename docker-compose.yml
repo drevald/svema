@@ -9,12 +9,15 @@ services:
     volumes:
       - data:/var/lib/postgresql/data
     ports:
-      - 5432:5432
+      - 5433:5433
+    command: -p 5433
   web:
     build: .
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/svema
+      - DATABASE_URL=postgres://postgres:password@postgres:5433/svema
+      - DB_CONNECTION=Host=postgres;Username=postgres;Password=password;Database=svema;Port=5433
       - PORT=7777
+      - STORAGE_DIR=~/SVEMA
     ports:
       - "7777:7777"
     depends_on:

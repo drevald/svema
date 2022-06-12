@@ -102,6 +102,9 @@ namespace svema.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
+                    b.Property<int>("Zoom")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Locations");

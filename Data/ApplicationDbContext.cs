@@ -67,6 +67,7 @@ public class Location {
     public float Latitude {get; set;}
     public int LocationPrecisionMeters {get; set;}
     public ICollection<AlbumLocation> AlbumLocations {get; set;}
+    public int Zoom {get; set;}
 }
 
 public class Person {

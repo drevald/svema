@@ -24,13 +24,13 @@
         @foreach(var shot in @ViewBag.shots)  {
             <table style="display:inline;margin-right:30px;margin-bottom:30px" border="0">
                 <tr>
-                    <td><a href="/shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td>
+                    <td><a href="/view_shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td>
                 </tr>
                 <tr><td>@shot.Name</td></tr>
                 <tr><td style="font-size:small">
-                    <a href="/shot?id=@shot.ShotId">View</a>&nbsp;
-                    <a href="/edit_album?id=@shot.ShotId">Edit</a>&nbsp;
-                    <a href="/delete_album?id=@shot.ShotId">Delete</a>
+                    <a href="/view_shot?id=@shot.ShotId">View</a>&nbsp;
+                    <a href="/edit_shot?id=@shot.ShotId">Edit</a>&nbsp;
+                    <a href="/delete_shot?id=@shot.ShotId">Delete</a>
                 </td></tr>
                 <tr><td>&nbsp;</td></tr>                
             </table>

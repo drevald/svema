@@ -181,7 +181,7 @@ public class MainController: Controller {
     public async Task<IActionResult> AddLocation(int albumId) {
         var locations = await dbContext.Locations.ToListAsync();
         var album = await dbContext.Albums.FindAsync(albumId);
-        ViewBag.album = album;
+        ViewBag.albumId = albumId;
         ViewBag.locations = locations;
         var albumLocation = new AlbumLocation();
         return View(new Location());
@@ -210,7 +210,8 @@ public class MainController: Controller {
         var locations = await dbContext.Locations.ToListAsync();
         var location = await dbContext.Locations.FindAsync(albumLocation.LocationId);
         ViewBag.locations = locations;
-        return Redirect("/add_location?albumId=" + albumLocation.AlbumId);
+        ViewBag.albumId = albumLocation.AlbumId;
+        return View("AddLocation", location);
     }
 
     [HttpGet("album_location_delete")]
@@ -221,5 +222,37 @@ public class MainController: Controller {
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);
     }
+
+    [HttpGet("view_shot")]
+    public async Task<IActionResult> ViewShot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        return View(shot);
+    }
+
+    [HttpGet("view_next_shot")]
+    public async Task<IActionResult> ViewNextShot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).ToList<Shot>();
+        int index = shots.FindIndex(a => a.ShotId == id);
+        try {
+            return Redirect("/view_shot?id=" + shots[index + 1].ShotId) ;
+        } catch (Exception) {
+            return Redirect("/view_shot?id=" + id) ;
+        }
+    }
+
+
+    [HttpGet("view_prev_shot")]
+    public async Task<IActionResult> ViewPrevShot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).ToList<Shot>();
+        int index = shots.FindIndex(a => a.ShotId == id);
+        try {
+            return Redirect("/view_shot?id=" + shots[index - 1].ShotId) ;
+        } catch (Exception) {
+            return Redirect("/view_shot?id=" + id) ;
+        }
+    }
+
 
 }

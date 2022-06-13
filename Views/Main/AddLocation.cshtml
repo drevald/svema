@@ -71,14 +71,14 @@ function prec(radius) {
 </script>
 <table width="100%" height="100%" spacing="0" padding="0" border="0">
     <tr>
-        <td width="240" bgcolor="#666666" style="padding:30px" >
-            &nbsp;
+        <td width="240" bgcolor="#cccc99" style="padding:30px" >
+            <a href="/view_album?id=@ViewBag.albumId">Back</a>
         </td>
         <td bgcolor="#eeeeee" style="padding:30px" width="640">         
             <div id="map" style="width: 640;height: 320;"></div>            
             <table>
                 <form method="post">
-                    <input type="hidden" name="AlbumId" value="@ViewBag.album.AlbumId"/>
+                    <input type="hidden" name="AlbumId" value="@ViewBag.albumId"/>
                     <input type="hidden" asp-for="Zoom" name="Zoom" id="Zoom" />
                     <tr><td style="font-size:small">Name</td><td style="font-size:small"><input asp-for="Name" id="Name" name="Name" /></td></tr>
                     <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
@@ -101,8 +101,8 @@ function prec(radius) {
                 <tr>
                     <td width="100%">@location.Name</td>
                     <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
-                    <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
-                    <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.album.AlbumId');"></td>
+                    <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
+                    <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
                 </tr>
             }            
             </table>

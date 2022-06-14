@@ -254,5 +254,26 @@ public class MainController: Controller {
         }
     }
 
+    [HttpGet("shot_location_set")]
+    public async Task<IActionResult> SetShotLocation(int shotId) {
+        var locations = await dbContext.Locations.ToListAsync<Location>();        
+        var shot = await dbContext.Shots.FindAsync(shotId);
+        var location = shot.Location == null ? new Location() : shot.Location;
+        ViewBag.shotId = shotId;
+        ViewBag.locations = locations;
+        return View("ShotLocation", location);
+    }
+
+    [HttpPost("shot_location_set")]
+    public async Task<IActionResult> SaveShotLocation(Location location) {
+//        var shot = await dbContext.Shots.FindAsync(id);
+        dbContext.Add(location);
+//        shot.Location = location;
+//        dbContext.Update(shot);
+        await dbContext.SaveChangesAsync();
+//        return Redirect("show_shot?id=" + shot.ShotId);
+        return Redirect("show_shot?id=1");
+    }
+
 
 }

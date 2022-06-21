@@ -1,0 +1,79 @@
+@model svema.Data.Shot
+@{Layout = "_Layout";}
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
+<script type="text/javascript">
+
+ymaps.ready(init);
+
+var myGeoObject;
+var circle;
+
+function init () {
+  
+    myMap = new ymaps.Map("map", {
+        center: [@Model.Location.Latitude, @Model.Location.Longitude],
+        zoom: @Model.Location.Zoom-1,
+        controls: []
+    }),
+
+    myGeoObject = new ymaps.GeoObject({
+        geometry: {type: "Point",coordinates: [@Model.Location.Latitude, @Model.Location.Longitude]}
+    }, {preset: 'islands#blackStretchyIcon',draggable: true
+    })
+
+    circle = new ymaps.Circle([[@Model.Location.Latitude, @Model.Location.Longitude], @Model.Location.LocationPrecisionMeters], {}, {
+        geodesic: true
+    });
+
+    myMap.geoObjects.add(myGeoObject);
+    myMap.geoObjects.add(circle);
+
+}
+</script>
+<table width="100%" height="100%" spacing="0" padding="0" border="0">
+    <tr>
+        <td width="240" bgcolor="#cccc99" style="padding:30px" >
+            <a href="/view_album?id=@Model.AlbumId">Back</a><br><br>          
+            Name:@Model.Name<br/><br/>
+            Location:<br/>
+            @if (@Model.Location != null) {
+                <table style="margin:10px">
+                    <tr>
+                        <td colspan="2">
+                            <div id="map" style="width: 240;height: 180;"></div>                                           
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Longitude</td>
+                        <td>@Model.Location.Longitude</td>
+                    </tr>
+                    <tr>
+                        <td>Latitude</td>
+                        <td>@Model.Location.Latitude</td>
+                    </tr>
+                    <tr>
+                        <td>@Model.Location.Name</td>
+                        <td>
+                            <a href="/shot_location_delete?shotId=@Model.ShotId">Delete</a>&nbsp;
+                            <a href="/shot_location_view?shotId=@Model.ShotId">View</a>
+                        </td>
+                    </tr>
+                </table>
+            }
+            <a href="shot_location_set?shotId=@Model.ShotId">Set Location</a><br/><br/>
+        </td>
+        <td bgcolor="#eeeeee" style="padding:30px" >
+            <table style="width:100%;height:100%" border=0>
+                <tr>
+                    <td style="width:50%;height:100%;">
+                        <img src="/shot?id=@Model.ShotId" style="max-width:100%;max-height:auto"/>
+                    </td>
+                    <td valign="top" align="right">
+                        <a href="view_prev_shot?id=@Model.ShotId">Prev</a>&nbsp;
+                        <a href="view_next_shot?id=@Model.ShotId">Next</a>
+                    </td>
+                </tr>
+            </table>                     
+        </td>        
+    </tr>
+</table>

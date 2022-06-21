@@ -225,7 +225,7 @@ public class MainController: Controller {
 
     [HttpGet("view_shot")]
     public async Task<IActionResult> ViewShot(int id) {
-        var shot = await dbContext.Shots.FindAsync(id);
+        var shot = await dbContext.Shots.Include(s => s.Location).FirstOrDefaultAsync(s => s.ShotId == id);
         return View(shot);
     }
 
@@ -265,15 +265,17 @@ public class MainController: Controller {
     }
 
     [HttpPost("shot_location_set")]
-    public async Task<IActionResult> SaveShotLocation(Location location) {
-//        var shot = await dbContext.Shots.FindAsync(id);
-        dbContext.Add(location);
-//        shot.Location = location;
-//        dbContext.Update(shot);
+    public async Task<IActionResult> SaveShotLocation(Location location, int shotId) {
+        var shot = await dbContext.Shots.FindAsync(shotId);
+        if (location.Id == 0) {
+            dbContext.Add(location);
+        } else {
+            dbContext.Update(location);
+        }
+        shot.Location = location;
+        dbContext.Update(shot);
         await dbContext.SaveChangesAsync();
-//        return Redirect("show_shot?id=" + shot.ShotId);
-        return Redirect("show_shot?id=1");
+        return Redirect("view_shot?id=" + shot.ShotId);
     }
-
 
 }

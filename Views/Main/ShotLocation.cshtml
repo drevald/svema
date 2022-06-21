@@ -1,0 +1,110 @@
+@model svema.Data.Location
+@{Layout = "_Layout";}
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
+<script type="text/javascript">
+
+ymaps.ready(init);
+
+var myGeoObject;
+var circle;
+
+function init () {
+  
+    myMap = new ymaps.Map("map", {
+    center: [@Model.Latitude, @Model.Longitude],
+        zoom: @Model.Zoom
+    }),
+
+    myGeoObject = new ymaps.GeoObject({
+        geometry: {type: "Point",coordinates: [@Model.Latitude, @Model.Longitude]},
+        properties: {iconContent: '@Model.Name'}
+    }, {preset: 'islands#blackStretchyIcon',draggable: true
+    })
+
+    circle = new ymaps.Circle([[@Model.Latitude, @Model.Longitude], @Model.LocationPrecisionMeters], {}, {
+        geodesic: true
+    });
+
+    myMap.events.add('click', function (e) {
+        var coords = e.get('coords');
+        myGeoObject.geometry.setCoordinates(coords);
+        circle.geometry.setCoordinates(coords);
+        document.all['Latitude'].value = coords[0];
+        document.all['Longitude'].value = coords[1];
+        document.all['Zoom'].value = myMap.getZoom();
+    });
+
+    myGeoObject.events.add(['mapchange','dragend'], 
+        function (e) {
+            coords = myGeoObject.geometry.getCoordinates();
+            circle.geometry.setCoordinates(coords);
+            document.all['LocationPrecisionMeters'].value = myMap.getZoom();
+            document.all['Latitude'].value = coords[0];
+            document.all['Longitude'].value = coords[1];
+            document.all['Zoom'].value = myMap.getZoom();
+        }
+    ); 
+
+    myMap.geoObjects.add(myGeoObject);
+    myMap.geoObjects.add(circle);
+
+}
+   
+function show(lat, lon, name, zoom, prec) {
+    circle.geometry.setCoordinates([lat, lon]);
+    myGeoObject.geometry.setCoordinates([lat, lon]);
+    myGeoObject.properties.set('iconContent', name);
+    myMap.setCenter([lat, lon]);
+    myMap.setZoom(zoom);
+    @* document.all['Name'].value = name; *@
+    document.all['LocationPrecisionMeters'].value = myMap.getZoom();
+    document.all['Latitude'].value = lat;
+    document.all['Longitude'].value = lon;
+    document.all['Zoom'].value = zoom;  
+    @* document.all['LocationPrecisionMeters'][2].setChecked(true); *@
+}
+
+function prec(radius) {
+    circle.geometry.setRadius(radius);
+}
+
+</script>
+<table width="100%" height="100%" spacing="0" padding="0" border="0">
+    <tr>
+        <td width="240" bgcolor="#cccc99" style="padding:30px" >
+            <a href="/view_album?id=@ViewBag.albumId">Back</a>
+        </td>
+        <td bgcolor="#eeeeee" style="padding:30px" width="640">         
+            <div id="map" style="width: 640;height: 320;"></div>            
+            <table>
+                <form method="post">
+                    <input type="hidden" asp-for="Id" name="Id" id="Id" />
+                    <input type="hidden" asp-for="Zoom" name="Zoom" id="Zoom" />
+                    <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
+                    <tr><td style="font-size:small">Longitude</td><td style="font-size:small"><input asp-for="Longitude" id="Longitude" name="Longitude"/></td></tr>
+                    <tr><td style="font-size:small">Precision</td><td style="font-size:small">
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
+                    </td></tr>
+                    <tr><td  style="font-size:small">&nbsp;</td><td  style="font-size:small"><input type="submit"/></td></tr>
+                </form>
+            </table>
+        </td>
+        <td bgcolor="#eeeeee" style="padding:30px;text-align:left">
+            <table>
+            @foreach(var location in @ViewBag.locations)  {
+                <tr>
+                    <td width="100%">@location.Name</td>
+                    <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
+                    <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
+                    <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
+                </tr>
+            }            
+            </table>
+        </td>
+    </tr>
+</table>

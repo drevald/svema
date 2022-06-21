@@ -278,4 +278,15 @@ public class MainController: Controller {
         return Redirect("view_shot?id=" + shot.ShotId);
     }
 
+    [HttpGet("shot_location_delete")]
+    public async Task<IActionResult> DeleteShotLocation(int shotId) {
+        var shot = await dbContext.Shots.Include(s => s.Location).FirstOrDefaultAsync(s => s.ShotId == shotId);
+        if (shot.Location != null && shot.Location.Name == null) {
+            dbContext.Remove(shot.Location);
+        }
+        shot.Location = null;
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_shot?id=" + shot.ShotId);
+    }
+
 }

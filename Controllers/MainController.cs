@@ -78,7 +78,7 @@ public class MainController: Controller {
         ViewBag.album = album;
         ViewBag.shots = shots;
         ViewBag.albumId = id;
-        return View();
+        return View(album);
     }
 
     [HttpGet("shots")]
@@ -288,5 +288,11 @@ public class MainController: Controller {
         await dbContext.SaveChangesAsync();
         return Redirect("view_shot?id=" + shot.ShotId);
     }
+
+    [HttpGet("set_album_date")]
+    public IActionResult SetAlbumDate(int albumId) {
+        return View();
+    }
+
 
 }

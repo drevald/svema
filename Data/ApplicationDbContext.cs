@@ -56,8 +56,7 @@ public class Shot {
     public string MD5 {get; set;}
     public ICollection<Person> Persons {get; set;}
     public string ContentType {get; set;}
-    public ICollection<ShotComment> Comments {get; set;}
-        
+    public ICollection<ShotComment> Comments {get; set;}        
 }
 
 public class Location {

@@ -1,3 +1,4 @@
+@model svema.Data.Album
 @{Layout = "_Layout";}
 <table width="100%" height="100%" spacing="0" padding="0" border="0">
     <tr>
@@ -18,7 +19,12 @@
                 </table>
             }
             <a href="add_location?albumId=@ViewBag.albumId">Add Location</a><br/><br/>
-            <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a>
+            Date:<br>
+            @if (@Model.Date != default(DateTime)) {                
+                @Model.Date
+            }
+            <a href="/set_album_date?albumId=@Model.AlbumId">Set Date</a><br>
+            <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a><br>
         </td>
         <td bgcolor="#eeeeee" style="padding:30px" >         
         @foreach(var shot in @ViewBag.shots)  {

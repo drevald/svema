@@ -1,0 +1,67 @@
+@{Layout = "_Layout";}
+<table width="100%" height="100%" spacing="0" padding="0" border="0">
+    <tr>
+        <td class="left">
+            <a href='/view_album?id=@Context.Request.Query["albumId"]'>Back</a>
+        </td>
+        <td class="right"> 
+            <div>Choose Decade:</div>
+            <div id="decades" style="padding:10px"></div>
+            <div id="years_label">Choose Year:</div>
+            <div id="years" style="padding:10px"></div>
+            <button>Set</button>
+        </td>        
+    </tr>
+</table>
+<script>
+
+    init();
+
+    var selectedDecadeId;
+    var selectedYearId;
+    var selectedMonthId;
+    var selectedDayId;
+
+    function init() {
+        document.all['decades'].textContent = '';
+        for (i=192; i<203; i++) {
+            var decadeButton = document.createElement("input");
+            decadeButton.setAttribute("type", "button");
+            decadeButton.setAttribute("value", i + "X");
+            decadeButton.setAttribute("onClick", "javascript:setDecade(" + (i * 10) + ", '" + i + "X');");            
+            decadeButton.setAttribute("class", "dateButton");
+            decadeButton.setAttribute("id", i + "X");
+            document.all['decades'].appendChild(decadeButton);
+        }
+    }
+
+
+    function setDecade(decade, id) {
+        if (document.all[selectedDecadeId]!=null) {
+            document.all[selectedDecadeId].setAttribute("class","dateButton");
+        }
+        selectedDecadeId = id;
+        document.all(selectedDecadeId).setAttribute("class", "dateButtonSelected");
+        document.all['years'].textContent = '';
+        for (i=0; i<10; i++) {
+            var yearButton = document.createElement("input");
+            yearButton.setAttribute("type", "button");
+            yearButton.setAttribute("value", decade + i);
+            yearButton.setAttribute("onClick", "javascript:setYear();");
+            yearButton.setAttribute("class", "dateButton");
+            yearButton.setAttribute("id", (decade + i) + "");
+            document.all['years'].appendChild(yearButton);
+        } 
+    } 
+
+    function setYear() {
+        yearItem = window.event.target;
+        if (selectedYearId != null) {
+            selectedYearId = yearItem.id;
+        }
+        yearItem.setAttribute("class", "dateButtonSelected");
+    }
+
+
+
+</script>

@@ -20,8 +20,8 @@
             }
             <a href="add_location?albumId=@ViewBag.albumId">Add Location</a><br/><br/>
             Date:<br>
-            @if (@Model.Date != default(DateTime)) {                
-                @Model.Date
+            @if (@Model.DateFrom != default(DateTime)) {                
+                @Model.DateFrom
             }
             <a href="/set_album_date?albumId=@Model.AlbumId">Set Date</a><br>
             <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a><br>

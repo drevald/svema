@@ -12,7 +12,7 @@ using svema.Data;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20220611201750_init")]
+    [Migration("20220707215650_init")]
     partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -47,11 +47,14 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AlbumId"));
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime>("DateFrom")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DatePrecision")
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("DateTo")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .HasColumnType("text");

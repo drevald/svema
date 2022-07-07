@@ -7,7 +7,7 @@ namespace svema.Data;
 public class ApplicationDbContext : DbContext {
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base (options) {
-        //super(options);
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     }
 
     protected override void OnModelCreating(ModelBuilder builder) {
@@ -28,7 +28,8 @@ public class ApplicationDbContext : DbContext {
 public class Album {
     public int AlbumId {get; set;}
     public string Name {get; set;}
-    public DateTime Date {get; set;}
+    public DateTime DateFrom {get; set;}
+    public DateTime DateTo {get; set;}
     public string DatePrecision {get; set;}
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumLocation> AlbumLocations {get; set;}

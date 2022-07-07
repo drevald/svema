@@ -17,7 +17,8 @@ namespace svema.Migrations
                     AlbumId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "text", nullable: true),
-                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DateFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DateTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DatePrecision = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>

@@ -295,10 +295,13 @@ public class MainController: Controller {
     }
 
     [HttpPost("set_album_date")]
-    public async Task<IActionResult> SetShotDate(string date, string date_format, int id) {
+    public async Task<IActionResult> SetShotDate(string year_from, string month_from, string day_from, string year_to, string month_to, string day_to, string date_format, int id) {
         var album = await dbContext.Albums.FindAsync(id);
-        //album.Date = DateTime.Parse(date, "");
+        DateTime date_from = new DateTime(Int32.Parse(year_from), Int32.Parse(month_from), Int32.Parse(day_from));
+        DateTime date_to = new DateTime(Int32.Parse(year_to), Int32.Parse(month_to), Int32.Parse(day_to));
         album.DatePrecision = date_format;
+        album.DateFrom = date_from;
+        album.DateTo = date_to;
         dbContext.Update(album);
         await dbContext.SaveChangesAsync();
         return Redirect("view_album?id=" + id);

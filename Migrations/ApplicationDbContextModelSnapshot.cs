@@ -45,11 +45,14 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AlbumId"));
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime>("DateFrom")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DatePrecision")
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("DateTo")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .HasColumnType("text");

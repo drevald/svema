@@ -294,5 +294,14 @@ public class MainController: Controller {
         return View();
     }
 
+    [HttpPost("set_album_date")]
+    public async Task<IActionResult> SetShotDate(string date, string date_format, int id) {
+        var album = await dbContext.Albums.FindAsync(id);
+        //album.Date = DateTime.Parse(date, "");
+        album.DatePrecision = date_format;
+        dbContext.Update(album);
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_album?id=" + id);
+    }
 
 }

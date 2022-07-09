@@ -71,7 +71,7 @@ public class MainController: Controller {
 
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id) {
-        var album = await dbContext.Albums.FindAsync(id);
+        var album = await dbContext.Albums.Where(a => a.AlbumId==id).Include(a => a.AlbumComments).FirstAsync();
         var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
         var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).Include(al => al.Location).ToListAsync();
         ViewBag.locations = locations;        
@@ -303,6 +303,16 @@ public class MainController: Controller {
         album.DateFrom = date_from;
         album.DateTo = date_to;
         dbContext.Update(album);
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_album?id=" + id);
+    }
+
+    [HttpPost("add_comment")]
+    public async Task<IActionResult> AddComment(string text, int id) {
+        var comment = new AlbumComment ();
+        comment.Text = text;
+        comment.AlbumId = id;
+        dbContext.AlbumComments.Add(comment);
         await dbContext.SaveChangesAsync();
         return Redirect("view_album?id=" + id);
     }

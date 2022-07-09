@@ -22,6 +22,8 @@ public class ApplicationDbContext : DbContext {
     public DbSet<Person> Persons {get; set;}
     public DbSet<User> Users {get; set;}
     public DbSet<AlbumLocation> AlbumLocations {get; set;}
+    public DbSet<AlbumComment> AlbumComments {get; set;}
+    public DbSet<ShotComment> ShotComments {get; set;}
 
 }
 
@@ -33,7 +35,7 @@ public class Album {
     public string DatePrecision {get; set;}
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumLocation> AlbumLocations {get; set;}
-    public ICollection<ShotComment> Comments {get; set;}
+    public ICollection<AlbumComment> AlbumComments {get; set;}
 
 }
 
@@ -57,7 +59,7 @@ public class Shot {
     public string MD5 {get; set;}
     public ICollection<Person> Persons {get; set;}
     public string ContentType {get; set;}
-    public ICollection<ShotComment> Comments {get; set;}        
+    public ICollection<ShotComment> ShotComments {get; set;}        
 }
 
 public class Location {

@@ -225,7 +225,10 @@ public class MainController: Controller {
 
     [HttpGet("view_shot")]
     public async Task<IActionResult> ViewShot(int id) {
-        var shot = await dbContext.Shots.Include(s => s.Location).FirstOrDefaultAsync(s => s.ShotId == id);
+        var shot = await dbContext.Shots
+            .Include(s => s.Location)
+            .Include(s => s.ShotComments)
+            .FirstOrDefaultAsync(s => s.ShotId == id);
         return View(shot);
     }
 
@@ -240,7 +243,6 @@ public class MainController: Controller {
             return Redirect("/view_shot?id=" + id) ;
         }
     }
-
 
     [HttpGet("view_prev_shot")]
     public async Task<IActionResult> ViewPrevShot(int id) {
@@ -308,13 +310,58 @@ public class MainController: Controller {
     }
 
     [HttpPost("add_comment")]
-    public async Task<IActionResult> AddComment(string text, int id) {
-        var comment = new AlbumComment ();
-        comment.Text = text;
-        comment.AlbumId = id;
-        dbContext.AlbumComments.Add(comment);
+    public async Task<IActionResult> AddComment(string text, int id, int commentId) {
+        var comment = new AlbumComment();    
+        if (commentId==0) {
+            comment.Text = text;
+            comment.AlbumId = id;
+            comment.Timestamp = new DateTime();
+            dbContext.AlbumComments.Add(comment);    
+        } else {            
+            comment = await dbContext.AlbumComments.FindAsync(commentId);
+            comment.Text = text;
+            comment.AlbumId = id;
+            comment.Timestamp = new DateTime();            
+            dbContext.AlbumComments.Update(comment);
+        }
         await dbContext.SaveChangesAsync();
         return Redirect("view_album?id=" + id);
     }
+
+    [HttpGet("delete_comment")]
+    public async Task<IActionResult> DeleteComment(int commentId, int id) {
+        var comment = await dbContext.AlbumComments.FindAsync(commentId);
+        dbContext.AlbumComments.Remove(comment);
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_album?id=" + id);
+    }
+
+    [HttpPost("add_shot_comment")]
+    public async Task<IActionResult> AddShotComment(string text, int id, int commentId) {
+        var comment = new ShotComment();    
+        if (commentId==0) {
+            comment.Text = text;
+            comment.ShotId = id;
+            comment.Timestamp = new DateTime();
+            dbContext.ShotComments.Add(comment);    
+        } else {            
+            comment = await dbContext.ShotComments.FindAsync(commentId);
+            comment.Text = text;
+            comment.ShotId = id;
+            comment.Timestamp = new DateTime();            
+            dbContext.ShotComments.Update(comment);
+        }
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_shot?id=" + id);
+    }
+
+    [HttpGet("delete_shot_comment")]
+    public async Task<IActionResult> DeleteShotComment(int commentId, int id) {
+        var comment = await dbContext.ShotComments.FindAsync(commentId);
+        dbContext.ShotComments.Remove(comment);
+        await dbContext.SaveChangesAsync();
+        return Redirect("view_shot?id=" + id);
+    }
+
 
 }

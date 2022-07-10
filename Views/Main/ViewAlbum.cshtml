@@ -2,8 +2,9 @@
 @{Layout = "_Layout";}
 <script>
 
-    function addComment() {
-        alert();
+    function editComment(id, text) {
+        document.all("text").value = text;
+        document.all("commentId").value = id;
     }
 
 </script>
@@ -37,16 +38,23 @@
                 <table style="margin:10px">
                 @foreach(var comment in @Model.AlbumComments) {
                     <tr>
-                        <td>@comment.Author</td>
-                        <td>@comment.Text</td>
-                    </tr>
+                        <td class="comment">
+                            <b>Author</b>&nbsp;
+                            @comment.Timestamp.ToString("yy-mm-dd")<br>
+                            @comment.Text
+                            <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete</a>&nbsp;
+                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit</a>&nbsp;
+                            <br><br>                            
+                        </td>
+                    </tr>                    
                 }
                 </table>
             }
             <form action="add_comment" method="post">
                 <input type="hidden" id="id" value="@Model.AlbumId" name="id">
-                <textarea style="width:100%;margin:10px;background:#f7f7ee" rows=4 id="text" name="text"></textarea>
-                <input value="Add Comment" type="submit">
+                <input type="hidden" id="commentId" name="commentId" value="0">
+                <textarea class="commentInput" rows=4 id="text" name="text"></textarea>
+                <input value="Set Comment" type="submit">&nbsp;<input type="reset">
             </form>
         </td>
         <td class="right">

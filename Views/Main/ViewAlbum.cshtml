@@ -14,6 +14,33 @@
             Name:@ViewBag.album.Name<br/><br/>
             <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a><br><br>
             Locations:<br/>
+            @if (@Model.AlbumLocations != null) {
+                <script type="text/javascript">
+
+                    ymaps.ready(init);
+
+                    var myGeoObject;
+                    var circle;
+
+                    function init () {
+                    
+                        myMap = new ymaps.Map("map", {
+                            controls: []
+                        }),
+
+                        myMap.geoObjects.add(circle);
+
+                    }
+
+                </script>
+                <table style="margin:10px">
+                    <tr>
+                        <td colspan="2">
+                            <div id="map" style="width: 240;height: 180;"></div>                                           
+                        </td>
+                    </tr>                    
+                </table>
+            }            
             @if (@ViewBag.Locations != null) {
                 <table style="margin:10px">
                 @foreach(var location in @ViewBag.locations) {

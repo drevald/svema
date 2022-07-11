@@ -98,12 +98,14 @@ function prec(radius) {
         <td bgcolor="#eeeeee" style="padding:30px;text-align:left">
             <table>
             @foreach(var location in @ViewBag.locations)  {
-                <tr>
-                    <td width="100%">@location.Name</td>
-                    <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
-                    <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
-                    <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
-                </tr>
+                if(location.Name != null) {
+                    <tr>
+                        <td width="100%">@location.Name</td>
+                        <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
+                        <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
+                        <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
+                    </tr>
+                }
             }            
             </table>
         </td>

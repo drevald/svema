@@ -29,5 +29,5 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
-
+app.UseAuthentication();
 app.Run();

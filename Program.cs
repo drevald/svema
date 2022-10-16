@@ -23,11 +23,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(connectionString);
 });
+builder.Services.AddAuthentication("CookieScheme")
+    .AddCookie("CookieScheme", options => {
+        options.AccessDeniedPath = "/denied";
+        options.LoginPath = "/login";
+    });
+
 var app = builder.Build();
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
-app.UseAuthentication();
 app.Run();

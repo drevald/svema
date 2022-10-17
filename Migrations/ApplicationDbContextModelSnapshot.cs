@@ -73,8 +73,11 @@ namespace svema.Migrations
                     b.Property<int>("AlbumId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("AuthorUserId")
+                    b.Property<int>("AuthorId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("AuthorUsername")
+                        .HasColumnType("text");
 
                     b.Property<string>("Text")
                         .HasColumnType("text");
@@ -85,8 +88,6 @@ namespace svema.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AlbumId");
-
-                    b.HasIndex("AuthorUserId");
 
                     b.ToTable("AlbumComments");
                 });
@@ -213,8 +214,11 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AuthorUserId")
+                    b.Property<int>("AuthorId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("AuthorUsername")
+                        .HasColumnType("text");
 
                     b.Property<int>("ShotId")
                         .HasColumnType("integer");
@@ -226,8 +230,6 @@ namespace svema.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AuthorUserId");
 
                     b.HasIndex("ShotId");
 
@@ -279,13 +281,7 @@ namespace svema.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("svema.Data.User", "Author")
-                        .WithMany()
-                        .HasForeignKey("AuthorUserId");
-
                     b.Navigation("Album");
-
-                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("svema.Data.AlbumLocation", b =>
@@ -326,17 +322,11 @@ namespace svema.Migrations
 
             modelBuilder.Entity("svema.Data.ShotComment", b =>
                 {
-                    b.HasOne("svema.Data.User", "Author")
-                        .WithMany()
-                        .HasForeignKey("AuthorUserId");
-
                     b.HasOne("svema.Data.Shot", "Shot")
                         .WithMany("ShotComments")
                         .HasForeignKey("ShotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Author");
 
                     b.Navigation("Shot");
                 });

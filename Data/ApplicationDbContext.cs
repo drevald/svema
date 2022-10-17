@@ -88,7 +88,8 @@ public class User {
 
 public class ShotComment {
     public int Id {get; set;}
-    public User Author {get; set;}
+    public int AuthorId {get; set;}
+    public string AuthorUsername {get; set;}
     public int ShotId {get; set;}
     public Shot Shot {get; set;}
     public DateTime Timestamp {get; set;}
@@ -97,7 +98,8 @@ public class ShotComment {
 
 public class AlbumComment {
     public int Id {get; set;}
-    public User Author {get; set;}
+    public int AuthorId {get; set;}
+    public string AuthorUsername {get; set;}
     public Album Album {get; set;}
     public int AlbumId {get; set;}
     public DateTime Timestamp {get; set;}

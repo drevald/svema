@@ -79,11 +79,13 @@
                 @foreach(var comment in @Model.ShotComments) {
                     <tr>
                         <td class="comment">
-                            <b>Author</b>&nbsp;
+                            <b>@comment.AuthorUsername</b>&nbsp;
                             @comment.Timestamp.ToString("yy-mm-dd")<br>
                             @comment.Text
-                            <a href="delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete</a>&nbsp;
-                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit</a>&nbsp;
+                            @if(@comment.AuthorUsername == Context.User.Identity.Name){
+                            <a href="delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete&nbsp;</a>
+                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+                            }
                             <br><br>
                         </td>
                     </tr>                    

@@ -66,11 +66,13 @@
                 @foreach(var comment in @Model.AlbumComments) {
                     <tr>
                         <td class="comment">
-                            <b>Author</b>&nbsp;
+                            <b>@comment.AuthorUsername</b>&nbsp;
                             @comment.Timestamp.ToString("yy-mm-dd")<br>
                             @comment.Text
-                            <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete</a>&nbsp;
-                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit</a>&nbsp;
+                            @if(@comment.AuthorUsername == Context.User.Identity.Name){
+                            <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
+                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+                            }
                             <br><br>                            
                         </td>
                     </tr>                    

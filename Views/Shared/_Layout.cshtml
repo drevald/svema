@@ -48,11 +48,21 @@
         <table width="100%" height="100%" spacing="0" padding="0" border="0">
             <tr>
                 <td height="50" bgcolor="#336699" style="padding:30px;spacing:0px">
-                    <a href="/" style="color:#eeeeee">HOME</a>
-                </td>
+                    <table width="100%" spacing="0" padding="0" border="0">
+                        <tr>
+                            <td><a href="/" style="color:#eeeeee">HOME</a></td>
+                            <td style="text-align:right">
+                                @{ var username = Context.User.Identity.Name; }
+                                @if(@username != null)  {
+                                    <span>You are logged as @username &nbsp;</span><a href="/logout" style="color:#eeeeee">LOGOUT</a>
+                                }                                
+                            </td>
+                        </tr>
+                    </table>
+                </td>                
             </tr>
             <tr>
-                <td width="100%" valign="top" style="padding:0px;spacing:0px" >
+                <td width="100%" valign="top" style="padding:0px;spacing:0px" colspan="2">
                     @RenderBody()
                 </td>
             </tr>

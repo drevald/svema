@@ -29,45 +29,6 @@ public class MainController: Controller {
         this.config = config;
     }
 
-    [HttpGet("register")]
-    public IActionResult Register() {
-        return View();
-    }
-
-    [HttpPost("register")]
-    public async Task<IActionResult> DoRegister(string username, string password, string email) {
-        var md5 = MD5.Create();
-        var user = new User();
-        user.Username = username;
-        user.PasswordHash = password;
-        user.Email = email;
-        dbContext.Add(user);
-        await dbContext.SaveChangesAsync();
-        return Redirect("/login");
-    } 
-
-    [HttpGet("login")]
-    public IActionResult Login() {
-        return View();
-    }
-
-    [HttpPost("login")]
-    public async Task<IActionResult> DoLogin(string username, string password) {
-        User user = dbContext.Users.Where(u => u.Username == username).Where(u => u.PasswordHash == password).First();
-        if (user != null) {
-            var claims = new List<Claim> {
-                new Claim("user", username),
-                new Claim("role", "Member")
-            };
-            await HttpContext.SignInAsync(
-                new ClaimsPrincipal(
-                    new ClaimsIdentity(claims, "Cookies", "user", "role")));
-            return Redirect("/");
-        } else {
-            return Redirect("/error");
-        }
-    } 
-
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Index() {
@@ -113,7 +74,7 @@ public class MainController: Controller {
 
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id) {
-        var album = await dbContext.Albums.Where(a => a.AlbumId==id).Include(a => a.AlbumComments).FirstAsync();
+        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
         var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
         var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).Include(al => al.Location).ToListAsync();
         ViewBag.locations = locations;        
@@ -274,6 +235,15 @@ public class MainController: Controller {
         return View(shot);
     }
 
+    [HttpGet("delete_shot")]
+    public async Task<IActionResult> DeleteShot(int id) {
+        Shot shot = await dbContext.Shots.FindAsync(id);
+        var albumId = shot.AlbumId;
+        dbContext.Remove(shot);
+        await dbContext.SaveChangesAsync();
+        return Redirect("/view_album?id=" + albumId);
+    }
+
     [HttpGet("view_next_shot")]
     public async Task<IActionResult> ViewNextShot(int id) {
         var shot = await dbContext.Shots.FindAsync(id);
@@ -354,7 +324,10 @@ public class MainController: Controller {
     [HttpPost("add_comment")]
     public async Task<IActionResult> AddComment(string text, int id, int commentId) {
         var comment = new AlbumComment();    
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.AuthorId = user.UserId;
+            comment.AuthorUsername = user.Username;
             comment.Text = text;
             comment.AlbumId = id;
             comment.Timestamp = new DateTime();
@@ -381,7 +354,10 @@ public class MainController: Controller {
     [HttpPost("add_shot_comment")]
     public async Task<IActionResult> AddShotComment(string text, int id, int commentId) {
         var comment = new ShotComment();    
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.AuthorId = user.UserId;
+            comment.AuthorUsername = user.Username;            
             comment.Text = text;
             comment.ShotId = id;
             comment.Timestamp = new DateTime();

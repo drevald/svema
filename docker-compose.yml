@@ -17,7 +17,7 @@ services:
       - DATABASE_URL=postgres://postgres:password@postgres:5433/svema
       - DB_CONNECTION=Host=postgres;Username=postgres;Password=password;Database=svema;Port=5433
       - PORT=7777
-      - STORAGE_DIR=~/SVEMA
+      - STORAGE_DIR=/home/denis/DATA/
     ports:
       - "7777:7777"
     depends_on:

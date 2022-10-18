@@ -20,3 +20,15 @@ Would be nice to have:
 dotnet ef database drop     - clean database
 dotnet ef migrations add    - make migrations
 dotnet ef database update   - apply migrations
+
+==== DEPLOYEMNT TO HEROKU:
+heroku container:login
+heroku container:push web --app svema
+heroku container:release web --app svema
+
+==== .env file format
+DATABASE_URL=postgres://postgres:password@postgres:5433/svema
+DB_CONNECTION=Host=localhost;Username=postgres;Password=password;Database=svema;Port=5433
+STORAGE_DIR=/Users/denis/Desktop/SVEMA/
+PORT=8888
+

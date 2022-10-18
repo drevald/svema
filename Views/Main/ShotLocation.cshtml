@@ -83,11 +83,11 @@ function prec(radius) {
                     <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
                     <tr><td style="font-size:small">Longitude</td><td style="font-size:small"><input asp-for="Longitude" id="Longitude" name="Longitude"/></td></tr>
                     <tr><td style="font-size:small">Precision</td><td style="font-size:small">
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1 onClick="javascript:prec(1);"/>1
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10 onClick="javascript:prec(10);"/>10
                         <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
                         <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
+                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=5000 onClick="javascript:prec(5000);"/>5000
                         <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
                     </td></tr>
                     <tr><td  style="font-size:small">&nbsp;</td><td  style="font-size:small"><input type="submit"/></td></tr>

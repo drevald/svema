@@ -12,7 +12,7 @@ using svema.Data;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20221017203110_init")]
+    [Migration("20221018213759_init")]
     partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

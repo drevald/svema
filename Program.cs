@@ -5,8 +5,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 using svema.Data;
+
+var logger = LoggerFactory.Create(config => {
+    config.AddConsole();
+}).CreateLogger("Program");
 
 DotEnv.Load();
 

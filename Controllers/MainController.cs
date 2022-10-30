@@ -328,6 +328,7 @@ public class MainController: Controller {
         var comment = new AlbumComment();    
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.Author = user;
             comment.AuthorId = user.UserId;
             comment.AuthorUsername = user.Username;
             comment.Text = text;
@@ -358,6 +359,7 @@ public class MainController: Controller {
         var comment = new ShotComment();    
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.Author = user;
             comment.AuthorId = user.UserId;
             comment.AuthorUsername = user.Username;            
             comment.Text = text;

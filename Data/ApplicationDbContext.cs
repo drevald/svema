@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext {
 public class Album {
     public int AlbumId {get; set;}
     public string Name {get; set;}
+    public User User {get; set;}
     public DateTime DateFrom {get; set;}
     public DateTime DateTo {get; set;}
     public string DatePrecision {get; set;}
@@ -60,6 +61,7 @@ public class Shot {
     public ICollection<Person> Persons {get; set;}
     public string ContentType {get; set;}
     public ICollection<ShotComment> ShotComments {get; set;}        
+    public ShotStorage Storage {get; set;}
 }
 
 public class Location {
@@ -84,6 +86,7 @@ public class User {
     public string Username {get; set;}
     public string PasswordHash {get; set;}
     public string Email {get; set;}
+    public ShotStorage Storage {get; set;}
 }
 
 public class ShotComment {
@@ -104,4 +107,13 @@ public class AlbumComment {
     public int AlbumId {get; set;}
     public DateTime Timestamp {get; set;}
     public string Text {get; set;}
+}
+
+public class ShotStorage {
+    public int Id {get; set;}
+    public int User {get; set;}
+    public string AuthToken {get; set;}
+    public string RefreshToken {get; set;}
+    public string Provider {get; set;}
+    public string Root {get; set;}
 }

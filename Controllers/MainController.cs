@@ -12,8 +12,6 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authentication;
-using System.Security.Claims;
 using svema.Data;
 
 namespace svema.Controllers;
@@ -64,6 +62,7 @@ public class MainController: Controller {
         return Redirect("/");
     }
 
+    //todo - cascade delete originals
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id) {
         Album album = await dbContext.Albums.FindAsync(id);
@@ -100,9 +99,9 @@ public class MainController: Controller {
     }
 
     [HttpGet("shot")]
-    public async Task<IActionResult> Shot(int id) {
-        var shot = await dbContext.Shots.FindAsync(id);
-        var stream = System.IO.File.OpenRead(shot.SourceUri);
+    public IActionResult Shot(int id) {
+        var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
+        var stream = Storage.GetFile(shot);
         stream.Position = 0;
         return new FileStreamResult(stream, shot.ContentType);
     }
@@ -116,6 +115,7 @@ public class MainController: Controller {
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
@@ -154,9 +154,10 @@ public class MainController: Controller {
                     dbContext.Shots.Add(shot);
                     await dbContext.SaveChangesAsync();
 
-                    stream.Position = 0;
-                    System.IO.File.WriteAllBytes(config["STORAGE_DIR"] + shot.ShotId, stream.GetBuffer());                
-                    shot.SourceUri = config["STORAGE_DIR"] + shot.ShotId;
+                    shot.SourceUri = "" + shot.ShotId;
+                    shot.Storage = user.Storage;
+                    Storage.StoreShot(shot, stream);
+
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
                     System.Console.Write("The error is " + e.Data);
@@ -237,8 +238,9 @@ public class MainController: Controller {
 
     [HttpGet("delete_shot")]
     public async Task<IActionResult> DeleteShot(int id) {
-        Shot shot = await dbContext.Shots.FindAsync(id);
+        Shot shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).First();
         var albumId = shot.AlbumId;
+        Storage.DeleteFile(shot);
         dbContext.Remove(shot);
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);

@@ -57,7 +57,12 @@ namespace svema.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
                     b.HasKey("AlbumId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Albums");
                 });
@@ -88,6 +93,8 @@ namespace svema.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AlbumId");
+
+                    b.HasIndex("AuthorId");
 
                     b.ToTable("AlbumComments");
                 });
@@ -194,6 +201,9 @@ namespace svema.Migrations
                     b.Property<string>("SourceUri")
                         .HasColumnType("text");
 
+                    b.Property<int?>("StorageId")
+                        .HasColumnType("integer");
+
                     b.HasKey("ShotId");
 
                     b.HasIndex("AlbumId");
@@ -202,6 +212,8 @@ namespace svema.Migrations
 
                     b.HasIndex("MD5")
                         .IsUnique();
+
+                    b.HasIndex("StorageId");
 
                     b.ToTable("Shots");
                 });
@@ -231,9 +243,39 @@ namespace svema.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AuthorId");
+
                     b.HasIndex("ShotId");
 
                     b.ToTable("ShotComments");
+                });
+
+            modelBuilder.Entity("svema.Data.ShotStorage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Provider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Root")
+                        .HasColumnType("text");
+
+                    b.Property<int>("User")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ShotStorages");
                 });
 
             modelBuilder.Entity("svema.Data.User", b =>
@@ -250,10 +292,15 @@ namespace svema.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
+                    b.Property<int?>("StorageId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Username")
                         .HasColumnType("text");
 
                     b.HasKey("UserId");
+
+                    b.HasIndex("StorageId");
 
                     b.ToTable("Users");
                 });
@@ -273,6 +320,15 @@ namespace svema.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("svema.Data.Album", b =>
+                {
+                    b.HasOne("svema.Data.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("svema.Data.AlbumComment", b =>
                 {
                     b.HasOne("svema.Data.Album", "Album")
@@ -281,7 +337,15 @@ namespace svema.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("svema.Data.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Album");
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("svema.Data.AlbumLocation", b =>
@@ -315,20 +379,43 @@ namespace svema.Migrations
                         .WithMany()
                         .HasForeignKey("LocationId");
 
+                    b.HasOne("svema.Data.ShotStorage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId");
+
                     b.Navigation("Album");
 
                     b.Navigation("Location");
+
+                    b.Navigation("Storage");
                 });
 
             modelBuilder.Entity("svema.Data.ShotComment", b =>
                 {
+                    b.HasOne("svema.Data.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("svema.Data.Shot", "Shot")
                         .WithMany("ShotComments")
                         .HasForeignKey("ShotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Author");
+
                     b.Navigation("Shot");
+                });
+
+            modelBuilder.Entity("svema.Data.User", b =>
+                {
+                    b.HasOne("svema.Data.ShotStorage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId");
+
+                    b.Navigation("Storage");
                 });
 
             modelBuilder.Entity("svema.Data.Album", b =>

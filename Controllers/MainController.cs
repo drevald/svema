@@ -115,7 +115,7 @@ public class MainController: Controller {
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
+        ShotStorage storage = dbContext.ShotStorages.Find(1);
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
@@ -151,12 +151,13 @@ public class MainController: Controller {
                     stream.Position = 0;
 
                     shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                    dbContext.Shots.Add(shot);
-                    await dbContext.SaveChangesAsync();
 
                     shot.SourceUri = "" + shot.ShotId;
-                    shot.Storage = user.Storage;
+                    shot.Storage = storage;
                     Storage.StoreShot(shot, stream);
+
+                    dbContext.Shots.Add(shot);
+                    await dbContext.SaveChangesAsync();
 
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {

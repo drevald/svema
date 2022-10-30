@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext {
     public DbSet<AlbumLocation> AlbumLocations {get; set;}
     public DbSet<AlbumComment> AlbumComments {get; set;}
     public DbSet<ShotComment> ShotComments {get; set;}
+    public DbSet<ShotStorage> ShotStorages {get; set;}
 
 }
 

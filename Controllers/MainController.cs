@@ -152,13 +152,12 @@ public class MainController: Controller {
 
                     shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
 
-                    shot.SourceUri = "" + shot.ShotId;
-                    shot.Storage = storage;
-                    Storage.StoreShot(shot, stream);
-
                     dbContext.Shots.Add(shot);
                     await dbContext.SaveChangesAsync();
 
+                    shot.SourceUri = "" + shot.ShotId;
+                    shot.Storage = storage;
+                    Storage.StoreShot(shot, stream);
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
                     System.Console.Write("The error is " + e.Data);

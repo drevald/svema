@@ -66,6 +66,11 @@ public class MainController: Controller {
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id) {
         Album album = await dbContext.Albums.FindAsync(id);
+        List<Shot> shots = dbContext.Shots.Where(s => s.AlbumId == id).Include(s => s.Storage).ToList();
+        Storage storage = new Storage();
+        foreach (Shot s in shots) {
+            storage.DeleteFile(s);
+        }
         dbContext.Remove(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
@@ -101,7 +106,7 @@ public class MainController: Controller {
     [HttpGet("shot")]
     public IActionResult Shot(int id) {
         var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
-        var stream = Storage.GetFile(shot);
+        var stream = new Storage().GetFile(shot);
         stream.Position = 0;
         return new FileStreamResult(stream, shot.ContentType);
     }
@@ -161,7 +166,7 @@ public class MainController: Controller {
 
                     shot.SourceUri = "" + shot.ShotId;
                     shot.Storage = storage;
-                    Storage.StoreShot(shot, stream1);
+                    new Storage().StoreShot(shot, stream1.GetBuffer());
 
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
@@ -245,7 +250,7 @@ public class MainController: Controller {
     public async Task<IActionResult> DeleteShot(int id) {
         Shot shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).First();
         var albumId = shot.AlbumId;
-        Storage.DeleteFile(shot);
+        new Storage().DeleteFile(shot);
         dbContext.Remove(shot);
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);

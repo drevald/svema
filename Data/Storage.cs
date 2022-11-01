@@ -4,18 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 
 public class Storage {
 
-    public static void StoreShot(Shot shot, Stream stream) {
+    public void StoreShot(Shot shot, byte[] data) {
         if (shot.Storage.Provider == "LocalDisk") {
-            stream.Position = 0;
-            System.IO.File.WriteAllBytes(shot.Storage.Root + shot.SourceUri, ((MemoryStream)stream).GetBuffer());                
+            System.IO.File.WriteAllBytes(shot.Storage.Root + shot.SourceUri, data);                
         } else {
-            stream.Position = 0;
             YandexDisk yandexDisk = new YandexDisk();
-            yandexDisk.PutFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken, stream);
+            yandexDisk.PutFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken, new MemoryStream(data));
         }
     }
 
-    public static Stream GetFile(Shot shot) {
+    public Stream GetFile(Shot shot) {
         if (shot.Storage.Provider == "LocalDisk") {
             var stream = System.IO.File.OpenRead(shot.Storage.Root + shot.SourceUri);
             stream.Position = 0;
@@ -28,7 +26,7 @@ public class Storage {
         }               
     }
 
-    public static void DeleteFile(Shot shot) {
+    public void DeleteFile(Shot shot) {
         if (shot.Storage.Provider == "LocalDisk") {
             System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
         } else {

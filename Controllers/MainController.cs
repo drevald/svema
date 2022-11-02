@@ -12,11 +12,8 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Microsoft.AspNetCore.Authorization;
-<<<<<<< HEAD
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
-=======
->>>>>>> yandex
 using svema.Data;
 
 namespace svema.Controllers;

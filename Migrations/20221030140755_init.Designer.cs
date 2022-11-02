@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using svema.Data;
@@ -11,9 +12,10 @@ using svema.Data;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20221030140755_init")]
+    partial class init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -275,7 +277,7 @@ namespace svema.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ShotStorages");
+                    b.ToTable("ShotStorage");
                 });
 
             modelBuilder.Entity("svema.Data.User", b =>
@@ -342,7 +344,10 @@ namespace svema.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.Navigation("Album");
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("svema.Data.AlbumLocation", b =>
@@ -394,11 +399,14 @@ namespace svema.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.HasOne("svema.Data.Shot", "Shot")
                         .WithMany("ShotComments")
                         .HasForeignKey("ShotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Author");
 
                     b.Navigation("Shot");
                 });

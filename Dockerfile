@@ -1,7 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /app
 COPY . .
-RUN dotnet publish -c release --self-contained -r linux-musl-x64 -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:PublishTrimmed=true
+#RUN dotnet publish -c release --self-contained -r linux-musl-x64 -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:PublishTrimmed=true
+RUN dotnet publish -c release --self-contained -r linux-musl-x64 -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:PublishTrimmed=false
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-alpine AS final
 

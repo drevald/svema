@@ -12,8 +12,11 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Microsoft.AspNetCore.Authorization;
+<<<<<<< HEAD
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
+=======
+>>>>>>> yandex
 using svema.Data;
 
 namespace svema.Controllers;
@@ -64,9 +67,14 @@ public class MainController: Controller {
         return Redirect("/");
     }
 
+    //todo - cascade delete originals
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id) {
         Album album = await dbContext.Albums.FindAsync(id);
+        List<Shot> shots = dbContext.Shots.Where(s => s.AlbumId == id).Include(s => s.Storage).ToList();
+        foreach (Shot s in shots) {
+            Storage.DeleteFile(s);
+        }
         dbContext.Remove(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
@@ -100,9 +108,9 @@ public class MainController: Controller {
     }
 
     [HttpGet("shot")]
-    public async Task<IActionResult> Shot(int id) {
-        var shot = await dbContext.Shots.FindAsync(id);
-        var stream = System.IO.File.OpenRead(shot.SourceUri);
+    public IActionResult Shot(int id) {
+        var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
+        var stream = Storage.GetFile(shot);
         stream.Position = 0;
         return new FileStreamResult(stream, shot.ContentType);
     }
@@ -116,6 +124,8 @@ public class MainController: Controller {
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
+        // ShotStorage storage = dbContext.ShotStorages.Find(1);
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
@@ -127,9 +137,13 @@ public class MainController: Controller {
 
                 try {
                     using var stream = new MemoryStream();
+                    using var stream1 = new MemoryStream();
                     using var outputStream = new MemoryStream();
                     await formFile.CopyToAsync(stream);
+                    await formFile.CopyToAsync(stream1);
                     stream.Position = 0;
+                    stream1.Position = 0;
+
                     using var image = Image.Load(stream);
                     float ratio = (float)image.Width/(float)image.Height;
                     System.Console.Write("ratio is " + ratio);
@@ -154,9 +168,10 @@ public class MainController: Controller {
                     dbContext.Shots.Add(shot);
                     await dbContext.SaveChangesAsync();
 
-                    stream.Position = 0;
-                    System.IO.File.WriteAllBytes(config["STORAGE_DIR"] + shot.ShotId, stream.GetBuffer());                
-                    shot.SourceUri = config["STORAGE_DIR"] + shot.ShotId;
+                    shot.SourceUri = "" + shot.ShotId;
+                    shot.Storage = user.Storage;
+                    Storage.StoreShot(shot, stream1.GetBuffer());
+
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
                     System.Console.Write("The error is " + e.Data);
@@ -237,8 +252,9 @@ public class MainController: Controller {
 
     [HttpGet("delete_shot")]
     public async Task<IActionResult> DeleteShot(int id) {
-        Shot shot = await dbContext.Shots.FindAsync(id);
+        Shot shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).First();
         var albumId = shot.AlbumId;
+        Storage.DeleteFile(shot);
         dbContext.Remove(shot);
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);
@@ -326,6 +342,7 @@ public class MainController: Controller {
         var comment = new AlbumComment();    
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.Author = user;
             comment.AuthorId = user.UserId;
             comment.AuthorUsername = user.Username;
             comment.Text = text;
@@ -356,6 +373,7 @@ public class MainController: Controller {
         var comment = new ShotComment();    
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         if (commentId==0) {
+            comment.Author = user;
             comment.AuthorId = user.UserId;
             comment.AuthorUsername = user.Username;            
             comment.Text = text;

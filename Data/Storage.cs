@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 public class Storage {
 
-    public void StoreShot(Shot shot, byte[] data) {
+    public static void StoreShot(Shot shot, byte[] data) {
         if (shot.Storage.Provider == "LocalDisk") {
             System.IO.File.WriteAllBytes(shot.Storage.Root + shot.SourceUri, data);                
         } else {
@@ -13,7 +13,7 @@ public class Storage {
         }
     }
 
-    public Stream GetFile(Shot shot) {
+    public static Stream GetFile(Shot shot) {
         if (shot.Storage.Provider == "LocalDisk") {
             var stream = System.IO.File.OpenRead(shot.Storage.Root + shot.SourceUri);
             stream.Position = 0;
@@ -26,7 +26,7 @@ public class Storage {
         }               
     }
 
-    public void DeleteFile(Shot shot) {
+    public static void DeleteFile(Shot shot) {
         if (shot.Storage.Provider == "LocalDisk") {
             System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
         } else {

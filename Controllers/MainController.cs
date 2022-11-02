@@ -67,9 +67,8 @@ public class MainController: Controller {
     public async Task<IActionResult> DeleteAlbum(int id) {
         Album album = await dbContext.Albums.FindAsync(id);
         List<Shot> shots = dbContext.Shots.Where(s => s.AlbumId == id).Include(s => s.Storage).ToList();
-        Storage storage = new Storage();
         foreach (Shot s in shots) {
-            storage.DeleteFile(s);
+            Storage.DeleteFile(s);
         }
         dbContext.Remove(album);
         await dbContext.SaveChangesAsync();
@@ -106,7 +105,7 @@ public class MainController: Controller {
     [HttpGet("shot")]
     public IActionResult Shot(int id) {
         var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
-        var stream = new Storage().GetFile(shot);
+        var stream = Storage.GetFile(shot);
         stream.Position = 0;
         return new FileStreamResult(stream, shot.ContentType);
     }
@@ -121,7 +120,7 @@ public class MainController: Controller {
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
-        ShotStorage storage = dbContext.ShotStorages.Find(1);
+        // ShotStorage storage = dbContext.ShotStorages.Find(1);
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
@@ -165,8 +164,8 @@ public class MainController: Controller {
                     await dbContext.SaveChangesAsync();
 
                     shot.SourceUri = "" + shot.ShotId;
-                    shot.Storage = storage;
-                    new Storage().StoreShot(shot, stream1.GetBuffer());
+                    shot.Storage = user.Storage;
+                    Storage.StoreShot(shot, stream1.GetBuffer());
 
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
@@ -250,7 +249,7 @@ public class MainController: Controller {
     public async Task<IActionResult> DeleteShot(int id) {
         Shot shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).First();
         var albumId = shot.AlbumId;
-        new Storage().DeleteFile(shot);
+        Storage.DeleteFile(shot);
         dbContext.Remove(shot);
         await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + albumId);

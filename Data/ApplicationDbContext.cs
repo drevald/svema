@@ -35,10 +35,10 @@ public class Album {
     public DateTime DateFrom {get; set;}
     public DateTime DateTo {get; set;}
     public string DatePrecision {get; set;}
+    public int PreviewId {get; set;}
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumLocation> AlbumLocations {get; set;}
     public ICollection<AlbumComment> AlbumComments {get; set;}
-
 }
 
 public class AlbumLocation {

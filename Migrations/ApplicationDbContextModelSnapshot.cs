@@ -57,6 +57,9 @@ namespace svema.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
+                    b.Property<int>("PreviewId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("UserId")
                         .HasColumnType("integer");
 
@@ -342,7 +345,10 @@ namespace svema.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.Navigation("Album");
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("svema.Data.AlbumLocation", b =>
@@ -394,11 +400,14 @@ namespace svema.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.HasOne("svema.Data.Shot", "Shot")
                         .WithMany("ShotComments")
                         .HasForeignKey("ShotId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Author");
 
                     b.Navigation("Shot");
                 });

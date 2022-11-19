@@ -8,7 +8,7 @@
         <td bgcolor="#eeeeee" style="padding:30px" >         
         @foreach(var album in Model) {
             <table style="display:inline">
-                <tr><td><a href="/view_album?id=@album.AlbumId"><img width=200 height=200></a></td></tr>
+                <tr><td><a href="/view_album?id=@album.AlbumId"><img width=200 height=200 src="/preview?id=@album.PreviewId"></a></td></tr>
                 <tr><td>@album.Name</td></tr>
                 <tr><td>
                     <a href="/view_album?id=@album.AlbumId">View</a>&nbsp;

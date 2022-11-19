@@ -165,6 +165,11 @@ public class MainController: Controller {
                     dbContext.Shots.Add(shot);
                     await dbContext.SaveChangesAsync();
 
+                    if (album.PreviewId == 0) {
+                        album.PreviewId = shot.ShotId;
+                        dbContext.Albums.Update(album);
+                    }
+
                     shot.SourceUri = "" + shot.ShotId;
                     shot.Storage = user.Storage;
                     Storage.StoreShot(shot, stream1.GetBuffer());
@@ -177,6 +182,7 @@ public class MainController: Controller {
                     errors.Add(formFile.FileName, e.Message);
                 } 
             }
+
         }
         ViewBag.albumId = albumId;        
         ViewBag.errors = errors;

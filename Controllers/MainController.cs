@@ -146,11 +146,12 @@ public class MainController: Controller {
                     System.Console.Write("ratio is " + ratio);
                     if (ratio > 1 ) {
                         image.Mutate(x => x.Resize((int)(200 * ratio), 200));
+                        image.Mutate(x => x.Crop(new Rectangle((image.Width-200)/2, 0, 200, 200)));
                     } else {
                         image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
+                        image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
                     }
                     System.Console.Write("Resized to " + image.Size());
-                    image.Mutate(x => x.Crop(200, 200));
                     System.Console.Write("Cropped to " + image.Size());
                     ImageExtensions.SaveAsJpeg(image, outputStream);
 
@@ -171,8 +172,8 @@ public class MainController: Controller {
                     }
 
                     shot.SourceUri = "" + shot.ShotId;
-                    shot.Storage = user.Storage;
-                    Storage.StoreShot(shot, stream1.GetBuffer());
+                    // shot.Storage = user.Storage;
+                    // Storage.StoreShot(shot, stream1.GetBuffer());
 
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {

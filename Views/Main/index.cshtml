@@ -7,9 +7,16 @@
         </td>
         <td bgcolor="#eeeeee" style="padding:30px" >         
         @foreach(var album in Model) {
-            <table style="display:inline">
-                <tr><td><a href="/view_album?id=@album.AlbumId"><img width=200 height=200 src="/preview?id=@album.PreviewId"></a></td></tr>
-                <tr><td>@album.Name</td></tr>
+            <table style="display:inline" width="1">
+                <tr><td><a href="/view_album?id=@album.AlbumId">
+                @if (@album.PreviewId > 0) {
+                <img width=200 height=200 src="/preview?id=@album.PreviewId">
+                } 
+                @if (@album.PreviewId == 0) {
+                <img width=200 height=200 src="#">
+                } 
+                </a></td></tr>
+                <tr><td  style="word-wrap: break-word" width="1">@album.Name</td></tr>
                 <tr><td>
                     <a href="/view_album?id=@album.AlbumId">View</a>&nbsp;
                     <a href="/edit_album?id=@album.AlbumId">Edit</a>&nbsp;
@@ -21,3 +28,4 @@
         </td>        
     </tr>
 </table>
+

@@ -143,7 +143,6 @@ public class MainController: Controller {
 
                     using var image = Image.Load(stream);
                     float ratio = (float)image.Width/(float)image.Height;
-                    System.Console.Write("ratio is " + ratio);
                     if (ratio > 1 ) {
                         image.Mutate(x => x.Resize((int)(200 * ratio), 200));
                         image.Mutate(x => x.Crop(new Rectangle((image.Width-200)/2, 0, 200, 200)));
@@ -151,8 +150,6 @@ public class MainController: Controller {
                         image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
                         image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
                     }
-                    System.Console.Write("Resized to " + image.Size());
-                    System.Console.Write("Cropped to " + image.Size());
                     ImageExtensions.SaveAsJpeg(image, outputStream);
 
                     Shot shot = new Shot();
@@ -172,14 +169,15 @@ public class MainController: Controller {
                     }
 
                     shot.SourceUri = "" + shot.ShotId;
-                    // shot.Storage = user.Storage;
-                    // Storage.StoreShot(shot, stream1.GetBuffer());
+                    shot.Storage = user.Storage;
+                    Storage.StoreShot(shot, stream1.GetBuffer());
 
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
-                    System.Console.Write("The error is " + e.Data);
+                    System.Console.Write("The DbUpdateException is " + e.Data);
                     errors.Add(formFile.FileName, e.InnerException.Message);
                 }   catch (Exception e) {
+                    System.Console.Write("The Exception is " + e.Data);
                     errors.Add(formFile.FileName, e.Message);
                 } 
             }

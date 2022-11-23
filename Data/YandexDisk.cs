@@ -22,8 +22,6 @@ public class YandexDisk {
 
     string GetAuthString() {
         var authString = Environment.GetEnvironmentVariable("CLIENT_ID")+":"+Environment.GetEnvironmentVariable("CLIENT_SECRET");
-        Console.WriteLine("CLIENT_ID = " + Environment.GetEnvironmentVariable("CLIENT_ID"));
-        Console.WriteLine("CLIENT_SECRET = " + Environment.GetEnvironmentVariable("CLIENT_SECRET"));
         var authStringBytes = System.Text.Encoding.UTF8.GetBytes(authString);
         authString = System.Convert.ToBase64String(authStringBytes);
         return authString;
@@ -37,9 +35,7 @@ public class YandexDisk {
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
         content.Headers.ContentLength = contentString.Length;
         Task<HttpResponseMessage> response = client.PostAsync("https://oauth.yandex.ru/token", content);
-        Console.Write("response is " + response.Result);
         var text = response.Result.Content.ReadAsStringAsync().Result;
-        Console.Write("response text is " + text);
         var stream = response.Result.Content.ReadAsStreamAsync().Result;
         AuthResponse authResponse = JsonSerializer.Deserialize<AuthResponse>(stream);
         return authResponse.access_token;
@@ -49,7 +45,6 @@ public class YandexDisk {
         Console.WriteLine(">>> GetDownloadUrl");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("OAuth", authToken);
         Task<HttpResponseMessage> response = client.GetAsync("https://cloud-api.yandex.net/v1/disk/resources/download?path=" + path);    
-        Console.WriteLine("response is " + response.Result);
         var text = response.Result.Content.ReadAsStringAsync().Result;
         var stream = response.Result.Content.ReadAsStreamAsync().Result;
         DiskResponse uploadResponse = JsonSerializer.Deserialize<DiskResponse>(stream);
@@ -60,7 +55,6 @@ public class YandexDisk {
         Console.WriteLine(">>> GetUploadUrl");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("OAuth", authToken);
         Task<HttpResponseMessage> response = client.GetAsync("https://cloud-api.yandex.net/v1/disk/resources/upload?path=" + path + "&overwrite=true");    
-        Console.WriteLine("response is " + response.Result);
         var text = response.Result.Content.ReadAsStringAsync().Result;
         var stream = response.Result.Content.ReadAsStreamAsync().Result;
         DiskResponse uploadResponse = JsonSerializer.Deserialize<DiskResponse>(stream);
@@ -70,10 +64,7 @@ public class YandexDisk {
     async void PutFile(string url, string localPath) {
         Console.WriteLine(">>> PutFile");
         HttpContent content = new StreamContent(System.IO.File.OpenRead(localPath));
-        Console.WriteLine(client.DefaultRequestHeaders.Authorization);
         HttpResponseMessage response = await client.PutAsync(url, content);
-        Console.WriteLine(response);
-        Console.WriteLine(response.Content);
     }
 
     async void PutFileStream(string url, Stream stream) {
@@ -86,16 +77,13 @@ public class YandexDisk {
         Console.WriteLine(">>> DeleteFile");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("OAuth", authToken);
         Task<HttpResponseMessage> response = client.DeleteAsync("https://cloud-api.yandex.net/v1/disk/resources?path=" + path + "&permanently=true");    
-        Console.WriteLine("response is " + response.Result);
         var text = response.Result.Content.ReadAsStringAsync().Result;
-        Console.WriteLine(text);
     }
 
     Stream GetFile(string url) {
         Console.WriteLine(">>> GetFile");
         Task<HttpResponseMessage> response = client.GetAsync(url);
         Task<byte[]> resultBytes = response.Result.Content.ReadAsByteArrayAsync();
-        Console.WriteLine("resultBytes.Result.Length = " + resultBytes.Result.Length);
         return response.Result.Content.ReadAsStream();
     }
 

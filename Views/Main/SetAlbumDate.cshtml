@@ -1,18 +1,18 @@
 @{Layout = "_Layout";}
-<table width="100%" height="100%" spacing="0" padding="0" border="0">
+<table width="100%" height="100%" spacing="0" padding="0">
     <tr>
         <td class="left">
             <a href='/view_album?id=@Context.Request.Query["albumId"]'>Back</a>
             <form method="post">
-                <input name="year_from" id="year_from"><br>
-                <input name="year_to" id="year_to"><br>
-                <input name="month_from" id="month_from"><br>
-                <input name="month_to" id="month_to"><br>
-                <input name="day_from" id="day_from"><br>
-                <input name="day_to" id="day_to"><br>
-                <input name="date_format" id="date_format"><br>
-                <input name="id" id="id" value='@Context.Request.Query["albumId"]'><br>
-                <input type="submit" value="set">
+                <input type="hidden" name="year_from" id="year_from"><br>
+                <input type="hidden" name="year_to" id="year_to"><br>
+                <input type="hidden" name="month_from" id="month_from"><br>
+                <input type="hidden" name="month_to" id="month_to"><br>
+                <input type="hidden" name="day_from" id="day_from"><br>
+                <input type="hidden" name="day_to" id="day_to"><br>
+                <input type="hidden" name="date_format" id="date_format"><br>
+                <input type="hidden" name="id" id="id" value='@Context.Request.Query["albumId"]'><br>
+                <input type="submit" value="Set Date">
             </form>
         </td>
         <td class="right"> 

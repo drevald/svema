@@ -1,11 +1,15 @@
+using System;
 using System.IO;
-using svema.Data;
 using Microsoft.AspNetCore.Mvc;
+using svema.Data;
 
 public class Storage {
 
     public static void StoreShot(Shot shot, byte[] data) {
-        if (shot.Storage.Provider == "LocalDisk") {
+        if (shot.Storage == null) {
+            Console.Write("Storage not defined for " + shot);
+            return;
+        } else if (shot.Storage.Provider == "LocalDisk") {
             System.IO.File.WriteAllBytes(shot.Storage.Root + shot.SourceUri, data);                
         } else {
             YandexDisk yandexDisk = new YandexDisk();
@@ -14,7 +18,10 @@ public class Storage {
     }
 
     public static Stream GetFile(Shot shot) {
-        if (shot.Storage.Provider == "LocalDisk") {
+        if (shot.Storage == null) {
+            Console.Write("Storage not defined for " + shot);
+            return null;
+        } else if (shot.Storage.Provider == "LocalDisk") {
             var stream = System.IO.File.OpenRead(shot.Storage.Root + shot.SourceUri);
             stream.Position = 0;
             return stream;
@@ -27,7 +34,10 @@ public class Storage {
     }
 
     public static void DeleteFile(Shot shot) {
-        if (shot.Storage.Provider == "LocalDisk") {
+        if (shot.Storage == null) {
+            Console.Write("Storage not defined for " + shot);
+            return;
+        } else if (shot.Storage.Provider == "LocalDisk") {
             System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
         } else {
             YandexDisk yandexDisk = new YandexDisk();

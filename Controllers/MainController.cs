@@ -118,20 +118,30 @@ public class MainController: Controller {
         return View();
     }
 
+    [HttpGet("set_as_thumbnail")]
+    public IActionResult SetAsThumbnail(int id, int shotId) {
+        var album = dbContext.Albums.Find(id);
+        album.PreviewId = shotId;
+        dbContext.Update(album);
+        dbContext.SaveChangesAsync();
+        return Redirect("/view_album?id=" + id);
+    }
+
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
-        // ShotStorage storage = dbContext.ShotStorages.Find(1);
+        // ShotStorage storage = await dbContext.ShotStorages.FindAsync(1);
+        // user.Storage = storage;
+        // dbContext.Update(user);
+        await dbContext.SaveChangesAsync();
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
         using var md5 = MD5.Create();
         var errors = new Dictionary<string, string>();
-
         foreach (var formFile in files) {            
             if (formFile.Length > 0) {
-
                 try {
                     using var stream = new MemoryStream();
                     using var stream1 = new MemoryStream();
@@ -140,7 +150,6 @@ public class MainController: Controller {
                     await formFile.CopyToAsync(stream1);
                     stream.Position = 0;
                     stream1.Position = 0;
-
                     using var image = Image.Load(stream);
                     float ratio = (float)image.Width/(float)image.Height;
                     if (ratio > 1 ) {
@@ -151,7 +160,6 @@ public class MainController: Controller {
                         image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
                     }
                     ImageExtensions.SaveAsJpeg(image, outputStream);
-
                     Shot shot = new Shot();
                     shot.ContentType = formFile.ContentType;
                     shot.Name = formFile.FileName;
@@ -162,16 +170,13 @@ public class MainController: Controller {
                     shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
                     dbContext.Shots.Add(shot);
                     await dbContext.SaveChangesAsync();
-
                     if (album.PreviewId == 0) {
                         album.PreviewId = shot.ShotId;
                         dbContext.Albums.Update(album);
                     }
-
                     shot.SourceUri = "" + shot.ShotId;
                     shot.Storage = user.Storage;
                     Storage.StoreShot(shot, stream1.GetBuffer());
-
                     await dbContext.SaveChangesAsync();
                 }   catch (DbUpdateException e) {
                     System.Console.Write("The DbUpdateException is " + e.Data);

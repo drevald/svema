@@ -32,7 +32,7 @@ public class MainController: Controller {
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Index() {
-        var albums = await dbContext.Albums.ToListAsync(); 
+        var albums = await dbContext.Albums.OrderBy(a => a.DateFrom).ToListAsync(); 
         return View(albums);
     }
 

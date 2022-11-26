@@ -119,11 +119,12 @@ public class MainController: Controller {
     }
 
     [HttpGet("set_as_thumbnail")]
-    public IActionResult SetAsThumbnail(int id, int shotId) {
+    public async Task<IActionResult> SetAsThumbnail(int id, int shotId) {
+        Console.Write("Setting preview id = " + shotId + " for album " +  id);
         var album = dbContext.Albums.Find(id);
         album.PreviewId = shotId;
         dbContext.Update(album);
-        dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
         return Redirect("/view_album?id=" + id);
     }
 

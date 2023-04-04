@@ -1,24 +1,27 @@
 @model svema.Data.Album
-<html>
-    <body>
-
-    </body>
-</html>
-
 @{Layout = "_Layout";}
-<table width="100%" height="100%" spacing="0" padding="0" border="0">
-    <tr>
-        <td width="240" bgcolor="#cccc99" style="padding:30px" >
-            &nbsp;
-        </td>
-        <td bgcolor="#eeeeee" style="padding:30px" >    
-            <h1>Add new album</h1>   
-            <table>
-                <form method="post">
-                <tr><td>Album name</td><td><input asp-for="Name"/></td></tr>         
-                <tr><td>&nbsp;</td><td><input type="submit"/></td></tr>        
-                </form>
-            </table>
-        </td>        
-    </tr>
-</table>
+
+<div class="row">
+  <div class="col-md-2 p-5" style="width:500px">
+
+    <form class="needs-validation" method="post">
+        <div class="row g-3">
+
+          <div class="col-12">
+            <label for="firstName" class="form-label">Год, от</label>
+            <input class="form-control" asp-for="Name"/>
+          </div>
+
+          <div class="col-12">
+            <input type="submit" class="btn btn-primary" value="Сохранить"/>
+          </div>
+        </div>
+      </form>    
+
+  </div>
+  <div class="col p-5">
+    <div class="d-flex p-0 flex-wrap overflow-auto">
+
+    </div>
+  </div>
+</div>

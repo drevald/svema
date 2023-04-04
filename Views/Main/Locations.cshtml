@@ -1,0 +1,125 @@
+@model IEnumerable<svema.Data.Location>
+  @{Layout = "_Layout";}
+    <div class="row">
+      <div class="col-md-2 p-5" style="width:500px">
+        <h4 class="mb-3">Места</h4>
+        <div id="map" style="height:240px"></div>
+      </div>
+      <div class="col p-5">
+        <div class="text-end">
+          <a class="btn btn-primary" href="add_location">Добавить</a>  
+        </div>        
+        <table class="table table-condensed">
+          <thead>
+            <tr>
+              <th class="small" style="width:50%">Название</th>
+              <th class="small">Долгота</th>
+              <th class="small">Широта</th>
+              <th class="small">Точность</th>
+              <th class="small">&nbsp;</th>
+            </tr>
+          </thead>
+          @foreach(var location in Model) {
+          <tr>
+            <td>@location.Name</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <a class="btn btn-sm btn-danger" href="#">Удалить</a>
+              <a class="btn btn-sm btn-info" href="#">Показать</a>
+              <a class="btn btn-sm btn-primary" href="#">Редактировать</a>
+            </td>
+          </tr>
+          }
+          <tr>
+            <td>Москва</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>         
+          <tr>
+            <td>Харьков</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr> 
+          <tr>
+            <td>Лебедин</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Смоленск, старая квартира</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Москва,</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>         
+          <tr>
+            <td>Харьков, ХАИ</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr> 
+          <tr>
+            <td>Лебедин, Крылова 76</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Смоленск, новая квартира</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>
+              <button class="btn btn-sm btn-danger">Удалить</button>
+              <button class="btn btn-sm btn-info">Показать</button>
+              <button class="btn btn-sm btn-primary">Редактировать</button>
+            </td>
+          </tr>          
+        </table>
+      </div>
+    </div>

@@ -11,26 +11,24 @@
         <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId">Prev</a>&nbsp;
         <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId">Next</a>
       </div>
-      <div class="col-sm-3">Альбом</div><div class="col-sm-9">60_1974_Смоленск_Вова_Королев_матрос</div>
-      <div class="col-sm-3">Год</div><div class="col-sm-9">1999</div>
-      <div class="col-sm-3">Место</div><div class="col-sm-9">Старая квартира</div>                    
+      <div class="col-sm-3">Альбом</div>
+      <div class="col-sm-9">@Model.Album.Name</div>
+      <div class="col-sm-3">Год</div>
+      <div class="col-sm-9">@Model.Date</div>
+      <div class="col-sm-3">Место</div>
+      <div class="col-sm-9">@Model.Location</div>
       <div class="col-sm-12" id="map" style="height:240px"></div>
     </div>
   </div>
   <div class="col p-5">
     <div class="card" style="height: calc(100% - 65px);">
       <div class="card-body bg-secondary" style="
-      background-image: url('/shot?id=@Model.ShotId'); 
-      background-position: center;
-      background-repeat: no-repeat; 
-      background-size: contain;">
+        background-image: url('/shot?id=@Model.ShotId'); 
+        background-position: center;
+        background-repeat: no-repeat; 
+        background-size: contain;">
       </div>
+    </div>
   </div>
-    <!-- <div style="object-fit: cover;">
-      <img src="/shot?id=@Model.ShotId" style="max-width:100%;max-height:auto"/>
-      <img src="/shot?id=@Model.ShotId"/> -->
-      <!-- <img src="/shot?id=@Model.ShotId" style="max-width:100%;max-height:auto"/> -->
-      <!-- <div class="bg-danger" style="width:100%;height:100%;background-image: url('/shot?id=@Model.ShotId'); background-repeat: no-repeat; background-size: cover;">AAA</div> -->
-    </div> -->
-  </div>
+</div>
 </div>

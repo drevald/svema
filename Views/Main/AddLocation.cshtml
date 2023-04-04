@@ -1,113 +1,158 @@
 @model svema.Data.Location
 @{Layout = "_Layout";}
-<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
+
 <script type="text/javascript">
 
-ymaps.ready(init);
-
-var myGeoObject;
-var circle;
-
-function init () {
+  ymaps.ready(init);
   
-    myMap = new ymaps.Map("map", {
-    center: [@Model.Latitude, @Model.Longitude],
-        zoom: @Model.Zoom
-    }),
+  var myGeoObject;
+  var circle;
+  
+  function init () {
+    
+      myMap = new ymaps.Map("map", {
+      center: [@Model.Latitude, @Model.Longitude],
+          zoom: @Model.Zoom,
+          controls: []
+      }),
+  
+      myGeoObject = new ymaps.GeoObject({
+          geometry: {type: "Point",coordinates: [@Model.Latitude, @Model.Longitude]},
+          properties: {iconContent: '@Model.Name'}
+      }, {preset: 'islands#blackStretchyIcon',draggable: true
+      })
+  
+      circle = new ymaps.Circle([[@Model.Latitude, @Model.Longitude], @Model.LocationPrecisionMeters], {}, {
+          geodesic: true
+      });
+  
+      myMap.events.add('click', function (e) {
+          var coords = e.get('coords');
+          myGeoObject.geometry.setCoordinates(coords);
+          circle.geometry.setCoordinates(coords);
+          document.all['Latitude'].value = coords[0];
+          document.all['Longitude'].value = coords[1];
+          document.all['Zoom'].value = myMap.getZoom();
+      });
+  
+      myGeoObject.events.add(['mapchange','dragend'], 
+          function (e) {
+              coords = myGeoObject.geometry.getCoordinates();
+              circle.geometry.setCoordinates(coords);
+              document.all['LocationPrecisionMeters'].value = myMap.getZoom();
+              document.all['Latitude'].value = coords[0];
+              document.all['Longitude'].value = coords[1];
+              document.all['Zoom'].value = myMap.getZoom();
+          }
+      ); 
+  
+      myMap.geoObjects.add(myGeoObject);
+      myMap.geoObjects.add(circle);
+  
+  }
+     
+  function show(lat, lon, name, zoom, prec) {
+      circle.geometry.setCoordinates([lat, lon]);
+      myGeoObject.geometry.setCoordinates([lat, lon]);
+      myGeoObject.properties.set('iconContent', name);
+      myMap.setCenter([lat, lon]);
+      myMap.setZoom(zoom);
+      @* document.all['Name'].value = name; *@
+      document.all['LocationPrecisionMeters'].value = myMap.getZoom();
+      document.all['Latitude'].value = lat;
+      document.all['Longitude'].value = lon;
+      document.all['Zoom'].value = zoom;  
+      @* document.all['LocationPrecisionMeters'][2].setChecked(true); *@
+  }
+  
+  function prec(radius) {
+      circle.geometry.setRadius(radius);
+  }
+  
+  </script>
 
-    myGeoObject = new ymaps.GeoObject({
-        geometry: {type: "Point",coordinates: [@Model.Latitude, @Model.Longitude]},
-        properties: {iconContent: '@Model.Name'}
-    }, {preset: 'islands#blackStretchyIcon',draggable: true
-    })
+<div class="row">
+  <div class="col-md-2 p-5" style="width:500px">
+    <h4 class="mb-3">Места</h4>
+    <div id="map" style="height:240px"></div>
+  </div>
+  <div class="col p-5">
 
-    circle = new ymaps.Circle([[@Model.Latitude, @Model.Longitude], @Model.LocationPrecisionMeters], {}, {
-        geodesic: true
-    });
+    <form class="needs-validation" method="post" novalidate>
 
-    myMap.events.add('click', function (e) {
-        var coords = e.get('coords');
-        myGeoObject.geometry.setCoordinates(coords);
-        circle.geometry.setCoordinates(coords);
-        document.all['Latitude'].value = coords[0];
-        document.all['Longitude'].value = coords[1];
-        document.all['Zoom'].value = myMap.getZoom();
-    });
+    <div class="text-end">
+      <input type="submit" class="btn btn-primary" value="Сохранить">
+      <a href="locations" class="btn btn-secondary">Отменить</a>
+    </div>
 
-    myGeoObject.events.add(['mapchange','dragend'], 
-        function (e) {
-            coords = myGeoObject.geometry.getCoordinates();
-            circle.geometry.setCoordinates(coords);
-            document.all['LocationPrecisionMeters'].value = myMap.getZoom();
-            document.all['Latitude'].value = coords[0];
-            document.all['Longitude'].value = coords[1];
-            document.all['Zoom'].value = myMap.getZoom();
-        }
-    ); 
+      <div class="col-sm-6 pb-3">
+        <label for="Name" class="form-label">Название</label>
+        <input class="form-control" id="Name" name="Name" disabled>
+      </div>
 
-    myMap.geoObjects.add(myGeoObject);
-    myMap.geoObjects.add(circle);
+      <div class="col-sm-6 pb-3">
+        <label for="Latitude" class="form-label">Долгота</label>
+        <input class="form-control"  id="Latitude" name="Latitude" disabled>
+      </div>
 
-}
-   
-function show(lat, lon, name, zoom, prec) {
-    circle.geometry.setCoordinates([lat, lon]);
-    myGeoObject.geometry.setCoordinates([lat, lon]);
-    myGeoObject.properties.set('iconContent', name);
-    myMap.setCenter([lat, lon]);
-    myMap.setZoom(zoom);
-    document.all['Name'].value = name;
-    document.all['LocationPrecisionMeters'].value = myMap.getZoom();
-    document.all['Latitude'].value = lat;
-    document.all['Longitude'].value = lon;
-    document.all['Zoom'].value = zoom;  
-    @* document.all['LocationPrecisionMeters'][2].setChecked(true); *@
-}
+      <div class="col-sm-6 pb-3">
+        <label for="Longitude" class="form-label">Широта</label>
+        <input class="form-control"  id="Longitude" name="Longitude" disabled>
+      </div>
 
-function prec(radius) {
-    circle.geometry.setRadius(radius);
-}
+      <!-- <div class="col-sm-6 pb-3">
+        <label for="LocationPrecisionMeters" class="form-label">Точность</label>
+        <input class="form-control" id="LocationPrecisionMeters" name="LocationPrecisionMeters" disabled>
+      </div> -->
 
-</script>
-<table width="100%" height="100%" spacing="0" padding="0" border="0">
-    <tr>
-        <td width="240" bgcolor="#cccc99" style="padding:30px" >
-            <a href="/view_album?id=@ViewBag.albumId">Back</a>
-        </td>
-        <td bgcolor="#eeeeee" style="padding:30px" width="640">         
-            <div id="map" style="width: 640;height: 320;"></div>            
-            <table>
-                <form method="post">
-                    <input type="hidden" name="AlbumId" value="@ViewBag.albumId"/>
-                    <input type="hidden" asp-for="Zoom" name="Zoom" id="Zoom" />
-                    <tr><td style="font-size:small">Name</td><td style="font-size:small"><input asp-for="Name" id="Name" name="Name" /></td></tr>
-                    <tr><td style="font-size:small">Latitude</td><td style="font-size:small"><input asp-for="Latitude" id="Latitude" name="Latitude"/></td></tr>
-                    <tr><td style="font-size:small">Longitude</td><td style="font-size:small"><input asp-for="Longitude" id="Longitude" name="Longitude"/></td></tr>
-                    <tr><td style="font-size:small">Precision</td><td style="font-size:small">
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(1);"/>1
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(10);"/>10
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(5000);"/>5000
-                        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000
-                    </td></tr>
-                    <tr><td  style="font-size:small">&nbsp;</td><td  style="font-size:small"><input type="submit"/></td></tr>
-                </form>
-            </table>
-        </td>
-        <td bgcolor="#eeeeee" style="padding:30px;text-align:left">
-            <table>
-            @foreach(var location in @ViewBag.locations)  {
-                if(location.Name != null) {
-                    <tr>
-                        <td width="100%">@location.Name</td>
-                        <td><input type="button" value="show" onClick="javascript:show(@location.Latitude, @location.Longitude, '@location.Name', '@location.Zoom', '@location.LocationPrecisionMeters');"></td> 
-                        <td><input type="button" value="select" onClick="javascript:location.href=('/select_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
-                        <td><input type="button" value="delete" onClick="javascript:location.href=('/delete_location?locationId=@location.Id&albumId=@ViewBag.albumId');"></td>
-                    </tr>
-                }
-            }            
-            </table>
-        </td>
-    </tr>
-</table>
+      <div class="col-sm-6 pb-3">
+        <label for="Zoom" class="form-label">Масштаб</label>
+        <input class="form-control" id="Zoom" name="Zoom" disabled>
+      </div>
+
+      <!-- <div class="col-sm-6 pb-3">
+        <label for="lastName" class="form-label">Точность</label>
+        <div class="form-control btn-group p-0" role="group" aria-label="Basic radio toggle button group">
+          <input type="radio" asp-for="LocationPrecisionMeters" class="btn-check" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);" id="precision">
+          <label class="btn btn-outline-primary" for="btnradio1">10000 м</label>
+          <input type="radio" asp-for="LocationPrecisionMeters" class="btn-check" name="LocationPrecisionMeters" value=5000 onClick="javascript:prec(5000);" id="precision">
+          <label class="btn btn-outline-primary" for="btnradio1">5000 м</label>
+          <input type="radio" asp-for="LocationPrecisionMeters" class="btn-check" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);" id="precision">
+          <label class="btn btn-outline-primary" for="btnradio1">1000 м</label>
+          <input type="radio" asp-for="LocationPrecisionMeters" class="btn-check" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);" id="precision">
+          <label class="btn btn-outline-primary" for="btnradio2">100 м</label>
+          <input type="radio" asp-for="LocationPrecisionMeters" class="btn-check" name="LocationPrecisionMeters" value=10 onClick="alert('sssss');" id="precision">
+          <label class="btn btn-outline-primary" for="btnradio3">10 м</label>
+        </div>
+      </div> -->
+
+      <div class="col-sm-6 pb-3">
+        <label for="lastName" class="form-label">Точность</label>
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1 onClick="javascript:prec(1);"/>1
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10 onClick="javascript:prec(10);"/>10
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=100 onClick="javascript:prec(100);"/>100
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=1000 onClick="javascript:prec(1000);"/>1000
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=5000 onClick="javascript:prec(5000);"/>5000
+        <input asp-for="LocationPrecisionMeters" type="radio" id="precision" name="LocationPrecisionMeters" value=10000 onClick="javascript:prec(10000);"/>10000 
+      </div>
+
+      <!-- <div class="col-sm-6 pb-3">
+        <label for="lastName" class="form-label">Точность</label>
+        <div class="form-control btn-group p-0" role="group" aria-label="Basic radio toggle button group">         
+          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="btnradio" id="btnradio1" onClick="javascript:prec(10000);" value=10000>
+          <label class="btn btn-outline-primary" for="btnradio1">10000 м</label>          
+          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="btnradio" id="btnradio2" onClick="javascript:prec(5000);" value=5000>
+          <label class="btn btn-outline-primary" for="btnradio2">5000 м</label>          
+          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="btnradio" id="btnradio3" onClick="javascript:prec(1000);" value=1000>
+          <label class="btn btn-outline-primary" for="btnradio3">1000 м</label>                        
+          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="btnradio" id="btnradio4" onClick="javascript:prec(100);" value=100>
+          <label class="btn btn-outline-primary" for="btnradio4">100 м</label>                        
+          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="btnradio" id="btnradio5" onClick="javascript:prec(10);" value=10>
+          <label class="btn btn-outline-primary" for="btnradio5">10 м</label>
+        </div>
+      </div>  -->
+
+    </form>
+
+  </div>
+</div>

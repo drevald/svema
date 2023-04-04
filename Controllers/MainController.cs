@@ -203,22 +203,22 @@ public class MainController: Controller {
     }
 
 
-    [HttpGet("add_location")]
-    public async Task<IActionResult> AddLocation(int albumId) {
-        var locations = await dbContext.Locations.ToListAsync();
-        var album = await dbContext.Albums.FindAsync(albumId);
-        ViewBag.albumId = albumId;
-        ViewBag.locations = locations;
-        var albumLocation = new AlbumLocation();
-        return View(new Location());
-    }
+    // [HttpGet("add_location")]
+    // public async Task<IActionResult> AddLocation(int albumId) {
+    //     var locations = await dbContext.Locations.ToListAsync();
+    //     var album = await dbContext.Albums.FindAsync(albumId);
+    //     ViewBag.albumId = albumId;
+    //     ViewBag.locations = locations;
+    //     var albumLocation = new AlbumLocation();
+    //     return View(new Location());
+    // }
 
-    [HttpPost("add_location")]
-    public async Task<IActionResult> StoreLocation(Location location, int albumId) {
-        dbContext.Locations.Add(location);
-        await dbContext.SaveChangesAsync();
-        return Redirect("/add_location?albumId=" + albumId);
-    }
+    // [HttpPost("add_location")]
+    // public async Task<IActionResult> StoreLocation(Location location, int albumId) {
+    //     dbContext.Locations.Add(location);
+    //     await dbContext.SaveChangesAsync();
+    //     return Redirect("/add_location?albumId=" + albumId);
+    // }
 
     [HttpGet("select_location")]
     public async Task<IActionResult> SelectLocation(int locationId, int albumId) {
@@ -254,6 +254,7 @@ public class MainController: Controller {
         var shot = await dbContext.Shots
             .Include(s => s.Location)
             .Include(s => s.ShotComments)
+            .Include(s => s.Album)
             .FirstOrDefaultAsync(s => s.ShotId == id);
         return View(shot);
     }
@@ -407,5 +408,16 @@ public class MainController: Controller {
         return Redirect("view_shot?id=" + id);
     }
 
+    [HttpGet("locations")]
+    public async Task<IActionResult> Locations() {
+        var locations = await dbContext.Locations.ToListAsync<Location>();
+        return View(locations);
+    }
+
+    [HttpGet("add_location")]
+    public IActionResult AddLocation() {
+        var location = new Location();
+        return View(location);   
+    }
 
 }

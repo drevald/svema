@@ -1,31 +1,163 @@
 @model IEnumerable<svema.Data.Album>
-@{Layout = "_Layout";}
-<table width="100%" height="100%" spacing="0" padding="0" border="0">
-    <tr>
-        <td width="240" bgcolor="#cccc99" style="padding:30px" >
-            <a href="add_album">Add Album</a>
-        </td>
-        <td bgcolor="#eeeeee" style="padding:30px" >         
-        @foreach(var album in Model) {
-            <table style="display:inline" width="1">
-                <tr><td><a href="/view_album?id=@album.AlbumId">
-                @if (@album.PreviewId > 0) {
-                <img width=200 height=200 src="/preview?id=@album.PreviewId">
-                } 
-                @if (@album.PreviewId == 0) {
-                <img width=200 height=200 src="#">
-                } 
-                </a></td></tr>
-                <tr><td  style="word-wrap: break-word" width="1">@album.Name</td></tr>
-                <tr><td>
-                    <a href="/view_album?id=@album.AlbumId">View</a>&nbsp;
-                    <a href="/edit_album?id=@album.AlbumId">Edit</a>&nbsp;
-                    <a href="/delete_album?id=@album.AlbumId">Delete</a>
-                </td></tr>                
-                <tr><td>&nbsp;</td></tr>                
-            </table>
-        }
-        </td>        
-    </tr>
-</table>
+<!doctype html>
+<html lang="en">
 
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVEMA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N"
+    crossorigin="anonymous"></script>
+
+  <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=<ваш API-ключ>" type="text/javascript"></script>
+  <script type="text/javascript">
+    ymaps.ready(init);
+    var circle;
+    function init() {
+      var myMap = new ymaps.Map("map", {
+        center: [56, 37],
+        zoom: 12,
+        controls: []
+      });
+      myMap.behaviors.disable('drag');
+      myMap.behaviors.disable('scrollZoom');
+      myMap.geoObjects.add(circle);
+    }
+  </script>
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-lg bg-body-tertiary px-5 py-4">
+    <div class="container-fluid">
+      <div><b>SVEMA</b></div>
+      <div class="d-flex">
+        <a class="nav-link px-5" href="#">Персонажи</a>
+        <a class="nav-link px-5" href="#">Места</a>
+        <a class="nav-link ps-5" href="#">Профиль</a>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+
+    <div class="row">
+      <div class="col-md-12 p-5 pb-0 text-end">
+        <a class="btn btn-primary" href="add_album">Добавить альбом</a>  
+      </div>   
+    </div>
+
+    <div class="row">
+      <div class="col-md-2 p-5" style="width:500px">
+        <h4 class="mb-3">Фильтр</h4>
+        <form class="needs-validation" novalidate>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label for="firstName" class="form-label">Год, от</label>
+              <select class="form-select" id="state" required>
+                <option value="">1950</option>
+                <option>1951</option>
+              </select>
+            </div>
+
+            <div class="col-sm-6">
+              <label for="lastName" class="form-label">Год, до</label>
+              <select class="form-select" id="state" required>
+                <option value="">2023</option>
+                <option>2022</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label for="email" class="form-label">Место</label>
+              <select class="form-select" id="state" required>
+                <option value="">Смоленск</option>
+                <option>Москва</option>
+              </select>
+              <div class="invalid-feedback">
+                Please enter a valid email address for shipping updates.
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label for="lastName" class="form-label">Карта</label>
+              <div id="map" style="height:240px"></div>
+            </div>
+
+            <div class="col-12" style="white-space: nowrap; overflow:hidden;">
+              <label for="lastName" class="form-label">Персонажи</label>
+              <div class="d-flex flex-wrap" style="width:100%">
+                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
+                  <img src="max.png" class="h-100">
+                  <div class="card-footer p-2" style="font-size:xx-small">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-wrap">
+                        Максим Викторович Дьяконов
+                      </span>
+                      <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-trash" viewBox="0 0 16 16">
+                          <path
+                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                          <path fill-rule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
+                  <img src="max.png" class="h-100">
+                  <div class="card-footer p-2" style="font-size:xx-small">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-wrap">
+                        Максим Викторович Дьяконов
+                      </span>
+                      <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-trash" viewBox="0 0 16 16">
+                          <path
+                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                          <path fill-rule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <button type="button" class="btn btn-primary">Добавить персонаж</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col p-5">
+        <div class="d-flex flex-wrap overflow-auto h-100">
+
+        @foreach(var album in Model) {
+
+          <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+            <div class="card-header">@album.Name</div>
+            <div class="card-body"
+              style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;">
+              <a href="/view_album?id=@album.AlbumId" class="stretched-link"></a>
+            </div>
+          </div>
+
+        }
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

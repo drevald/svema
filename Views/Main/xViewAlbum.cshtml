@@ -1,0 +1,100 @@
+@model svema.Data.Album
+@{Layout = "_Layout";}
+<script>
+
+    function editComment(id, text) {
+        document.all("text").value = text;
+        document.all("commentId").value = id;
+    }
+
+</script>
+<table width="100%" height="100%" spacing="0" padding="0" border="0">
+    <tr>
+        <td class="left">
+            Name:@ViewBag.album.Name<br/><br/>
+            <a href="upload_shots?id=@ViewBag.albumId">Upload Shots</a><br><br>
+            Locations:<br/>
+            @if (@Model.AlbumLocations != null) {
+                <script type="text/javascript">
+                    ymaps.ready(init);
+                    var myGeoObject;
+                    var circle;
+                    function init () {
+                        myMap = new ymaps.Map("map", {
+                            controls: []
+                        }),
+
+                        myMap.geoObjects.add(circle);
+                    }
+                </script>
+                <table style="margin:10px">
+                    <tr>
+                        <td colspan="2">
+                            <div id="map" style="width: 240;height: 180;"></div>                                           
+                        </td>
+                    </tr>                    
+                </table>
+            }            
+            @if (@ViewBag.Locations != null) {
+                <table style="margin:10px">
+                @foreach(var location in @ViewBag.locations) {
+                    <tr>
+                        <td>@location.Location.Name</td>
+                        <td>
+                            <a href="/album_location_delete?albumLocationId=@location.Id">Delete</a>&nbsp;
+                            <a href="/album_location_view?albumLocationId=@location.Id">View</a>
+                        </td>
+                    </tr>
+                }
+                </table>
+            }
+            <a href="add_location?albumId=@ViewBag.albumId">Add Location</a><br/><br/>
+            Date:<br>
+            @if (@Model.DateFrom != default(DateTime)) {              
+                @Model.DateFrom.ToString(@Model.DatePrecision)  
+            }
+            <a href="/set_album_date?albumId=@Model.AlbumId">Set Date</a><br><br>
+            Comments:<br/>
+            @if (@Model.AlbumComments != null) {
+                <table style="margin:10px">
+                @foreach(var comment in @Model.AlbumComments) {
+                    <tr>
+                        <td class="comment">
+                            <b>@comment.AuthorUsername</b>&nbsp;
+                            @comment.Timestamp.ToString("yy-mm-dd")<br>
+                            @comment.Text
+                            @if(@comment.AuthorUsername == Context.User.Identity.Name){
+                            <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
+                            <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+                            }
+                            <br><br>                            
+                        </td>
+                    </tr>                    
+                }
+                </table>
+            }
+            <form action="add_comment" method="post">
+                <input type="hidden" id="id" value="@Model.AlbumId" name="id">
+                <input type="hidden" id="commentId" name="commentId" value="0">
+                <textarea class="commentInput" rows=4 id="text" name="text"></textarea>
+                <input value="Set Comment" type="submit">&nbsp;<input type="reset">
+            </form>
+        </td>
+        <td class="right">
+        @foreach(var shot in @ViewBag.shots)  {
+            <table style="display:inline;margin-right:30px;margin-bottom:30px" border="0">
+                <tr>
+                    <td><a href="/view_shot?id=@shot.ShotId"><img width=200 height=200 src="/preview?id=@shot.ShotId"></a></td>
+                </tr>
+                <tr><td>@shot.Name</td></tr>
+                <tr><td style="font-size:small">
+                    <a href="/view_shot?id=@shot.ShotId">View</a>&nbsp;
+                    <a href="/edit_shot?id=@shot.ShotId">Edit</a>&nbsp;
+                    <a href="/delete_shot?id=@shot.ShotId">Delete</a>
+                </td></tr>
+                <tr><td>&nbsp;</td></tr>                
+            </table>
+        }
+        </td>        
+    </tr>
+</table>

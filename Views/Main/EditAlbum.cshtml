@@ -1,10 +1,71 @@
 @model svema.Data.Album
-<html>
-    <body>
-        <form method="post">
-            <input asp-for="AlbumId" type="hidden"/>
-            <input asp-for="Name"/>
-            <input type="submit"/>
+@{Layout = "_Layout";}
+
+<form method="post">
+
+<div class="row">
+    <div class="col-md-12 p-5 pb-0 text-end">
+        <a class="btn btn-primary" href="upload_shots?id=@Model.AlbumId">Добавить фото</a>
+        <input type="submit" class="btn btn-primary" value="Сохранить">
+        <a class="btn btn-secondary" href="/">Отменить</a>
+    </div>
+</div>
+
+<div class="row">
+
+    <div class="col-md-2 p-5" style="width:500px">
+
+        <h4 class="mb-3">Альбом</h4>
+
+        <form class="needs-validation" novalidate>
+            <div class="row g-3">
+
+                <div class="col-sm-12">
+                    <label for="firstName" class="form-label">Название</label>
+                    <input asp-for="AlbumId" type="hidden"/>
+                    <input asp-for="PreviewId" type="hidden"/>
+                    <input asp-for="Name" class="form-control"/>                    
+                </div>
+
+                <!-- <div class="col-sm-12">
+                    <label for="lastName" class="form-label">Год</label>
+                    <select class="form-select" id="state" required>
+                        <option value="">2023</option>
+                        <option>2022</option>
+                    </select>
+                </div>
+
+                <div class="col-sm-12">
+                    <label for="lastName" class="form-label">Место</label>
+                    <select class="form-select" id="state" required>
+                        <option value="">2023</option>
+                        <option>2022</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label for="lastName" class="form-label">Карта</label>
+                    <div id="map" style="height:240px"></div>
+                </div> -->
+
+            </div>
         </form>
-    </body>
-</html>
+    </div>
+
+    <div class="col p-5">
+        <div class="d-flex flex-wrap overflow-auto">
+            @foreach(var shot in @ViewBag.shots) {
+                <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+                    <div class="card-header">@shot.Name</div>
+                    <div class="card-body text-end"
+                        style="background-image: url('/preview?id=@shot.ShotId'); background-repeat: no-repeat; background-size: cover;">
+                        <input type="checkbox" style="  width: 1.85rem;height: 1.85rem">
+                    </div>
+                </div>
+            }           
+        </div>
+    </div>
+
+</div>
+
+</form>

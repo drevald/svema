@@ -38,9 +38,20 @@ public class MainController: Controller {
 
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
-        System.Console.Write("EDIT ALBUM");
-        Album album = await dbContext.Albums.FindAsync(id);
+
+        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
+        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).Include(al => al.Location).ToListAsync();
+        ViewBag.locations = locations;        
+        ViewBag.album = album;
+        ViewBag.shots = shots;
+        ViewBag.albumId = id;
+
         return View(album);
+
+        // System.Console.Write("EDIT ALBUM");
+        // Album album = await dbContext.Albums.FindAsync(id);
+        // return View(album);
     }
 
     [HttpGet("add_album")]

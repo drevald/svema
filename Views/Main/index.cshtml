@@ -100,14 +100,22 @@
       <div class="col p-5">
         <div class="d-flex flex-wrap overflow-auto h-100">
 
-        @foreach(var album in Model) {
+          @foreach(var album in Model) {
 
           <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
-            <div class="card-header">@album.Name</div>
-            <div class="card-body"
-              style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;">
-              <a href="/view_album?id=@album.AlbumId" class="stretched-link"></a>
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div>
+                @album.Name
+              </div>
+              <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/edit_album?id=@album.AlbumId">Редактировать</a></li>
+                  <li><a class="dropdown-item" href="/delete_album?id=@album.AlbumId">Удалить</a></li>
+                </ul>
+              </div>
             </div>
+            <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
           </div>
 
         }

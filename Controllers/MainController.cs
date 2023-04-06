@@ -203,6 +203,7 @@ public class MainController: Controller {
         ViewBag.albumId = albumId;        
         ViewBag.errors = errors;
         return View();
+//        return Redirect("/edit_album?id=" + albumId);
     }
 
     [HttpGet("delete_location")]

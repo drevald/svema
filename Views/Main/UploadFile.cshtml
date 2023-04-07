@@ -4,7 +4,7 @@
 
     function show() {
         var upload = document.all["formFile"].files;
-        var uploadList = document.all['files'];
+        var uploadList = document.all['uploadedFiles'];
         while (uploadList.firstChild) {
             uploadList.removeChild(uploadList.lastChild);
         }
@@ -21,7 +21,7 @@
 
 </script>
 
-<form method="post">
+<form method="post" enctype="multipart/form-data" asp-controller="StoreFile" asp-action="store">
 
     <div class="row">
         <div class="col-md-12 p-5 pb-0 text-end">
@@ -36,7 +36,7 @@
                 <div class="row g-3">
                     <div class="col-sm-12">
                         <input type="hidden" name="albumId" value="@ViewBag.albumId"/>
-                        <input class="form-control" type="file" multiple id="formFile" onchange="javascript:show();">
+                        <input class="form-control" type="file" name="files" multiple id="formFile" onchange="javascript:show();">
                     </div>
                 </div>
             </form>
@@ -44,7 +44,7 @@
     
         <div class="col p-5">
             <h4 class="mb-3">Файлы</h4>
-            <div class="row g-3 pb-3" id="files"></div>
+            <div class="row g-3 pb-3" id="uploadedFiles"></div>
             <input class="btn btn-primary" type="submit" value="Загрузить" id="uploadBtn" style="display:none">
         </div>
 

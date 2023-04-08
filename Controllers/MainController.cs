@@ -41,7 +41,7 @@ public class MainController: Controller {
 
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
         var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
-        var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).Include(al => al.Location).ToListAsync();
+        var locations = await dbContext.Locations.ToListAsync();
         ViewBag.locations = locations;        
         ViewBag.album = album;
         ViewBag.shots = shots;
@@ -207,13 +207,21 @@ public class MainController: Controller {
     }
 
     [HttpGet("delete_location")]
-    public async Task<IActionResult> DeleteLocation(int locationId, int albumId) {
+    public async Task<IActionResult> DeleteLocation(int locationId) {
         Location location = await dbContext.Locations.FindAsync(locationId);
         dbContext.Remove(location);
         await dbContext.SaveChangesAsync();
-        return Redirect("/add_location?albumId=" + albumId);
+        return Redirect("locations");
     }
 
+
+    // [HttpGet("delete_location")]
+    // public async Task<IActionResult> DeleteLocation(int locationId, int albumId) {
+    //     Location location = await dbContext.Locations.FindAsync(locationId);
+    //     dbContext.Remove(location);
+    //     await dbContext.SaveChangesAsync();
+    //     return Redirect("/add_location?albumId=" + albumId);
+    // }
 
     // [HttpGet("add_location")]
     // public async Task<IActionResult> AddLocation(int albumId) {
@@ -224,6 +232,28 @@ public class MainController: Controller {
     //     var albumLocation = new AlbumLocation();
     //     return View(new Location());
     // }
+
+    [HttpGet("add_location")]
+    public async Task<IActionResult> AddLocation(int locationId) {
+        Location location = new Location();
+        dbContext.Locations.Add(location);
+        await dbContext.SaveChangesAsync();
+        //return EditLocation(location.Id);
+        return Redirect("edit_location?LocationId=" + location.Id);
+    }
+
+    [HttpGet("edit_location")]
+    public async Task<IActionResult> EditLocation(int locationId) {
+        Location location = await dbContext.Locations.FindAsync(locationId);
+        return View(location);
+    }
+
+    [HttpPost("edit_location")]
+    public async Task<IActionResult> SaveLocation(Location location) {        
+        dbContext.Update(location);
+        await dbContext.SaveChangesAsync();
+        return Redirect("locations");
+    }
 
     // [HttpPost("add_location")]
     // public async Task<IActionResult> StoreLocation(Location location, int albumId) {
@@ -426,10 +456,10 @@ public class MainController: Controller {
         return View(locations);
     }
 
-    [HttpGet("add_location")]
-    public IActionResult AddLocation() {
-        var location = new Location();
-        return View(location);   
-    }
+    // [HttpGet("add_location")]
+    // public IActionResult AddLocation() {
+    //     var location = new Location();
+    //     return View(location);   
+    // }
 
 }

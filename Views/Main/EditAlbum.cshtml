@@ -27,6 +27,17 @@
                     <input asp-for="Name" class="form-control"/>                    
                 </div>
 
+
+                <div class="col-sm-12">
+                    <label for="lastName" class="form-label">Место</label>
+                    <select class="form-select" id="state" required>
+                        <option></option>
+                        @foreach(var location in @ViewBag.locations) {
+                        <option value="@location.Id">@location.Name</option>
+                        }
+                    </select>
+                </div>
+
                 <!-- <div class="col-sm-12">
                     <label for="lastName" class="form-label">Год</label>
                     <select class="form-select" id="state" required>

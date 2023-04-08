@@ -1,5 +1,47 @@
+@using System.Web
+@using Newtonsoft.Json
 @model svema.Data.Album
 @{Layout = "_Layout";}
+
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+  var myGeoObject;
+  var circle;
+  
+  function init() {
+
+    myMap = new ymaps.Map("map", {
+        center: [0, 0],
+        zoom: 0,
+        controls: []  
+    })
+
+  }
+
+  function show(i) {
+    if (i == 0) {
+        myMap.setCenter([0, 0]);
+        myMap.setZoom(0);
+        myMap.geoObjects.removeAll();
+    }
+    if (myGeoObject == null) {
+        myGeoObject = new ymaps.GeoObject(
+            {geometry: { type: "Point", coordinates: [jsModel[i-1].Latitude, jsModel[i-1].Longitude]}, properties: { iconContent: jsModel[i-1].Name }}, 
+            {preset: 'islands#blackStretchyIcon', draggable: true}
+        )
+        myMap.geoObjects.add(myGeoObject);
+    }
+    myGeoObject.geometry.setCoordinates([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
+    myGeoObject.properties.set('iconContent', jsModel[i-1].Name); 
+    myMap.setCenter([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
+    myMap.setZoom(jsModel[i-1].Zoom);
+  }
+
+</script>
 
 <form method="post">
 
@@ -24,40 +66,46 @@
                     <label for="firstName" class="form-label">Название</label>
                     <input asp-for="AlbumId" type="hidden"/>
                     <input asp-for="PreviewId" type="hidden"/>
-                    <input asp-for="Name" class="form-control"/>                    
+                    <input asp-for="Name" class="form-control" onchange="alert()"/>                    
                 </div>
-
 
                 <div class="col-sm-12">
-                    <label for="lastName" class="form-label">Место</label>
-                    <select class="form-select" id="state" required>
-                        <option></option>
-                        @foreach(var location in @ViewBag.locations) {
-                        <option value="@location.Id">@location.Name</option>
-                        }
-                    </select>
-                </div>
-
-                <!-- <div class="col-sm-12">
                     <label for="lastName" class="form-label">Год</label>
                     <select class="form-select" id="state" required>
-                        <option value="">2023</option>
-                        <option>2022</option>
+                        @{
+                            var startdec = 195;
+                            var enddec = DateTime.Now.Year/10;
+                            var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                            foreach(var number in numbersdec){
+                                <option value="@number">@(number + "X")</option>
+                            }
+                        }                        
+                        @{
+                            var start = 1950;
+                            var end = DateTime.Now.Year;
+                            var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                            foreach(var number in numbers){
+                                <option value="@number">@number</option>
+                            }
+                        }
+                        
                     </select>
                 </div>
 
                 <div class="col-sm-12">
                     <label for="lastName" class="form-label">Место</label>
-                    <select class="form-select" id="state" required>
-                        <option value="">2023</option>
-                        <option>2022</option>
+                    <select class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                        <option></option>
+                        @foreach(var location in @ViewBag.locations) {
+                            <option value="@location.Id">@location.Name</option>
+                        }
                     </select>
                 </div>
 
                 <div class="col-12">
                     <label for="lastName" class="form-label">Карта</label>
                     <div id="map" style="height:240px"></div>
-                </div> -->
+                </div>
 
             </div>
         </form>

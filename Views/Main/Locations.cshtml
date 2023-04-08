@@ -1,5 +1,36 @@
+@using System.Web
+@using Newtonsoft.Json
 @model IEnumerable<svema.Data.Location>
-  @{Layout = "_Layout";}
+@{Layout = "_Layout";}
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+      center: [0, 0],
+    zoom: 0,
+    controls: []
+  })
+
+  for (i=0; i<jsModel.length; i++) {
+    myMap.geoObjects.add(
+      new ymaps.GeoObject(
+        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
+        {preset: 'islands#blackStretchyIcon', draggable: true}
+      )
+    )
+  }
+
+  }
+
+
+</script>
 
 <div class="row">
   <div class="col-md-12 p-5 pb-0 text-end">
@@ -27,9 +58,9 @@
       @foreach(var location in Model) {
       <tr>
         <td>@location.Name</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <td>@location.Longitude</td>
+        <td>@location.Latitude</td>
+        <td>@location.LocationPrecisionMeters</td>
         <td>
           <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
           <a class="btn btn-sm btn-info" href="#">Показать</a>

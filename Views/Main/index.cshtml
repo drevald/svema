@@ -1,5 +1,35 @@
 @model IEnumerable<svema.Data.Album>
+@using System.Web
+@using Newtonsoft.Json
 @{Layout = "_Layout";}
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+    center: [0, 0],
+    zoom: 0,
+    controls: []
+  })
+
+  for (i=0; i<jsModel.length; i++) {
+    myMap.geoObjects.add(
+      new ymaps.GeoObject(
+        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
+        {preset: 'islands#blackStretchyIcon', draggable: false}
+      )
+    )
+  }
+
+  }
+
+</script>
 
     <div class="row">
       <div class="col-md-2 p-5" style="width:500px">
@@ -15,36 +45,47 @@
             </div>
 
             <div class="col-sm-6">
-              <label for="firstName" class="form-label">Год, от</label>
-              <select class="form-select" id="state" required>
-                <option value="">1950</option>
-                <option>1951</option>
+              <label class="form-label">Год, от</label>
+              <select class="form-select" id="state" required>                     
+                  @{
+                      var start = 1950;
+                      var end = DateTime.Now.Year;
+                      var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                      foreach(var number in numbers){
+                          <option value="@number">@number</option>
+                      }
+                  }                        
               </select>
             </div>
 
             <div class="col-sm-6">
-              <label for="lastName" class="form-label">Год, до</label>
-              <select class="form-select" id="state" required>
-                <option value="">2023</option>
-                <option>2022</option>
+              <label class="form-label">Год, до</label>
+              <select class="form-select" id="state" required>                     
+                  @{
+                      var start1 = 1950;
+                      var end1 = DateTime.Now.Year;
+                      var numbers1 = Enumerable.Range(start1, end1 - start1 + 1).Reverse();
+                      foreach(var number in numbers1){
+                          <option value="@number">@number</option>
+                      }
+                  }                        
               </select>
             </div>
 
-            <div class="col-12">
-              <label for="email" class="form-label">Место</label>
-              <select class="form-select" id="state" required>
-                <option value="">Смоленск</option>
-                <option>Москва</option>
-              </select>
-              <div class="invalid-feedback">
-                Please enter a valid email address for shipping updates.
-              </div>
-            </div>
+                <div class="col-sm-12">
+                    <label for="lastName" class="form-label">Место</label>
+                    <select class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                        <option></option>
+                        @foreach(var location in @ViewBag.locations) {
+                            <option value="@location.Id">@location.Name</option>
+                        }
+                    </select>
+                </div>
 
-            <div class="col-12">
-              <label for="lastName" class="form-label">Карта</label>
-              <div id="map" style="height:240px"></div>
-            </div>
+                <div class="col-12">
+                    <label for="lastName" class="form-label">Карта</label>
+                    <div id="map" style="height:240px"></div>
+                </div>
 
             <!-- <div class="col-12" style="white-space: nowrap; overflow:hidden;">
               <label for="lastName" class="form-label">Персонажи</label>

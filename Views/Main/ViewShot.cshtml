@@ -1,5 +1,42 @@
 @model svema.Data.Shot
+@using Newtonsoft.Json
+@using System.Web
 @{Layout = "_Layout";}
+
+<script>
+  function editComment(id, text) {
+    document.all("text").value = text;
+    document.all("commentId").value = id;
+  }
+</script>
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@Model.Location)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+      center: [0, 0],
+    zoom: 0,
+    controls: []
+  })
+
+  myMap.geoObjects.add(
+    new ymaps.GeoObject(
+      {geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude]}, properties: { iconContent: jsModel.Name }}, 
+      {preset: 'islands#blackStretchyIcon', draggable: false}
+    )
+  )
+
+
+}
+
+
+</script>
 
 <div class="row h-100">
   <div class="col-md-2 p-5 h-100" style="width:500px">
@@ -18,6 +55,38 @@
       <div class="col-sm-3">Место</div>
       <div class="col-sm-9">@Model.Location</div>
       <div class="col-sm-12" id="map" style="height:240px"></div>
+      <div class="col-sm-12">Комментарии</div>
+      @if (@Model.ShotComments != null)      
+      {
+        @foreach (var comment in @Model.ShotComments)
+        {
+          <div class="col-sm-12">
+            <small>
+              <b>@comment.AuthorUsername</b>&nbsp;
+              @comment.Timestamp.ToString("yy-mm-dd")<br>
+              @comment.Text
+              @if (@comment.AuthorUsername == Context.User.Identity.Name)
+              {
+                <a href="delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete&nbsp;</a>
+                <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+              }
+            </small>
+          </div>
+        }
+      }
+
+      <form action="add_shot_comment" method="post">
+        <input type="hidden" id="id" value="@Model.ShotId" name="id">
+        <input type="hidden" id="commentId" name="commentId" value="0">
+        <div class="col-sm-12">
+          <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
+        </div>
+        <div class="col-sm-12">
+          <input class="btn btn-primary btn-sm" value="Set Comment" type="submit">&nbsp;<input
+            class="btn btn-secondary btn-sm" type="reset">
+        </div>
+      </form>       
+
     </div>
   </div>
   <div class="col p-5">

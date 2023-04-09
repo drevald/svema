@@ -31,14 +31,15 @@ public class MainController: Controller {
     [HttpGet("")]
     public async Task<IActionResult> Index() {
         var albums = await dbContext.Albums.OrderBy(a => a.DateFrom).ToListAsync(); 
+        var locations = await dbContext.Locations.ToListAsync();
+        ViewBag.locations = locations;
         return View(albums);
     }
 
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
-
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
-        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
         var locations = await dbContext.Locations.ToListAsync();
         ViewBag.locations = locations;        
         ViewBag.album = album;
@@ -50,6 +51,21 @@ public class MainController: Controller {
         // System.Console.Write("EDIT ALBUM");
         // Album album = await dbContext.Albums.FindAsync(id);
         // return View(album);
+    }
+
+    [HttpGet("edit_shot")]
+    public async Task<IActionResult> EditShot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        var locations = await dbContext.Locations.ToListAsync();
+        ViewBag.locations = locations;
+        return View(shot);
+    }
+
+    [HttpPost("edit_shot")]
+    public async Task<IActionResult> StoreShot(Shot shot) {
+        dbContext.Update(shot);
+        await dbContext.SaveChangesAsync();
+        return Redirect("edit_album?id=" + shot.AlbumId);
     }
 
     [HttpGet("add_album")]
@@ -89,8 +105,12 @@ public class MainController: Controller {
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id) {
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
-        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
-        var locations = await dbContext.AlbumLocations.Where(a => a.Album.AlbumId == id).Include(al => al.Location).ToListAsync();
+        //var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).Include(s => s.Location).ToListAsync();
+        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
+        var locations = new HashSet<Location>();
+        // foreach (var shot in shots) {
+        //     locations.Add(shot.Location);                
+        // }
         ViewBag.locations = locations;        
         ViewBag.album = album;
         ViewBag.shots = shots;
@@ -212,7 +232,6 @@ public class MainController: Controller {
         return Redirect("locations");
     }
 
-
     // [HttpGet("delete_location")]
     // public async Task<IActionResult> DeleteLocation(int locationId, int albumId) {
     //     Location location = await dbContext.Locations.FindAsync(locationId);
@@ -306,7 +325,7 @@ public class MainController: Controller {
         Storage.DeleteFile(shot);
         dbContext.Remove(shot);
         await dbContext.SaveChangesAsync();
-        return Redirect("/view_album?id=" + albumId);
+        return Redirect("/edit_album?id=" + albumId);
     }
 
     [HttpGet("view_next_shot")]

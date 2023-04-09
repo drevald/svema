@@ -1,5 +1,43 @@
 @model svema.Data.Album
+@using Newtonsoft.Json
+@using System.Web
 @{Layout = "_Layout";}
+
+<script>
+  function editComment(id, text) {
+    document.all("text").value = text;
+    document.all("commentId").value = id;
+  }
+</script>
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@ViewBag.locations)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+      center: [0, 0],
+    zoom: 0,
+    controls: []
+  })
+
+  for (i=0; i<jsModel.length; i++) {
+    myMap.geoObjects.add(
+      new ymaps.GeoObject(
+        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
+        {preset: 'islands#blackStretchyIcon', draggable: false}
+      )
+    )
+  }
+
+  }
+
+
+</script>
 
 <div class="row">
   <div class="col-md-2 p-5" style="width:500px">
@@ -10,18 +48,48 @@
       <div class="col-sm-6 text-end">
         <a  class="btn btn-primary" href="#">Слайдшоу</a>&nbsp;
       </div>
-      <div class="col-sm-12">@Model.Name</div>
+      <div class="col-sm-3">Название</div><div class="col-sm-9">@Model.Name</div>      
       <div class="col-sm-3">Год</div><div class="col-sm-9">@Model.DateFrom</div>
       @if (@ViewBag.Locations != null) {
         @foreach(var location in @ViewBag.locations) {
-            <div class="col-sm-12">@location.Location.Name</div>
-                <!-- <td>
-                    <a href="/album_location_delete?albumLocationId=@location.Id">Delete</a>&nbsp;
-                    <a href="/album_location_view?albumLocationId=@location.Id">View</a>
-                </td> -->
+            @* <div class="col-sm-12">@location.Name</div> *@
         }
       }
       <div class="col-sm-12" id="map" style="height:240px"></div>
+
+      <div class="col-sm-12">Комментарии</div>
+
+      @if (@Model.AlbumComments != null)      
+      {
+        @foreach (var comment in @Model.AlbumComments)
+        {
+          <div class="col-sm-12">
+            <small>
+              <b>@comment.AuthorUsername</b>&nbsp;
+              @comment.Timestamp.ToString("yy-mm-dd")<br>
+              @comment.Text
+              @if (@comment.AuthorUsername == Context.User.Identity.Name)
+              {
+                <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
+                <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+              }
+            </small>
+          </div>
+        }
+      }
+
+      <form action="add_comment" method="post">
+        <input type="hidden" id="id" value="@Model.AlbumId" name="id">
+        <input type="hidden" id="commentId" name="commentId" value="0">
+        <div class="col-sm-12">
+          <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
+        </div>
+        <div class="col-sm-12">
+          <input class="btn btn-primary btn-sm" value="Set Comment" type="submit">&nbsp;<input
+            class="btn btn-secondary btn-sm" type="reset">
+        </div>
+      </form>
+
     </div>
   </div>
   <div class="col p-5">

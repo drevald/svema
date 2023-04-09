@@ -1,0 +1,138 @@
+@using System.Web
+@using Newtonsoft.Json
+@model svema.Data.Shot
+@{Layout = "_Layout";}
+
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Location)))");
+  var myGeoObject;
+  var circle;
+  
+  function init() {
+
+    myMap = new ymaps.Map("map", {
+        center: [0, 0],
+        zoom: 0,
+        controls: []  
+    })
+
+    if (jsShot != null) {
+      myGeoObject = new ymaps.GeoObject(
+          {geometry: { type: "Point", coordinates: [jsShot.Latitude, jsShot.Longitude]}, properties: { iconContent: jsShot.Name }}, 
+          {preset: 'islands#blackStretchyIcon', draggable: true}
+      )
+      myMap.geoObjects.add(myGeoObject);
+    }
+
+  }
+
+  function show(i) {
+    if (i == 0) {
+        myMap.setCenter([0, 0]);
+        myMap.setZoom(0);
+        myMap.geoObjects.removeAll();
+    }
+    if (myGeoObject == null) {
+        myGeoObject = new ymaps.GeoObject(
+            {geometry: { type: "Point", coordinates: [jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]}, properties: { iconContent: jsLocations[i-1].Name }}, 
+            {preset: 'islands#blackStretchyIcon', draggable: true}
+        )
+        myMap.geoObjects.add(myGeoObject);
+    }
+    myGeoObject.geometry.setCoordinates([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
+    myGeoObject.properties.set('iconContent', jsLocations[i-1].Name); 
+    myMap.setCenter([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
+    myMap.setZoom(jsLocations[i-1].Zoom);
+  }
+
+</script>
+
+<form method="post">
+
+  <div class="row">
+    <div class="col-md-12 p-5 pb-0 text-end">
+      <input type="submit" class="btn btn-primary" value="Сохранить">
+      <a class="btn btn-secondary" href="edit_album?id=@Model.AlbumId">Отменить</a>
+    </div>
+  </div>
+
+  <div class="row h-100">
+
+    <div class="col-md-2 p-5" style="width:500px">
+
+      <h4 class="mb-3">Снимок</h4>
+
+      <form class="needs-validation" novalidate>
+        <div class="row g-3">
+
+          <div class="col-sm-12">
+            <label for="firstName" class="form-label">Название</label>
+            <input asp-for="ShotId" type="hidden" />
+            <input asp-for="AlbumId" type="hidden" />
+            <input asp-for="MD5" type="hidden" />
+            <input asp-for="Name" class="form-control" />
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Год</label>
+            <select class="form-select" id="state" required>
+              @{
+                var startdec = 195;
+                var enddec = DateTime.Now.Year / 10;
+                var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                foreach (var number in numbersdec)
+                {
+                  <option value="@number">@(number + "X")</option>
+                }
+              }
+              @{
+                var start = 1950;
+                var end = DateTime.Now.Year;
+                var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                foreach (var number in numbers)
+                {
+                  <option value="@number">@number</option>
+                }
+              }
+            </select>
+          </div>
+
+          <div class="col-sm-12">
+            <label for="lastName" class="form-label">Место</label>
+            <select asp-for="Location" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+              <option></option>
+              @foreach (var location in @ViewBag.locations)
+              {
+                <option value="@location.Id">@location.Name</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Карта</label>
+            <div id="map" style="height:240px"></div>
+          </div>
+
+        </div>
+      </form>
+    </div>
+
+    <div class="col p-5">
+      <div class="card" style="height: calc(100% - 65px);">
+        <div class="card-body bg-secondary" style="
+        background-image: url('/shot?id=@Model.ShotId'); 
+        background-position: center;
+        background-repeat: no-repeat; 
+        background-size: contain;">
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</form>

@@ -23,9 +23,15 @@
 
     if (jsShot != null) {
       myGeoObject = new ymaps.GeoObject(
-          {geometry: { type: "Point", coordinates: [jsShot.Latitude, jsShot.Longitude]}, properties: { iconContent: jsShot.Name }}, 
+          {geometry: { 
+            type: "Point", 
+            coordinates: [jsShot.Latitude, jsShot.Longitude]}, 
+            properties: { iconContent: jsShot.Name },
+          }, 
           {preset: 'islands#blackStretchyIcon', draggable: true}
       )
+      myMap.setCenter([jsShot.Latitude, jsShot.Longitude]);
+      myMap.setZoom(jsShot.Zoom);
       myMap.geoObjects.add(myGeoObject);
     }
 
@@ -48,6 +54,11 @@
     myGeoObject.properties.set('iconContent', jsLocations[i-1].Name); 
     myMap.setCenter([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
     myMap.setZoom(jsLocations[i-1].Zoom);
+  }
+
+  function setdate(year) {
+    document.all["DateStart"].value=year + "-01-01"
+    document.all["DateEnd"].value=year + "-12-31"
   }
 
 </script>
@@ -80,7 +91,7 @@
 
           <div class="col-sm-12">
             <label class="form-label">Год</label>
-            <select class="form-select" id="state" required>
+            <select class="form-select" id="state" onchange="javascript:setdate(this.selectedIndex)">
               @{
                 var startdec = 195;
                 var enddec = DateTime.Now.Year / 10;
@@ -103,8 +114,18 @@
           </div>
 
           <div class="col-sm-12">
-            <label for="lastName" class="form-label">Место</label>
-            <select asp-for="Location" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+            <label class="form-label">Дата, от</label>
+            <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy}"/>
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Дата, до</label>
+            <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy}"/>
+          </div>          
+
+          <div class="col-sm-12">
+            <label class="form-label">Место</label>
+            <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
               <option></option>
               @foreach (var location in @ViewBag.locations)
               {

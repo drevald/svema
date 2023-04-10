@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 
 namespace svema.Data;
 
@@ -54,10 +56,14 @@ public class Shot {
     public string Name {get; set;}
     public Album Album {get; set;}    
     public int AlbumId {get; set;}
-    public DateTime Date {get; set;}
+    [BindProperty, DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
+    public DateTime DateStart {get; set;}
+    [BindProperty, DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
+    public DateTime DateEnd {get; set;}
     public byte[] Preview {get; set;}
-    public string SourceUri {get; set;} 
+    public string SourceUri {get; set;}
     public Location Location {get; set;}    
+    public System.Nullable<int> LocationId {get; set;}    
     public string MD5 {get; set;}
     public ICollection<Person> Persons {get; set;}
     public string ContentType {get; set;}
@@ -88,7 +94,6 @@ public class User {
     public string PasswordHash {get; set;}
     public string Email {get; set;}
     public ShotStorage Storage {get; set;}
-
 }
 
 public class ShotComment {

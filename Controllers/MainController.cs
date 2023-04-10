@@ -63,7 +63,11 @@ public class MainController: Controller {
 
     [HttpPost("edit_shot")]
     public async Task<IActionResult> StoreShot(Shot shot) {
-        dbContext.Update(shot);
+        Shot storedShot = await dbContext.Shots.FindAsync(shot.ShotId);
+        storedShot.LocationId = shot.LocationId;
+        storedShot.Name = shot.Name;
+        storedShot.DateStart = shot.DateStart;
+        storedShot.DateEnd = shot.DateEnd;
         await dbContext.SaveChangesAsync();
         return Redirect("edit_album?id=" + shot.AlbumId);
     }

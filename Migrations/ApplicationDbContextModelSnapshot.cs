@@ -186,7 +186,10 @@ namespace svema.Migrations
                     b.Property<string>("ContentType")
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime>("DateEnd")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DateStart")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<int?>("LocationId")

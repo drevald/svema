@@ -1,13 +1,13 @@
 @using System.Web
 @using Newtonsoft.Json
-@model svema.Data.Album
+@model svema.Form.AlbumDTO
 @{Layout = "_Layout";}
 
 <script type="text/javascript">
 
   ymaps.ready(init);
 
-  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
   var myGeoObject;
   var circle;
   
@@ -74,7 +74,6 @@
                 <div class="col-sm-12">
                     <label for="firstName" class="form-label">Название</label>
                     <input asp-for="AlbumId" type="hidden"/>
-                    <input asp-for="PreviewId" type="hidden"/>
                     <input asp-for="Name" class="form-control" onchange="alert()"/>                    
                 </div>
 
@@ -104,19 +103,19 @@
     
                 <div class="col-sm-12">
                     <label class="form-label">Дата, от</label>
-                    <input name="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                    <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
                 </div>
     
                 <div class="col-sm-12">
                     <label class="form-label">Дата, до</label>
-                    <input name="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                    <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
                 </div> 
 
                 <div class="col-sm-12">
-                    <label for="lastName" class="form-label">Место</label>
-                    <select class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                    <label class="form-label">Место</label>
+                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
                         <option></option>
-                        @foreach(var location in @ViewBag.locations) {
+                        @foreach(var location in @Model.Locations) {
                             <option value="@location.Id">@location.Name</option>
                         }
                     </select>
@@ -133,7 +132,7 @@
 
     <div class="col p-5">
         <div class="d-flex flex-wrap overflow-auto">
-            @foreach(var shot in @ViewBag.shots) {
+            @foreach(var shot in @Model.Shots) {
                 <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
@@ -149,7 +148,7 @@
                     </div>
                     <div class="card-body text-end"
                         style="background-image: url('/preview?id=@shot.ShotId'); background-repeat: no-repeat; background-size: cover;">
-                        <input type="checkbox" style="  width: 1.85rem;height: 1.85rem">
+                        <input name="SelectedShots" type="checkbox" style="  width: 1.85rem;height: 1.85rem" value="@shot.ShotId">
                     </div>
                 </div>
             }           

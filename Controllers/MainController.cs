@@ -13,6 +13,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Microsoft.AspNetCore.Authorization;
 using svema.Data;
+using svema.Form;
 
 namespace svema.Controllers;
 
@@ -40,19 +41,25 @@ public class MainController: Controller {
 
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
-        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
-        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
-        var locations = await dbContext.Locations.ToListAsync();
-        ViewBag.locations = locations;        
-        ViewBag.album = album;
-        ViewBag.shots = shots;
-        ViewBag.albumId = id;
-
-        return View(album);
-
-        // System.Console.Write("EDIT ALBUM");
-        // Album album = await dbContext.Albums.FindAsync(id);
+        // var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
+        // var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
+        // var locations = await dbContext.Locations.ToListAsync();
+        // ViewBag.locations = locations;        
+        // ViewBag.album = album;
+        // ViewBag.shots = shots;
+        // ViewBag.albumId = id;
         // return View(album);
+
+        AlbumDTO dto = new AlbumDTO();
+        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
+        dto.AlbumId = album.AlbumId;
+        dto.Name = album.Name;
+        dto.Shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
+        dto.AlbumComments = album.AlbumComments;
+        dto.Locations = await dbContext.Locations.ToListAsync();
+
+        return View(dto);
+
     }
 
 
@@ -70,10 +77,10 @@ public class MainController: Controller {
     }
 
     [HttpPost("edit_album")]
-    public async Task<IActionResult> StoreAlbum(Album album) {
-        Album storedAlbum = await dbContext.Albums.FindAsync(album.AlbumId);
-        storedAlbum.Name = album.Name;
-        System.Console.Write("STORING ALBUM (" + album.AlbumId + ")");
+    public async Task<IActionResult> StoreAlbum(AlbumDTO dto) {
+        Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
+        storedAlbum.Name = dto.Name;
+        System.Console.Write("STORING ALBUM (" + dto.AlbumId + ")");
         await dbContext.SaveChangesAsync();
         return Redirect("/");
     }

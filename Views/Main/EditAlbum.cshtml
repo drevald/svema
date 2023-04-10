@@ -131,24 +131,27 @@
     </div>
 
     <div class="col p-5">
+
         <div class="d-flex flex-wrap overflow-auto">
-            @foreach(var shot in @Model.Shots) {
+            @for (var index = 0; index < @Model.Shots.Count(); index++) {
                 <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            @shot.Name
+                            @Model.Shots[index].Name
                         </div>
                         <div class="dropdown">
                             <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
                             <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/edit_shot?id=@shot.ShotId">Редактировать</a></li>
-                            <li><a class="dropdown-item" href="/delete_shot?id=@shot.ShotId">Удалить</a></li>
+                            <li><a class="dropdown-item" href="/edit_shot?id=@Model.Shots[index].ShotId">Редактировать</a></li>
+                            <li><a class="dropdown-item" href="/delete_shot?id=@Model.Shots[index].ShotId">Удалить</a></li>
                             </ul>
                         </div>
                     </div>
                     <div class="card-body text-end"
-                        style="background-image: url('/preview?id=@shot.ShotId'); background-repeat: no-repeat; background-size: cover;">
-                        <input name="SelectedShots" type="checkbox" style="  width: 1.85rem;height: 1.85rem" value="@shot.ShotId">
+                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId'); background-repeat: no-repeat; background-size: cover;">
+                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="  width: 1.85rem;height: 1.85rem">
+                        <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
+                        <input type="hidden" asp-for="@Model.Shots[index].Name" />
                     </div>
                 </div>
             }           

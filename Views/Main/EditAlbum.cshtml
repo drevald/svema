@@ -3,7 +3,6 @@
 @model svema.Data.Album
 @{Layout = "_Layout";}
 
-
 <script type="text/javascript">
 
   ymaps.ready(init);
@@ -41,6 +40,16 @@
     myMap.setZoom(jsModel[i-1].Zoom);
   }
 
+    function setdate(year) {
+    if (year < 1000) {
+      document.all["DateStart"].value=year + "0-01-01";
+      document.all["DateEnd"].value=year + "9-12-31";
+    } else {
+      document.all["DateStart"].value=year + "-01-01";
+      document.all["DateEnd"].value=year + "-12-31";
+    }
+  }
+
 </script>
 
 <form method="post">
@@ -70,26 +79,38 @@
                 </div>
 
                 <div class="col-sm-12">
-                    <label for="lastName" class="form-label">Год</label>
-                    <select class="form-select" id="state" required>
+                    <label class="form-label">Год</label>
+                    <select class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
                         @{
-                            var startdec = 195;
-                            var enddec = DateTime.Now.Year/10;
-                            var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
-                            foreach(var number in numbersdec){
+                        var startdec = 195;
+                        var enddec = DateTime.Now.Year / 10;
+                        var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                        foreach (var number in numbersdec)
+                            {
                                 <option value="@number">@(number + "X")</option>
                             }
-                        }                        
+                        }
                         @{
-                            var start = 1950;
-                            var end = DateTime.Now.Year;
-                            var numbers = Enumerable.Range(start, end - start + 1).Reverse();
-                            foreach(var number in numbers){
+                        var start = 1950;
+                        var end = DateTime.Now.Year;
+                        var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                        foreach (var number in numbers)
+                            {
                                 <option value="@number">@number</option>
                             }
-                        }                        
+                        }
                     </select>
                 </div>
+    
+                <div class="col-sm-12">
+                    <label class="form-label">Дата, от</label>
+                    <input name="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                </div>
+    
+                <div class="col-sm-12">
+                    <label class="form-label">Дата, до</label>
+                    <input name="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                </div> 
 
                 <div class="col-sm-12">
                     <label for="lastName" class="form-label">Место</label>
@@ -105,8 +126,6 @@
                     <label for="lastName" class="form-label">Карта</label>
                     <div id="map" style="height:240px"></div>
                 </div>
-
-
 
             </div>
         </form>

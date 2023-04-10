@@ -36,6 +36,8 @@ public class MainController: Controller {
         return View(albums);
     }
 
+///////////////////   ALBUM  /////////////////////////////////////////
+
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
@@ -53,24 +55,6 @@ public class MainController: Controller {
         // return View(album);
     }
 
-    [HttpGet("edit_shot")]
-    public async Task<IActionResult> EditShot(int id) {
-        var shot = await dbContext.Shots.FindAsync(id);
-        var locations = await dbContext.Locations.ToListAsync();
-        ViewBag.locations = locations;
-        return View(shot);
-    }
-
-    [HttpPost("edit_shot")]
-    public async Task<IActionResult> StoreShot(Shot shot) {
-        Shot storedShot = await dbContext.Shots.FindAsync(shot.ShotId);
-        storedShot.LocationId = shot.LocationId;
-        storedShot.Name = shot.Name;
-        storedShot.DateStart = shot.DateStart;
-        storedShot.DateEnd = shot.DateEnd;
-        await dbContext.SaveChangesAsync();
-        return Redirect("edit_album?id=" + shot.AlbumId);
-    }
 
     [HttpGet("add_album")]
     public IActionResult AddAlbum() {
@@ -87,8 +71,9 @@ public class MainController: Controller {
 
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(Album album) {
+        Album storedAlbum = await dbContext.Albums.FindAsync(album.AlbumId);
+        storedAlbum.Name = album.Name;
         System.Console.Write("STORING ALBUM (" + album.AlbumId + ")");
-        dbContext.Update(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
     }
@@ -120,6 +105,27 @@ public class MainController: Controller {
         ViewBag.shots = shots;
         ViewBag.albumId = id;
         return View(album);
+    }    
+
+///////////////////////////////////      SHOTS     ////////////////////////////////////
+
+    [HttpGet("edit_shot")]
+    public async Task<IActionResult> EditShot(int id) {
+        var shot = await dbContext.Shots.FindAsync(id);
+        var locations = await dbContext.Locations.ToListAsync();
+        ViewBag.locations = locations;
+        return View(shot);
+    }
+
+    [HttpPost("edit_shot")]
+    public async Task<IActionResult> StoreShot(Shot shot) {
+        Shot storedShot = await dbContext.Shots.FindAsync(shot.ShotId);
+        storedShot.LocationId = shot.LocationId;
+        storedShot.Name = shot.Name;
+        storedShot.DateStart = shot.DateStart;
+        storedShot.DateEnd = shot.DateEnd;
+        await dbContext.SaveChangesAsync();
+        return Redirect("edit_album?id=" + shot.AlbumId);
     }
 
     [HttpGet("shots")]
@@ -228,6 +234,9 @@ public class MainController: Controller {
 //        return Redirect("/edit_album?id=" + albumId);
     }
 
+/////////////////////       LOCATIONS        //////////////////////////////////////////////////////////
+
+
     [HttpGet("delete_location")]
     public async Task<IActionResult> DeleteLocation(int locationId) {
         Location location = await dbContext.Locations.FindAsync(locationId);
@@ -235,24 +244,6 @@ public class MainController: Controller {
         await dbContext.SaveChangesAsync();
         return Redirect("locations");
     }
-
-    // [HttpGet("delete_location")]
-    // public async Task<IActionResult> DeleteLocation(int locationId, int albumId) {
-    //     Location location = await dbContext.Locations.FindAsync(locationId);
-    //     dbContext.Remove(location);
-    //     await dbContext.SaveChangesAsync();
-    //     return Redirect("/add_location?albumId=" + albumId);
-    // }
-
-    // [HttpGet("add_location")]
-    // public async Task<IActionResult> AddLocation(int albumId) {
-    //     var locations = await dbContext.Locations.ToListAsync();
-    //     var album = await dbContext.Albums.FindAsync(albumId);
-    //     ViewBag.albumId = albumId;
-    //     ViewBag.locations = locations;
-    //     var albumLocation = new AlbumLocation();
-    //     return View(new Location());
-    // }
 
     [HttpGet("add_location")]
     public async Task<IActionResult> AddLocation(int locationId) {
@@ -275,13 +266,6 @@ public class MainController: Controller {
         await dbContext.SaveChangesAsync();
         return Redirect("locations");
     }
-
-    // [HttpPost("add_location")]
-    // public async Task<IActionResult> StoreLocation(Location location, int albumId) {
-    //     dbContext.Locations.Add(location);
-    //     await dbContext.SaveChangesAsync();
-    //     return Redirect("/add_location?albumId=" + albumId);
-    // }
 
     [HttpGet("select_location")]
     public async Task<IActionResult> SelectLocation(int locationId, int albumId) {

@@ -56,9 +56,9 @@ public class Shot {
     public string Name {get; set;}
     public Album Album {get; set;}    
     public int AlbumId {get; set;}
-    [BindProperty, DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
+    [BindProperty, DataType(DataType.Date)] 
     public DateTime DateStart {get; set;}
-    [BindProperty, DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
+    [BindProperty, DataType(DataType.Date)] 
     public DateTime DateEnd {get; set;}
     public byte[] Preview {get; set;}
     public string SourceUri {get; set;}

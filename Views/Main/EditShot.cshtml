@@ -57,8 +57,13 @@
   }
 
   function setdate(year) {
-    document.all["DateStart"].value=year + "-01-01"
-    document.all["DateEnd"].value=year + "-12-31"
+    if (year < 1000) {
+      document.all["DateStart"].value=year + "0-01-01";
+      document.all["DateEnd"].value=year + "9-12-31";
+    } else {
+      document.all["DateStart"].value=year + "-01-01";
+      document.all["DateEnd"].value=year + "-12-31";
+    }
   }
 
 </script>
@@ -91,7 +96,7 @@
 
           <div class="col-sm-12">
             <label class="form-label">Год</label>
-            <select class="form-select" id="state" onchange="javascript:setdate(this.selectedIndex)">
+            <select class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
               @{
                 var startdec = 195;
                 var enddec = DateTime.Now.Year / 10;
@@ -115,12 +120,12 @@
 
           <div class="col-sm-12">
             <label class="form-label">Дата, от</label>
-            <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy}"/>
+            <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
           </div>
 
           <div class="col-sm-12">
             <label class="form-label">Дата, до</label>
-            <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy}"/>
+            <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
           </div>          
 
           <div class="col-sm-12">

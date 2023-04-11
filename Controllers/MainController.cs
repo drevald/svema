@@ -64,6 +64,15 @@ public class MainController: Controller {
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto) {
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
+        foreach (var s in dto.Shots)  {
+            if (s.IsChecked) {
+                Shot shot = await dbContext.Shots.FindAsync(s.ShotId);
+                shot.DateStart = dto.DateStart;
+                shot.DateEnd = dto.DateEnd;
+                shot.LocationId = dto.LocationId;
+                await dbContext.SaveChangesAsync();
+            }
+        }
         System.Console.Write("STORING ALBUM (" + dto.AlbumId + ")");
         await dbContext.SaveChangesAsync();
         return Redirect("/");

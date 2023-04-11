@@ -38,7 +38,11 @@ public class Storage {
             Console.Write("Storage not defined for " + shot);
             return;
         } else if (shot.Storage.Provider == "LocalDisk") {
-            System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
+            try {
+                System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
+            } catch (Exception e) {
+
+            }
         } else {
             YandexDisk yandexDisk = new YandexDisk();
             yandexDisk.DeleteFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken);             

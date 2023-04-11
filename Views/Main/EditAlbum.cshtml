@@ -6,10 +6,10 @@
 <script type="text/javascript">
 
   ymaps.ready(init);
-
-  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+ 
   var myGeoObject;
   var circle;
+  var myMap;
   
   function init() {
 
@@ -22,6 +22,9 @@
   }
 
   function show(i) {
+
+    var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+
     if (i == 0) {
         myMap.setCenter([0, 0]);
         myMap.setZoom(0);
@@ -50,15 +53,33 @@
     }
   }
 
+  function selectAll() {
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    for (i=0; i<jsShots.length; i++) {
+        document.all["Shots["+i+"].IsChecked"][0].checked = true;
+        document.all["Shots["+i+"].IsChecked"][1].checked = true;
+    }
+  }
+
+  function deselectAll() {
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    for (i=0; i<jsShots.length; i++) {
+        document.all["Shots["+i+"].IsChecked"][0].checked = false;
+        document.all["Shots["+i+"].IsChecked"][1].checked = false;
+    }
+  }
+
 </script>
 
 <form method="post">
 
 <div class="row">
     <div class="col-md-12 p-5 pb-0 text-end">
-        <a class="btn btn-primary" href="upload_shots?id=@Model.AlbumId">Добавить фото</a>
-        <input type="submit" class="btn btn-primary" value="Сохранить">
-        <a class="btn btn-secondary" href="/">Отменить</a>
+        <a class="btn btn-primary px-3" href="upload_shots?id=@Model.AlbumId">Добавить фото</a>
+        <a class="btn btn-primary px-3" href="javascript:selectAll()">Выбрать все</a>
+        <a class="btn btn-primary px-3" href="javascript:deselectAll()">Снять выделение</a>
+        <input type="submit" class="btn btn-primary px-3" value="Сохранить">
+        <a class="btn btn-secondary ps-3" href="/">Отменить</a>
     </div>
 </div>
 
@@ -74,7 +95,7 @@
                 <div class="col-sm-12">
                     <label for="firstName" class="form-label">Название</label>
                     <input asp-for="AlbumId" type="hidden"/>
-                    <input asp-for="Name" class="form-control" onchange="alert()"/>                    
+                    <input asp-for="Name" class="form-control""/>
                 </div>
 
                 <div class="col-sm-12">
@@ -149,7 +170,7 @@
                     </div>
                     <div class="card-body text-end"
                         style="background-image: url('/preview?id=@Model.Shots[index].ShotId'); background-repeat: no-repeat; background-size: cover;">
-                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="  width: 1.85rem;height: 1.85rem">
+                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem">
                         <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
                         <input type="hidden" asp-for="@Model.Shots[index].Name" />
                     </div>

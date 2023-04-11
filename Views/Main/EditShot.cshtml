@@ -1,6 +1,6 @@
 @using System.Web
 @using Newtonsoft.Json
-@model svema.Data.Shot
+@model svema.Form.ShotDTO
 @{Layout = "_Layout";}
 
 
@@ -8,7 +8,7 @@
 
   ymaps.ready(init);
 
-  var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+  var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
   var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Location)))");
   var myGeoObject;
   var circle;
@@ -87,10 +87,14 @@
         <div class="row g-3">
 
           <div class="col-sm-12">
-            <label for="firstName" class="form-label">Название</label>
+            <input asp-for="IsCover" class="form-label" type="checkbox"/>
+            <label class="form-label">Сделать заглавным</label>
+          </div>
+
+
+          <div class="col-sm-12">
+            <label class="form-label">Название</label>
             <input asp-for="ShotId" type="hidden" />
-            <input asp-for="AlbumId" type="hidden" />
-            <input asp-for="MD5" type="hidden" />
             <input asp-for="Name" class="form-control" />
           </div>
 
@@ -132,7 +136,7 @@
             <label class="form-label">Место</label>
             <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
               <option></option>
-              @foreach (var location in @ViewBag.locations)
+              @foreach (var location in @Model.Locations)
               {
                 <option value="@location.Id">@location.Name</option>
               }

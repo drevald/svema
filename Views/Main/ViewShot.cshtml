@@ -20,8 +20,8 @@
 
   function init() {    
     myMap = new ymaps.Map("map", {
-      center: [0, 0],
-    zoom: 0,
+      center: [jsModel.Latitude, jsModel.Longitude],
+    zoom: jsModel.Zoom,
     controls: []
   })
 
@@ -53,7 +53,7 @@
       <div class="col-sm-3">Год</div>
       <div class="col-sm-9">@Model.DateStart</div>
       <div class="col-sm-3">Место</div>
-      <div class="col-sm-9">@Model.Location</div>
+      <div class="col-sm-9">@Model.Location.Name</div>
       <div class="col-sm-12" id="map" style="height:240px"></div>
       <div class="col-sm-12">Комментарии</div>
       @if (@Model.ShotComments != null)      

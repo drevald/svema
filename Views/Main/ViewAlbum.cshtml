@@ -49,7 +49,6 @@
         <a  class="btn btn-primary" href="#">Слайдшоу</a>&nbsp;
       </div>
       <div class="col-sm-3">Название</div><div class="col-sm-9">@Model.Name</div>      
-      <div class="col-sm-3">Год</div><div class="col-sm-9">@Model.DateFrom</div>
       @if (@ViewBag.Locations != null) {
         @foreach(var location in @ViewBag.locations) {
             @* <div class="col-sm-12">@location.Name</div> *@

@@ -41,7 +41,7 @@ public class Storage {
             try {
                 System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
             } catch (Exception e) {
-
+                Console.Write("Error " + e);
             }
         } else {
             YandexDisk yandexDisk = new YandexDisk();

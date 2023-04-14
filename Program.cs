@@ -29,6 +29,8 @@ var dbConnection =
 ";Password=" + password + 
 ";Port=" + uri.Port;
 
+dbConnection += ";Include Error Detail=True";
+
 builder.WebHost.ConfigureKestrel(opts =>
 {
     opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));

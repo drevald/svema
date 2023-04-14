@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace svema.Form;
 
+public class AlbumCUT {
+    public int AlbumId {get; set;}
+}
+
 public class AlbumDTO {
     public int AlbumId {get; set;}
     public string Name {get; set;}

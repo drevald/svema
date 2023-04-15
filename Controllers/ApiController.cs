@@ -2,6 +2,9 @@ using System.Data;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Data;
 using Form;
 
@@ -26,8 +29,11 @@ public class RestController: BaseController {
     }
 
     [HttpPost("shots")]
-    public JsonResult PostShot([FromBody] ShotREST dto) {
-//        ProcessShot(dto.Data, dto.Name, dto.)
+    public async Task<JsonResult> PostShot([FromBody] ShotREST dto) {
+        var album = dbContext.Albums.Find(dto.AlbumId);
+        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).Include(u => u.Storage).First();
+        var errors = new Dictionary<string, string>();
+        await ProcessShot(dto.Data, dto.Name, dto.Mime, album, user.Storage, errors);
     //public async Task<Dictionary<string, string>> ProcessShot(byte[] data, string name, string mime, Album album, ShotStorage storage, Dictionary<string, string> errors) {
         Shot shot = new Shot();
         dbContext.Add(shot);

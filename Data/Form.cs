@@ -47,6 +47,8 @@ public class ShotREST {
     [BindProperty, DataType(DataType.Date)] 
     public DateTime DateEnd {get; set;}
     public byte[] Data {get; set;}
+
+    public string Mime {get; set;}
 }
 
 public class ShotDTO {

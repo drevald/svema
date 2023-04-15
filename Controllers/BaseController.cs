@@ -59,7 +59,7 @@ public class BaseController: Controller {
             }
             shot.SourceUri = "" + shot.ShotId;
             shot.Storage = storage;
-            Storage.StoreShot(shot, stream1.GetBuffer());
+            Storage.StoreShot(shot, stream1.ToArray());
             await dbContext.SaveChangesAsync();
         }   catch (DbUpdateException e) {
             System.Console.Write("The DbUpdateException is " + e.Data);

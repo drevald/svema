@@ -7,10 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace svema.Form;
 
-public class AlbumCUT {
-    public int AlbumId {get; set;}
-}
-
 public class AlbumDTO {
     public int AlbumId {get; set;}
     public string Name {get; set;}
@@ -39,6 +35,18 @@ public class ShotPreviewDTO {
         IsChecked = false;
     }
 
+}
+
+public class ShotREST {
+    public int ShotId {get; set;}
+    public int AlbumId {get; set;}
+    public string Name {get; set;}
+    public int UserId {get; set;}
+    [BindProperty, DataType(DataType.Date)] 
+    public DateTime DateStart {get; set;}
+    [BindProperty, DataType(DataType.Date)] 
+    public DateTime DateEnd {get; set;}
+    public byte[] Data {get; set;}
 }
 
 public class ShotDTO {

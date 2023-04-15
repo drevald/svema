@@ -39,15 +39,17 @@ public class RestController: Controller {
     }
 
     [HttpPost("shots")]
-    public JsonResult PostShot(Shot shot) {
+    public JsonResult PostShot([FromBody] ShotREST dto) {
+        Shot shot = new Shot();
         dbContext.Add(shot);
         dbContext.SaveChanges();
         return new JsonResult(shot);
     }
 
     [HttpPost("albums")]
-    public JsonResult PostAlbum([FromBody] AlbumCUT dto) {
+    public JsonResult PostAlbum([FromBody] AlbumDTO dto) {
         Album album = new Album();
+        album.Name = dto.Name;
         dbContext.Add(album);
         dbContext.SaveChanges();
         return new JsonResult(album);

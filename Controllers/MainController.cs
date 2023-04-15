@@ -19,10 +19,6 @@ namespace Controllers;
 
 public class MainController: BaseController {
 
-    ApplicationDbContext dbContext;
-
-    IConfiguration config;
-
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
     {
     }

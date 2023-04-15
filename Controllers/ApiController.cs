@@ -15,15 +15,13 @@ using System.Text.Json;
 namespace Controllers;
 
 [Route("api")]
-public class RestController: Controller {
+public class RestController: BaseController {
 
     ApplicationDbContext dbContext;
 
     IConfiguration config;
 
-    public RestController (ApplicationDbContext dbContext, IConfiguration config) {
-        this.dbContext = dbContext;
-        this.config = config;
+    public RestController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }
 
     [HttpGet("albums")]
@@ -40,6 +38,8 @@ public class RestController: Controller {
 
     [HttpPost("shots")]
     public JsonResult PostShot([FromBody] ShotREST dto) {
+//        ProcessShot(dto.Data, dto.Name, dto.)
+    //public async Task<Dictionary<string, string>> ProcessShot(byte[] data, string name, string mime, Album album, ShotStorage storage, Dictionary<string, string> errors) {
         Shot shot = new Shot();
         dbContext.Add(shot);
         dbContext.SaveChanges();

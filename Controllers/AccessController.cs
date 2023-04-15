@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
-using svema.Data;
+using Data;
 
-namespace svema.Controllers;
+namespace Controllers;
 
 public class AccessController: Controller {
 

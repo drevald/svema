@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using svema.Data;
+using Data;
 using System;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
-namespace svema.Form;
+namespace Form;
 
 public class AlbumDTO {
     public int AlbumId {get; set;}

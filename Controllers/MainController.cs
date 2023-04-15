@@ -12,21 +12,25 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Microsoft.AspNetCore.Authorization;
-using svema.Form;
-using svema.Data;
+using Form;
+using Data;
 
-namespace svema.Controllers;
+namespace Controllers;
 
-public class MainController: Controller {
+public class MainController: BaseController {
 
     ApplicationDbContext dbContext;
 
     IConfiguration config;
 
-    public MainController (ApplicationDbContext dbContext, IConfiguration config) {
-        this.dbContext = dbContext;
-        this.config = config;
+    public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
+    {
     }
+
+    // public MainController (ApplicationDbContext dbContext, IConfiguration config) {
+    //     this.dbContext = dbContext;
+    //     this.config = config;
+    // }
 
     [Authorize]
     [HttpGet("")]
@@ -189,53 +193,13 @@ public class MainController: Controller {
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
         var filePaths = new List<string>();
-        using var md5 = MD5.Create();
         var errors = new Dictionary<string, string>();
         foreach (var formFile in files) {            
             if (formFile.Length > 0) {
-                try {
-                    using var stream = new MemoryStream();
-                    using var stream1 = new MemoryStream();
-                    using var outputStream = new MemoryStream();
-                    await formFile.CopyToAsync(stream);
-                    await formFile.CopyToAsync(stream1);
-                    stream.Position = 0;
-                    stream1.Position = 0;
-                    using var image = Image.Load(stream);
-                    float ratio = (float)image.Width/(float)image.Height;
-                    if (ratio > 1 ) {
-                        image.Mutate(x => x.Resize((int)(200 * ratio), 200));
-                        image.Mutate(x => x.Crop(new Rectangle((image.Width-200)/2, 0, 200, 200)));
-                    } else {
-                        image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
-                        image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
-                    }
-                    ImageExtensions.SaveAsJpeg(image, outputStream);
-                    Shot shot = new Shot();
-                    shot.ContentType = formFile.ContentType;
-                    shot.Name = formFile.FileName;
-                    shot.Album = album;
-                    shot.Preview = outputStream.GetBuffer();
-                    stream.Position = 0;
-
-                    shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                    dbContext.Shots.Add(shot);
-                    await dbContext.SaveChangesAsync();
-                    if (album.PreviewId == 0) {
-                        album.PreviewId = shot.ShotId;
-                        dbContext.Albums.Update(album);
-                    }
-                    shot.SourceUri = "" + shot.ShotId;
-                    shot.Storage = user.Storage;
-                    Storage.StoreShot(shot, stream1.GetBuffer());
-                    await dbContext.SaveChangesAsync();
-                }   catch (DbUpdateException e) {
-                    System.Console.Write("The DbUpdateException is " + e.Data);
-                    errors.Add(formFile.FileName, e.InnerException.Message);
-                }   catch (Exception e) {
-                    System.Console.Write("The Exception is " + e.Data);
-                    errors.Add(formFile.FileName, e.Message);
-                } 
+                using var fileStream = formFile.OpenReadStream();
+                byte[] bytes = new byte[formFile.Length];
+                fileStream.Read(bytes, 0, (int)formFile.Length);
+                errors = await ProcessShot(bytes, formFile.Name, formFile.ContentType, album, user.Storage, errors);
             }
 
         }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-using svema.Data;
+using Data;
 
 var logger = LoggerFactory.Create(config => {
     config.AddConsole();

@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
-using svema.Data;
-using svema.Form;
+using Data;
+using Form;
 using System.Text.Json;
 
-namespace svema.Controllers;
+namespace Controllers;
 
 [Route("api")]
 public class RestController: Controller {

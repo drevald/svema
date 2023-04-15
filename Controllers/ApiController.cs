@@ -1,25 +1,14 @@
-using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Authentication;
-using System.Security.Claims;
 using Data;
 using Form;
-using System.Text.Json;
 
 namespace Controllers;
 
 [Route("api")]
 public class RestController: BaseController {
-
-    ApplicationDbContext dbContext;
-
-    IConfiguration config;
 
     public RestController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }

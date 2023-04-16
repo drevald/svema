@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -25,8 +23,7 @@ public class BaseController: Controller {
         this.config = config;
     }
 
-    public async Task<Dictionary<string, string>> ProcessShot(byte[] data, string name, string mime, Album album, ShotStorage storage, Dictionary<string, string> errors) {
-        Shot shot = new Shot();
+    public async Task<Dictionary<string, string>> ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> errors) {
         try {
             using var md5 = MD5.Create();
             using var stream = new MemoryStream(data);

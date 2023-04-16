@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using Microsoft.AspNetCore.Mvc;
 using Data;
 
 public class Storage {

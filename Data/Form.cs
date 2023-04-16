@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Data;
 using System;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 

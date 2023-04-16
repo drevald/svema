@@ -53,7 +53,9 @@
       <div class="col-sm-3">Год</div>
       <div class="col-sm-9">@Model.DateStart</div>
       <div class="col-sm-3">Место</div>
-      <div class="col-sm-9">@Model.Location.Name</div>
+      @if (@Model.Location != null) {
+        <div class="col-sm-9">@Model.Location.Name</div>
+      }
       <div class="col-sm-12" id="map" style="height:240px"></div>
       <div class="col-sm-12">Комментарии</div>
       @if (@Model.ShotComments != null)      

@@ -16,8 +16,7 @@ namespace Controllers;
 
 public class MainController: BaseController {
 
-    public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
-    {
+    public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }
 
     // public MainController (ApplicationDbContext dbContext, IConfiguration config) {
@@ -117,7 +116,6 @@ public class MainController: BaseController {
 
     [HttpGet("edit_shot")]
     public async Task<IActionResult> EditShot(int id) {
-
         var shot = await dbContext.Shots.FindAsync(id);
         var album = await dbContext.Albums.FindAsync(shot.AlbumId);        
         var location = await dbContext.Locations.FindAsync(shot.LocationId);
@@ -127,12 +125,10 @@ public class MainController: BaseController {
         dto.Location = location;
         dto.IsCover = shot.ShotId == album.PreviewId;    
         return View(dto);
-
     }
 
     [HttpPost("edit_shot")]
     public async Task<IActionResult> StoreShot(ShotDTO dto) {
-
         Shot shot = await dbContext.Shots.FindAsync(dto.ShotId);
         Album album = await dbContext.Albums.FindAsync(shot.AlbumId);
         shot.LocationId = dto.LocationId;
@@ -192,9 +188,9 @@ public class MainController: BaseController {
                 using var fileStream = formFile.OpenReadStream();
                 byte[] bytes = new byte[formFile.Length];
                 fileStream.Read(bytes, 0, (int)formFile.Length);
-                errors = await ProcessShot(bytes, formFile.Name, formFile.ContentType, album, user.Storage, errors);
+                var shot = new Shot();
+                errors = await ProcessShot(bytes, formFile.Name, formFile.ContentType, shot, album, user.Storage, errors);
             }
-
         }
         ViewBag.albumId = albumId;        
         ViewBag.errors = errors;
@@ -234,8 +230,6 @@ public class MainController: BaseController {
         await dbContext.SaveChangesAsync();
         return Redirect("locations");
     }
-
-
 
     [HttpGet("view_shot")]
     public async Task<IActionResult> ViewShot(int id) {

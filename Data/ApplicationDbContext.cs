@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Data;
@@ -29,14 +30,20 @@ public class ApplicationDbContext : DbContext {
 
 }
 
+[Table("albums")]
 public class Album {
+
+    [Column("id")]
     public int AlbumId {get; set;}
+    [Column("name")]
     public string Name {get; set;}
+    [Column("user")]
     public User User {get; set;}
     public int PreviewId {get; set;}
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumComment> AlbumComments {get; set;}
 }
+
 
 public class Shot {
     public int ShotId {get; set;}

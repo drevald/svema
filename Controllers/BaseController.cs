@@ -41,12 +41,13 @@ public class BaseController: Controller {
                 image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
             }
             ImageExtensions.SaveAsJpeg(image, outputStream);
+            shot.Size = data.Length;
             shot.ContentType = mime;
             shot.Name = name;
             shot.Album = album;
             shot.Preview = outputStream.GetBuffer();
+            shot.Storage = storage;
             stream.Position = 0;
-
             shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
             dbContext.Shots.Add(shot);
             await dbContext.SaveChangesAsync();
@@ -55,7 +56,6 @@ public class BaseController: Controller {
                 dbContext.Albums.Update(album);
             }
             shot.SourceUri = "" + shot.ShotId;
-            shot.Storage = storage;
             Storage.StoreShot(shot, stream1.ToArray());
             await dbContext.SaveChangesAsync();
         }   catch (DbUpdateException e) {

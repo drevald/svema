@@ -32,21 +32,22 @@
     )
   )
 
-
 }
-
 
 </script>
 
 <div class="row h-100">
   <div class="col-md-2 p-5 h-100" style="width:500px">
     <div class="row g-3">
-      <div class="col-sm-6">
-        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId">Вернуться</a>
+      <div class="col-sm-3">
+        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId">Назад</a>
       </div>
+      <div class="col-sm-3 text-center">
+        <a class="btn btn-primary" href="/shot?id=@Model.ShotId">Оригинал</a>&nbsp;
+      </div>      
       <div class="col-sm-6 text-end">
-        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId">Prev</a>&nbsp;
-        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId">Next</a>
+        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId">Пред</a>&nbsp;
+        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId">След</a>
       </div>
       <div class="col-sm-3">Альбом</div>
       <div class="col-sm-9">@Model.Album.Name</div>

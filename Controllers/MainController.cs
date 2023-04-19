@@ -189,7 +189,7 @@ public class MainController: BaseController {
                 byte[] bytes = new byte[formFile.Length];
                 fileStream.Read(bytes, 0, (int)formFile.Length);
                 var shot = new Shot();
-                errors = await ProcessShot(bytes, formFile.Name, formFile.ContentType, shot, album, user.Storage, errors);
+                errors = await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, user.Storage, errors);
             }
         }
         ViewBag.albumId = albumId;        

@@ -27,6 +27,7 @@ public class MainController: BaseController {
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Index() {
+        Console.WriteLine("!!!!LIST ALBUM");
         var albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
         var locations = await dbContext.Locations.ToListAsync();
         ViewBag.locations = locations;
@@ -37,7 +38,6 @@ public class MainController: BaseController {
 
     [HttpGet("edit_album")]
     public async Task<IActionResult> EditAlbum(int id) {
-
         AlbumDTO dto = new AlbumDTO();
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
         var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
@@ -58,6 +58,7 @@ public class MainController: BaseController {
 
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto) {
+        Console.Write("!!!!STORE ALBUM");
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
         foreach (var s in dto.Shots)  {
@@ -81,7 +82,7 @@ public class MainController: BaseController {
 
     [HttpPost("add_album")]
     public async Task<IActionResult> CreateAlbum(Album album) {
-        System.Console.Write("STORING ALBUM (" + album.AlbumId + ")");
+        Console.Write("STORING ALBUM (" + album.AlbumId + ")");
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
@@ -150,8 +151,11 @@ public class MainController: BaseController {
 
     [HttpGet("preview")]
     public async Task<IActionResult> Preview(int id) {
+        Console.WriteLine("PREVIEW " + id);
         var result = await dbContext.Shots.FindAsync(id);
+        Console.WriteLine("PREVIEW result is " + result);
         var stream = new MemoryStream();
+        Console.WriteLine("PREVIEW result.Preview is " + result.Preview);
         stream.Write(result.Preview, 0, result.Preview.Length);
         stream.Position = 0;
         return new FileStreamResult(stream, "image/jpeg");

@@ -5,6 +5,7 @@ using Data;
 public class Storage {
 
     public static void StoreShot(Shot shot, byte[] data) {
+        Console.WriteLine("!!!!STORE_SHOT to " + shot.SourceUri);
         if (shot.Storage == null) {
             Console.Write("Storage not defined for " + shot);
             return;

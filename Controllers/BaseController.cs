@@ -55,7 +55,7 @@ public class BaseController: Controller {
                 album.PreviewId = shot.ShotId;
                 dbContext.Albums.Update(album);
             }
-            shot.SourceUri = "" + shot.ShotId;
+            shot.SourceUri = "user_" + album.User.UserId + "/album_" + album.AlbumId + "/shot_" + shot.ShotId;
             Storage.StoreShot(shot, stream1.ToArray());
             await dbContext.SaveChangesAsync();
         }   catch (DbUpdateException e) {

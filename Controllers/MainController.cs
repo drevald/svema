@@ -83,6 +83,8 @@ public class MainController: BaseController {
     [HttpPost("add_album")]
     public async Task<IActionResult> CreateAlbum(Album album) {
         Console.Write("STORING ALBUM (" + album.AlbumId + ")");
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
+        album.User = user;
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
         return Redirect("/");
@@ -155,7 +157,6 @@ public class MainController: BaseController {
         var result = await dbContext.Shots.FindAsync(id);
         Console.WriteLine("PREVIEW result is " + result);
         var stream = new MemoryStream();
-        Console.WriteLine("PREVIEW result.Preview is " + result.Preview);
         stream.Write(result.Preview, 0, result.Preview.Length);
         stream.Position = 0;
         return new FileStreamResult(stream, "image/jpeg");

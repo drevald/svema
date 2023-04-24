@@ -8,6 +8,7 @@ namespace Form;
 
 public class AlbumDTO {
     public int AlbumId {get; set;}
+    public int UserId {get; set;}
     public string Name {get; set;}
     public int LocationId {get; set;}
     [BindProperty, DataType(DataType.Date)] 
@@ -48,6 +49,21 @@ public class ShotREST {
     public byte[] Data {get; set;}
 
     public string Mime {get; set;}
+
+    public ShotREST() {
+
+    }
+
+    public ShotREST(Shot shot) {
+        ShotId = shot.ShotId;
+        AlbumId = shot.AlbumId;
+        Name = shot.Name;
+        UserId = shot.Album.User.UserId;
+        DateStart = shot.DateStart;
+        DateEnd = shot.DateEnd;
+        Mime = shot.ContentType;;
+    }
+
 }
 
 public class ShotDTO {

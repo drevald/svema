@@ -29,7 +29,7 @@ public class RestController: BaseController {
     }
 
     [HttpPost("shots")]
-    public async Task<JsonResult> PostShot([FromBody] ShotREST dto) {
+    public async Task PostShot([FromBody] ShotREST dto) {
         var album = dbContext.Albums.Find(dto.AlbumId);
         var user = dbContext.Users.Where(u => u.UserId==dto.UserId).Include(u => u.Storage).First();
         var errors = new Dictionary<string, string>();
@@ -39,12 +39,13 @@ public class RestController: BaseController {
         shot.Album = album;
         shot.AlbumId = dto.AlbumId;
         await ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, user.Storage, errors);
-        return new JsonResult(shot);
     }
 
     [HttpPost("albums")]
     public JsonResult PostAlbum([FromBody] AlbumDTO dto) {
+        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).Include(u => u.Storage).First();
         Album album = new Album();
+        album.User = user;
         album.Name = dto.Name;
         dbContext.Add(album);
         dbContext.SaveChanges();

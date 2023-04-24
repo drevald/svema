@@ -57,8 +57,12 @@ app.UseEndpoints(endpoints =>
 
 using(var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    try {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        dbContext.Database.Migrate();
+    } catch (Exception e) {
+        Console.WriteLine(e.Message);
+    }
 }
 
 app.Run();

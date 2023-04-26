@@ -32,3 +32,7 @@ DB_CONNECTION=Host=localhost;Username=postgres;Password=password;Database=svema;
 STORAGE_DIR=/Users/denis/Desktop/SVEMA/
 PORT=8888
 
+INSERT INTO storages (user_id,auth_token,refresh_token,provider,root) VALUES
+	 (1,NULL,NULL,'LocalDisk','/storage/svema');
+
+ 

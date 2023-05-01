@@ -19,19 +19,22 @@ public class MainController: BaseController {
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }
 
-    // public MainController (ApplicationDbContext dbContext, IConfiguration config) {
-    //     this.dbContext = dbContext;
-    //     this.config = config;
-    // }
-
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Index() {
-        Console.WriteLine("!!!!LIST ALBUM");
-        var albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
-        var locations = await dbContext.Locations.ToListAsync();
-        ViewBag.locations = locations;
-        return View(albums);
+        var albumsList = new AlbumsListDTO();
+        albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
+        albumsList.Locations = await dbContext.Locations.ToListAsync();
+        return View(albumsList);
+    }
+
+    [Authorize]
+    [HttpPost("")]
+    public async Task<IActionResult> IndexFiltered(AlbumsListDTO dto) {
+        var albumsList = new AlbumsListDTO();
+        albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
+        albumsList.Locations = await dbContext.Locations.ToListAsync();
+        return View(albumsList);
     }
 
 ///////////////////   ALBUM  /////////////////////////////////////////
@@ -180,9 +183,6 @@ public class MainController: BaseController {
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
-        // ShotStorage storage = await dbContext.ShotStorages.FindAsync(1);
-        // user.Storage = storage;
-        // dbContext.Update(user);
         await dbContext.SaveChangesAsync();
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);

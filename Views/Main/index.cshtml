@@ -1,4 +1,4 @@
-@model IEnumerable<Data.Album>
+@model Form.AlbumsListDTO
 @using System.Web
 @using Newtonsoft.Json
 @{Layout = "_Layout";}
@@ -32,9 +32,9 @@
 </script>
 
     <div class="row">
-      <div class="col-md-2 p-5" style="width:500px">
+      <div class="col-md-2 p-5" style="width:500px">l.
 
-        <form class="needs-validation" novalidate>
+        <form class="needs-validation" method="post" novalidate>
           <div class="row g-3">
 
             <div class="col-sm-6">
@@ -46,7 +46,8 @@
 
             <div class="col-sm-6">
               <label class="form-label">Год, от</label>
-              <select class="form-select" id="state" required>                     
+              <select asp-for="DateStart" class="form-select" id="state" required>                     
+                  <option>&nbsp;</option>
                   @{
                       var start = 1950;
                       var end = DateTime.Now.Year;
@@ -60,7 +61,8 @@
 
             <div class="col-sm-6">
               <label class="form-label">Год, до</label>
-              <select class="form-select" id="state" required>                     
+              <select asp-for="DateEnd" class="form-select" id="state" required>                     
+                <option>&nbsp;</option>
                   @{
                       var start1 = 1950;
                       var end1 = DateTime.Now.Year;
@@ -76,7 +78,7 @@
                     <label for="lastName" class="form-label">Место</label>
                     <select class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
                         <option></option>
-                        @foreach(var location in @ViewBag.locations) {
+                        @foreach(var location in @Model.Locations) {
                             <option value="@location.Id">@location.Name</option>
                         }
                     </select>
@@ -136,12 +138,17 @@
               <button type="button" class="btn btn-primary">Добавить персонаж</button>
             </div> -->
 
+            <div class="col-sm-6 text-end">
+              <input type="submit" class="btn btn-primary" value="Обновить">
+            </div>
+
           </div>
+
         </form>
       </div>
       <div class="col p-5">
         <div class="d-flex flex-wrap overflow-auto h-100">
-          @foreach(var album in Model) {
+          @foreach(var album in Model.Albums) {
           <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
             <div class="card-header d-flex justify-content-between align-items-center">
               <div>

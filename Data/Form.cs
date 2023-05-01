@@ -6,6 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Form;
 
+public class AlbumsListDTO {
+    public DateTime DateStart {get; set;}
+    public DateTime DateEnd {get; set;}
+    public ICollection<Location> Locations {get; set;}
+    
+    public ICollection<Album> Albums {get; set;}
+
+}
+
 public class AlbumDTO {
     public int AlbumId {get; set;}
     public int UserId {get; set;}

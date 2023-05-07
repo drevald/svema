@@ -32,9 +32,9 @@
 </script>
 
     <div class="row">
-      <div class="col-md-2 p-5" style="width:500px">l.
+      <div class="col-md-2 p-5" style="width:500px">
 
-        <form class="needs-validation" method="post" novalidate>
+        <form class="needs-validation" method="get" novalidate>
           <div class="row g-3">
 
             <div class="col-sm-6">
@@ -76,7 +76,7 @@
 
                 <div class="col-sm-12">
                     <label for="lastName" class="form-label">Место</label>
-                    <select class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
                         <option></option>
                         @foreach(var location in @Model.Locations) {
                             <option value="@location.Id">@location.Name</option>

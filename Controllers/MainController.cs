@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -21,21 +22,40 @@ public class MainController: BaseController {
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Index() {
-        var albumsList = new AlbumsListDTO();
-        albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
+    public async Task<IActionResult> Index(AlbumsListDTO dto) {
+        var albumsList = new AlbumsListDTO();   
+        CultureInfo provider = CultureInfo.InvariantCulture;
+        IQueryable<Shot> shotsQuerable = dbContext.Shots;
+        shotsQuerable =  shotsQuerable.Include(s => s.Album);        
+        if (dto.DateStart != null) {
+            var dateStart = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
+            shotsQuerable = shotsQuerable.Where(s => s.DateStart >= dateStart);
+        }
+        if (dto.DateEnd != null) {
+            var dateEnd = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
+            shotsQuerable = shotsQuerable.Where(s => s.DateEnd <= dateEnd);
+        }
+        if (dto.LocationId > 0) {
+           shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
+        }
+        var shots = await shotsQuerable.ToListAsync<Shot>();
+        foreach (Shot s in shots) {
+            albumsList.Albums.Add(s.Album);
+        }
         albumsList.Locations = await dbContext.Locations.ToListAsync();
+        albumsList.DateStart = dto.DateStart;
+        albumsList.DateEnd = dto.DateEnd;
         return View(albumsList);
     }
 
-    [Authorize]
-    [HttpPost("")]
-    public async Task<IActionResult> IndexFiltered(AlbumsListDTO dto) {
-        var albumsList = new AlbumsListDTO();
-        albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
-        albumsList.Locations = await dbContext.Locations.ToListAsync();
-        return View(albumsList);
-    }
+    // [Authorize]
+    // [HttpPost("")]
+    // public async Task<IActionResult> IndexFiltered(AlbumsListDTO dto) {
+    //     var albumsList = new AlbumsListDTO();
+    //     albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
+    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
+    //     return View(albumsList);
+    // }
 
 ///////////////////   ALBUM  /////////////////////////////////////////
 
@@ -67,9 +87,21 @@ public class MainController: BaseController {
         foreach (var s in dto.Shots)  {
             if (s.IsChecked) {
                 Shot shot = await dbContext.Shots.FindAsync(s.ShotId);
-                shot.DateStart = dto.DateStart;
-                shot.DateEnd = dto.DateEnd;
-                shot.LocationId = dto.LocationId;
+                if (dto.Year < 0) {
+                    shot.DateEnd = DateTime.MinValue;
+                    shot.DateStart = DateTime.MinValue;
+                }
+                if (DateTime.MinValue != dto.DateStart) {
+                    shot.DateStart = dto.DateStart;
+                }
+                if (DateTime.MinValue != dto.DateEnd) {
+                    shot.DateEnd = dto.DateEnd;
+                }
+                if (dto.LocationId > 0) {
+                    shot.LocationId = dto.LocationId;
+                } else if (dto.LocationId < 0) {
+                    shot.LocationId = null;
+                }
                 await dbContext.SaveChangesAsync();
             }
         }

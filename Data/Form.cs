@@ -7,22 +7,29 @@ using Microsoft.AspNetCore.Mvc;
 namespace Form;
 
 public class AlbumsListDTO {
-    public DateTime DateStart {get; set;}
-    public DateTime DateEnd {get; set;}
+    public String DateStart {get; set;}
+    public String DateEnd {get; set;}
+    public int LocationId {get; set;}
     public ICollection<Location> Locations {get; set;}
-    
     public ICollection<Album> Albums {get; set;}
-
+    public AlbumsListDTO() {
+        // DateStart = "1961";
+        // DateEnd = DateTime.Now.Year.ToString();
+        Albums = new HashSet<Album>();
+    }
 }
 
 public class AlbumDTO {
     public int AlbumId {get; set;}
     public int UserId {get; set;}
     public string Name {get; set;}
+    public int Year {get; set;}
     public int LocationId {get; set;}
     [BindProperty, DataType(DataType.Date)] 
+    [DisplayFormat(DataFormatString = "{0:dd-MM-yyyy}")]
     public DateTime DateStart {get; set;}
     [BindProperty, DataType(DataType.Date)] 
+    [DisplayFormat(DataFormatString = "{0:dd-MM-yyyy}")]
     public DateTime DateEnd {get; set;}    
     public ICollection<AlbumComment> AlbumComments {get; set;}
     public ICollection<Location> Locations {get; set;}

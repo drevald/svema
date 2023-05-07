@@ -24,6 +24,7 @@
   function show(i) {
 
     var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+    var shift = 2;
 
     if (i == 0) {
         myMap.setCenter([0, 0]);
@@ -32,18 +33,22 @@
     }
     if (myGeoObject == null) {
         myGeoObject = new ymaps.GeoObject(
-            {geometry: { type: "Point", coordinates: [jsModel[i-1].Latitude, jsModel[i-1].Longitude]}, properties: { iconContent: jsModel[i-1].Name }}, 
+            {geometry: { type: "Point", coordinates: [jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]}, properties: { iconContent: jsModel[i-shift].Name }}, 
             {preset: 'islands#blackStretchyIcon', draggable: true}
         )
         myMap.geoObjects.add(myGeoObject);
     }
-    myGeoObject.geometry.setCoordinates([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
-    myGeoObject.properties.set('iconContent', jsModel[i-1].Name); 
-    myMap.setCenter([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
-    myMap.setZoom(jsModel[i-1].Zoom);
+    myGeoObject.geometry.setCoordinates([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
+    myGeoObject.properties.set('iconContent', jsModel[i-shift].Name); 
+    myMap.setCenter([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
+    myMap.setZoom(jsModel[i-shift].Zoom);
   }
 
     function setdate(year) {
+    if (year == -1) {
+        document.all["DateStart"].value="";
+        document.all["DateEnd"].value="";    
+    }
     if (year < 1000) {
       document.all["DateStart"].value=year + "0-01-01";
       document.all["DateEnd"].value=year + "9-12-31";
@@ -99,7 +104,9 @@
 
                 <div class="col-sm-12">
                     <label class="form-label">Год</label>
-                    <select class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+                    <select asp-for="Year" class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+                        <option></option>
+                        <option value="-1">Unknown</option>
                         @{
                         var startdec = 195;
                         var enddec = DateTime.Now.Year / 10;
@@ -123,18 +130,19 @@
     
                 <div class="col-sm-12">
                     <label class="form-label">Дата, от</label>
-                    <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                    <input asp-for="DateStart" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
                 </div>
     
                 <div class="col-sm-12">
                     <label class="form-label">Дата, до</label>
-                    <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+                    <input asp-for="DateEnd" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
                 </div> 
 
                 <div class="col-sm-12">
                     <label class="form-label">Место</label>
                     <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
                         <option></option>
+                        <option value=-1>Unknown</option>
                         @foreach(var location in @Model.Locations) {
                             <option value="@location.Id">@location.Name</option>
                         }

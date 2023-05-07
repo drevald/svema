@@ -23,6 +23,6 @@ services:
     depends_on:
       - postgres
     volumes:
-      - /Users/denis/storage:/storage
+      - /storage:/storage
 volumes:
   data:

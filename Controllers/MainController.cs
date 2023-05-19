@@ -20,6 +20,7 @@ public class MainController: BaseController {
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }
 
+
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Index(AlbumsListDTO dto) {
@@ -40,8 +41,37 @@ public class MainController: BaseController {
         }
         var shots = await shotsQuerable.ToListAsync<Shot>();
         foreach (Shot s in shots) {
-            albumsList.Albums.Add(s.Album);
+            albumsList.Albums.Add(new AlbumDTO(s.Album));
         }
+        albumsList.Locations = await dbContext.Locations.ToListAsync();
+        albumsList.DateStart = dto.DateStart;
+        albumsList.DateEnd = dto.DateEnd;
+        return View(albumsList);
+    }
+
+    [Authorize]
+    [HttpGet("edit")]
+    public async Task<IActionResult> Edit(AlbumsListDTO dto) {
+        var albumsList = new AlbumsListDTO();   
+        CultureInfo provider = CultureInfo.InvariantCulture;
+        IQueryable<Shot> shotsQuerable = dbContext.Shots;
+        shotsQuerable =  shotsQuerable.Include(s => s.Album);        
+        if (dto.DateStart != null) {
+            var dateStart = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
+            shotsQuerable = shotsQuerable.Where(s => s.DateStart >= dateStart);
+        }
+        if (dto.DateEnd != null) {
+            var dateEnd = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
+            shotsQuerable = shotsQuerable.Where(s => s.DateEnd <= dateEnd);
+        }
+        if (dto.LocationId > 0) {
+           shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
+        }
+        var shots = await shotsQuerable.ToListAsync<Shot>();
+        foreach (Shot s in shots) {
+            albumsList.Albums.Add(new AlbumDTO(s.Album));
+        }
+        albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;

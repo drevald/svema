@@ -11,12 +11,14 @@ public class AlbumsListDTO {
     public String DateEnd {get; set;}
     public int LocationId {get; set;}
     public ICollection<Location> Locations {get; set;}
-    public ICollection<Album> Albums {get; set;}
+    public HashSet<AlbumDTO> Albums {get; set;}
+
+    public List<AlbumDTO> AlbumsList {get; set;}
     public AlbumsListDTO() {
-        // DateStart = "1961";
-        // DateEnd = DateTime.Now.Year.ToString();
-        Albums = new HashSet<Album>();
+        Albums = new HashSet<AlbumDTO>();
+        AlbumsList = new List<AlbumDTO>();
     }
+
 }
 
 public class AlbumDTO {
@@ -34,6 +36,30 @@ public class AlbumDTO {
     public ICollection<AlbumComment> AlbumComments {get; set;}
     public ICollection<Location> Locations {get; set;}
     public List<ShotPreviewDTO> Shots {get; set;}
+    public bool IsChecked {get; set;}
+
+    public int PreviewId {get; set;}
+
+    public AlbumDTO() {
+
+    }
+
+    public AlbumDTO(Album album) {
+        AlbumId = album.AlbumId;
+        PreviewId = album.PreviewId;
+    }
+
+    public override bool Equals(object obj) {
+        if (obj == null || GetType() != obj.GetType()) {
+            return false;
+        }
+        return ((AlbumDTO)this).AlbumId == ((AlbumDTO)obj).AlbumId;
+    }
+    
+    public override int GetHashCode() {
+        return this.AlbumId;
+    }
+
 }
 
 public class ShotPreviewDTO {

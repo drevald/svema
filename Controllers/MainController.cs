@@ -51,20 +51,12 @@ public class MainController: BaseController {
 
     [Authorize]
     [HttpGet("edit")]
-    public async Task<IActionResult> Edit(AlbumsListDTO dto) {
+    public async Task<IActionResult> EditAlbums(AlbumsListDTO dto) {
 
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuerable = dbContext.Shots;
         shotsQuerable =  shotsQuerable.Include(s => s.Album);        
-        if (dto.DateStart != null) {
-            var dateStart = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-            shotsQuerable = shotsQuerable.Where(s => s.DateStart >= dateStart);
-        }
-        if (dto.DateEnd != null) {
-            var dateEnd = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-            shotsQuerable = shotsQuerable.Where(s => s.DateEnd <= dateEnd);
-        }
         if (dto.LocationId > 0) {
            shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
         }
@@ -94,6 +86,45 @@ public class MainController: BaseController {
         return View(albumsList);
 
     }
+
+    [Authorize]
+    [HttpPost("edit")]
+    public async Task<IActionResult> StoreAlbums(AlbumsListDTO dto) {
+
+        var albumsList = new AlbumsListDTO();   
+        CultureInfo provider = CultureInfo.InvariantCulture;
+        IQueryable<Shot> shotsQuerable = dbContext.Shots;
+        shotsQuerable =  shotsQuerable.Include(s => s.Album);        
+        if (dto.LocationId > 0) {
+           shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
+        }
+        var shots = await shotsQuerable.ToListAsync<Shot>();
+        foreach (Shot s in shots) {
+            albumsList.Albums.Add(new AlbumDTO(s.Album));
+        }
+        albumsList.Locations = await dbContext.Locations.ToListAsync();
+        albumsList.DateStart = dto.DateStart;
+        albumsList.DateEnd = dto.DateEnd;
+        albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
+
+        foreach (var a in dto.AlbumsList)  {
+            if (a.IsChecked) {
+                var albumShots = await dbContext.Shots.Where(s => s.AlbumId == a.AlbumId).ToListAsync();
+                foreach (var s in albumShots) {
+                    if (dto.LocationId > 0) {
+                        s.LocationId = dto.LocationId;
+                    } else if (dto.LocationId < 0) {
+                        s.LocationId = null;
+                    }
+                }
+            }
+        }     
+        await dbContext.SaveChangesAsync();
+
+        return Redirect("/edit?LocationId=" + dto.LocationId);
+
+    }
+    
 
     // [Authorize]
     // [HttpPost("")]
@@ -239,8 +270,12 @@ public class MainController: BaseController {
         var result = await dbContext.Shots.FindAsync(id);
         Console.WriteLine("PREVIEW result is " + result);
         var stream = new MemoryStream();
-        stream.Write(result.Preview, 0, result.Preview.Length);
-        stream.Position = 0;
+        try {
+            stream.Write(result.Preview, 0, result.Preview.Length);
+            stream.Position = 0;
+        } catch (Exception e) {
+            Console.WriteLine(e.Message);
+        }
         return new FileStreamResult(stream, "image/jpeg");
     }
 

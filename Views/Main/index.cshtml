@@ -152,17 +152,11 @@
           <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
             <div class="card-header d-flex justify-content-between align-items-center">
               <div>
-                @album.Name
-              </div>
-              <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="/edit_album?id=@album.AlbumId">Редактировать</a></li>
-                  <li><a class="dropdown-item" href="/delete_album?id=@album.AlbumId">Удалить</a></li>
-                </ul>
+                @album.Name&nbsp;
               </div>
             </div>
-            <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
+            <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" 
+            style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
           </div>
           }
         </div>

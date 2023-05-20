@@ -52,6 +52,7 @@ public class MainController: BaseController {
     [Authorize]
     [HttpGet("edit")]
     public async Task<IActionResult> Edit(AlbumsListDTO dto) {
+
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuerable = dbContext.Shots;
@@ -71,11 +72,27 @@ public class MainController: BaseController {
         foreach (Shot s in shots) {
             albumsList.Albums.Add(new AlbumDTO(s.Album));
         }
-        albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
+        albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
+
+        foreach (var a in dto.AlbumsList)  {
+            if (a.IsChecked) {
+                var albumShots = await dbContext.Shots.Where(s => s.AlbumId == a.AlbumId).ToListAsync();
+                foreach (var s in albumShots) {
+                    if (dto.LocationId > 0) {
+                        s.LocationId = dto.LocationId;
+                    } else if (dto.LocationId < 0) {
+                        s.LocationId = null;
+                    }
+                }
+            }
+        }     
+        await dbContext.SaveChangesAsync();
+
         return View(albumsList);
+
     }
 
     // [Authorize]

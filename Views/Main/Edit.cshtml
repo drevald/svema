@@ -31,17 +31,25 @@
 
 </script>
 
+<form class="needs-validation" method="get" novalidate>
+
+  <div class="row">
+    <div class="col-md-12 p-5 pb-0 text-end">
+        <a class="btn btn-primary px-3" href="add_album">Добавить альбом</a>
+        <a class="btn btn-primary px-3" href="javascript:selectAll()">Выбрать все</a>
+        <a class="btn btn-primary px-3" href="javascript:deselectAll()">Снять выделение</a>
+        <input type="submit" class="btn btn-primary px-3" value="Сохранить">
+        <a class="btn btn-secondary ps-3" href="/">Отменить</a>
+    </div>
+  </div>
+
     <div class="row">
       <div class="col-md-2 p-5" style="width:500px">
 
-        <form class="needs-validation" method="get" novalidate>
           <div class="row g-3">
 
-            <div class="col-sm-6">
+            <div class="col-sm-12">
               <h4 class="mb-3">Фильтр</h4>
-            </div>
-            <div class="col-sm-6 text-end">
-              <a class="btn btn-primary" href="add_album">Добавить альбом</a>
             </div>
 
             <div class="col-sm-6">
@@ -88,63 +96,14 @@
                     <label for="lastName" class="form-label">Карта</label>
                     <div id="map" style="height:240px"></div>
                 </div>
+                <div class="col-sm-6 text-end">
 
-            <!-- <div class="col-12" style="white-space: nowrap; overflow:hidden;">
-              <label for="lastName" class="form-label">Персонажи</label>
-              <div class="d-flex flex-wrap" style="width:100%">
-                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
-                  <img src="max.png" class="h-100">
-                  <div class="card-footer p-2" style="font-size:xx-small">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <span class="text-wrap">
-                        Максим Викторович Дьяконов
-                      </span>
-                      <span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-trash" viewBox="0 0 16 16">
-                          <path
-                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-                          <path fill-rule="evenodd"
-                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <input type="submit" class="btn btn-primary" value="Обновить">
 
-                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
-                  <img src="max.png" class="h-100">
-                  <div class="card-footer p-2" style="font-size:xx-small">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <span class="text-wrap">
-                        Максим Викторович Дьяконов
-                      </span>
-                      <span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                          class="bi bi-trash" viewBox="0 0 16 16">
-                          <path
-                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-                          <path fill-rule="evenodd"
-                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
-            </div>
-
-            <div class="col-12">
-              <button type="button" class="btn btn-primary">Добавить персонаж</button>
-            </div> -->
-
-            <div class="col-sm-6 text-end">
-              <input type="submit" class="btn btn-primary" value="Обновить">
-            </div>
 
           </div>
 
-        </form>
       </div>
       <div class="col p-5">
         <div class="d-flex flex-wrap overflow-auto h-100">
@@ -162,10 +121,9 @@
                 </ul>
               </div>
             </div>
-            
             <div  class="card-body" onClick="location.href='/view_album?id=@Model.AlbumsList[index].AlbumId'" 
             style="background-image: url('/preview?id=@Model.AlbumsList[index].PreviewId'); background-repeat: no-repeat; background-size: cover;">
-              <input asp-for="@Model.AlbumsList[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem">
+              <input asp-for="@Model.AlbumsList[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem" onClick="javascript:event.stopPropagation();">
               <input type="hidden" asp-for="@Model.AlbumsList[index].AlbumId" />
               <input type="hidden" asp-for="@Model.AlbumsList[index].Name" />
             </div> 
@@ -175,3 +133,5 @@
         </div>
       </div>
     </div>
+
+  </form>

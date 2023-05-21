@@ -49,10 +49,7 @@ public class MainController: BaseController {
         return View(albumsList);
     }
 
-    [Authorize]
-    [HttpGet("edit")]
-    public async Task<IActionResult> EditAlbums(AlbumsListDTO dto) {
-
+    private async Task<AlbumsListDTO> ApplyFilter(AlbumsListDTO dto) {
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuerable = dbContext.Shots;
@@ -68,20 +65,28 @@ public class MainController: BaseController {
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
         albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
+        return albumsList;
+    }
 
-        foreach (var a in dto.AlbumsList)  {
-            if (a.IsChecked) {
-                var albumShots = await dbContext.Shots.Where(s => s.AlbumId == a.AlbumId).ToListAsync();
-                foreach (var s in albumShots) {
-                    if (dto.LocationId > 0) {
-                        s.LocationId = dto.LocationId;
-                    } else if (dto.LocationId < 0) {
-                        s.LocationId = null;
-                    }
-                }
-            }
-        }     
-        await dbContext.SaveChangesAsync();
+    [Authorize]
+    [HttpGet("edit")]
+    public async Task<IActionResult> EditAlbums(AlbumsListDTO dto) {
+
+        var albumsList = await ApplyFilter(dto);
+
+        // foreach (var a in dto.AlbumsList)  {
+        //     if (a.IsChecked) {
+        //         var albumShots = await dbContext.Shots.Where(s => s.AlbumId == a.AlbumId).ToListAsync();
+        //         foreach (var s in albumShots) {
+        //             if (dto.LocationId > 0) {
+        //                 s.LocationId = dto.LocationId;
+        //             } else if (dto.LocationId < 0) {
+        //                 s.LocationId = null;
+        //             }
+        //         }
+        //     }
+        // }     
+        // await dbContext.SaveChangesAsync();
 
         return View(albumsList);
 
@@ -91,21 +96,7 @@ public class MainController: BaseController {
     [HttpPost("edit")]
     public async Task<IActionResult> StoreAlbums(AlbumsListDTO dto) {
 
-        var albumsList = new AlbumsListDTO();   
-        CultureInfo provider = CultureInfo.InvariantCulture;
-        IQueryable<Shot> shotsQuerable = dbContext.Shots;
-        shotsQuerable =  shotsQuerable.Include(s => s.Album);        
-        if (dto.LocationId > 0) {
-           shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
-        }
-        var shots = await shotsQuerable.ToListAsync<Shot>();
-        foreach (Shot s in shots) {
-            albumsList.Albums.Add(new AlbumDTO(s.Album));
-        }
-        albumsList.Locations = await dbContext.Locations.ToListAsync();
-        albumsList.DateStart = dto.DateStart;
-        albumsList.DateEnd = dto.DateEnd;
-        albumsList.AlbumsList = new List<AlbumDTO>(albumsList.Albums);
+        var albumsList = await ApplyFilter(dto);
 
         foreach (var a in dto.AlbumsList)  {
             if (a.IsChecked) {
@@ -125,16 +116,6 @@ public class MainController: BaseController {
 
     }
     
-
-    // [Authorize]
-    // [HttpPost("")]
-    // public async Task<IActionResult> IndexFiltered(AlbumsListDTO dto) {
-    //     var albumsList = new AlbumsListDTO();
-    //     albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
-    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
-    //     return View(albumsList);
-    // }
-
 ///////////////////   ALBUM  /////////////////////////////////////////
 
     [HttpGet("edit_album")]

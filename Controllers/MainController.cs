@@ -73,6 +73,16 @@ public class MainController: BaseController {
     public async Task<IActionResult> EditAlbums(AlbumsListDTO dto) {
 
         var albumsList = await ApplyFilter(dto);
+        return View(albumsList);
+
+    }
+
+    [Authorize]
+    [HttpPost("edit")]
+    public async Task<IActionResult> UpdateAlbums(AlbumsListDTO dto) {
+
+        dto.AlbumsList.RemoveAll(a => !a.IsChecked);
+        dto.Locations = await dbContext.Locations.ToListAsync();
 
         // foreach (var a in dto.AlbumsList)  {
         //     if (a.IsChecked) {
@@ -88,31 +98,7 @@ public class MainController: BaseController {
         // }     
         // await dbContext.SaveChangesAsync();
 
-        return View(albumsList);
-
-    }
-
-    [Authorize]
-    [HttpPost("edit")]
-    public async Task<IActionResult> StoreAlbums(AlbumsListDTO dto) {
-
-        var albumsList = await ApplyFilter(dto);
-
-        foreach (var a in dto.AlbumsList)  {
-            if (a.IsChecked) {
-                var albumShots = await dbContext.Shots.Where(s => s.AlbumId == a.AlbumId).ToListAsync();
-                foreach (var s in albumShots) {
-                    if (dto.LocationId > 0) {
-                        s.LocationId = dto.LocationId;
-                    } else if (dto.LocationId < 0) {
-                        s.LocationId = null;
-                    }
-                }
-            }
-        }     
-        await dbContext.SaveChangesAsync();
-
-        return Redirect("/edit?LocationId=" + dto.LocationId);
+        return View(dto);
 
     }
     
@@ -140,6 +126,7 @@ public class MainController: BaseController {
 
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto) {
+
         Console.Write("!!!!STORE ALBUM");
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
@@ -167,6 +154,7 @@ public class MainController: BaseController {
         System.Console.Write("STORING ALBUM (" + dto.AlbumId + ")");
         await dbContext.SaveChangesAsync();
         return Redirect("/");
+
     }
 
     [HttpGet("add_album")]

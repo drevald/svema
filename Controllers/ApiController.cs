@@ -31,19 +31,20 @@ public class RestController: BaseController {
     [HttpPost("shots")]
     public async Task PostShot([FromBody] ShotREST dto) {
         var album = dbContext.Albums.Find(dto.AlbumId);
-        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).Include(u => u.Storage).First();
+        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
+        var storage = dbContext.ShotStorages.Where(s => s.User==user.UserId).First();
         var errors = new Dictionary<string, string>();
         var shot = new Shot();
         shot.DateStart = dto.DateStart;
         shot.DateEnd = dto.DateEnd;
         shot.Album = album;
         shot.AlbumId = dto.AlbumId;
-        await ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, user.Storage, errors);
+        await ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, storage, errors);
     }
 
     [HttpPost("albums")]
     public JsonResult PostAlbum([FromBody] AlbumDTO dto) {
-        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).Include(u => u.Storage).First();
+        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
         Album album = new Album();
         album.User = user;
         album.Name = dto.Name;

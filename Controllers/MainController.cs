@@ -118,7 +118,7 @@ public class MainController: BaseController {
     [HttpPost("add_album")]
     public async Task<IActionResult> CreateAlbum(Album album) {
         Console.Write("STORING ALBUM (" + album.AlbumId + ")");
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
         album.User = user;
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
@@ -214,7 +214,8 @@ public class MainController: BaseController {
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).Include(u => u.Storage).First();
+        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user.UserId).First();
         await dbContext.SaveChangesAsync();
         Album album = await dbContext.Albums.FindAsync(albumId);
         long size = files.Sum(f => f.Length);
@@ -226,7 +227,7 @@ public class MainController: BaseController {
                 byte[] bytes = new byte[formFile.Length];
                 fileStream.Read(bytes, 0, (int)formFile.Length);
                 var shot = new Shot();
-                errors = await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, user.Storage, errors);
+                errors = await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, errors);
             }
         }
         ViewBag.albumId = albumId;        

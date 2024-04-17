@@ -116,7 +116,7 @@ public class User {
     public string Email {get; set;}
     [Column("storage_id")]
     public int StorageId {get; set;}
-    public ShotStorage Storage {get; set;}
+    ShotStorage Storage {get; set;}
 }
 
 [Table("shot_comments")]

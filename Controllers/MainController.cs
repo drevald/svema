@@ -207,37 +207,43 @@ public class MainController: BaseController {
 
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id) {
-        ViewBag.albumId = id;
-        return View();
+        var dto = new UploadedFilesDTO();
+        dto.AlbumId = id;
+        return View(dto);
     }
 
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
-    public async Task<IActionResult> StoreFile(List<IFormFile> files, int albumId) {
+    public async Task<IActionResult> StoreFile(UploadedFilesDTO dto) {
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
-        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user.UserId).First();
+        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user.UserId).FirstOrDefault(s => true);
+        if (storage == null) {
+            dto.ErrorMessage = "No file storage available";
+            return View(dto);
+        }
         await dbContext.SaveChangesAsync();
-        Album album = await dbContext.Albums.FindAsync(albumId);
-        long size = files.Sum(f => f.Length);
+        Album album = await dbContext.Albums.FindAsync(dto.AlbumId);
+        long size = dto.Files.Sum(f => f.Length);
         var filePaths = new List<string>();
-        var errors = new Dictionary<string, string>();
-        foreach (var formFile in files) {            
+        dto.FileErrors = new Dictionary<string, string>();
+        foreach (var formFile in dto.Files) {            
             if (formFile.Length > 0) {
                 using var fileStream = formFile.OpenReadStream();
                 byte[] bytes = new byte[formFile.Length];
                 fileStream.Read(bytes, 0, (int)formFile.Length);
                 var shot = new Shot();
-                errors = await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, errors);
+                try {
+                    await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, dto.FileErrors);
+                } catch (Exception e) {
+                    Console.Write(e.Message);
+                }
+                
             }
         }
-        ViewBag.albumId = albumId;        
-        ViewBag.errors = errors;
-        return View();
-//        return Redirect("/edit_album?id=" + albumId);
+        return View(dto);
     }
 
 /////////////////////       LOCATIONS        //////////////////////////////////////////////////////////
-
 
     [HttpGet("delete_location")]
     public async Task<IActionResult> DeleteLocation(int locationId) {

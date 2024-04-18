@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Data;
+using Microsoft.AspNetCore.Mvc.Diagnostics;
 
 namespace Controllers;
 
@@ -23,7 +24,7 @@ public class BaseController: Controller {
         this.config = config;
     }
 
-    public async Task<Dictionary<string, string>> ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> errors) {
+    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors) {
         try {
             using var md5 = MD5.Create();
             using var stream = new MemoryStream(data);
@@ -58,14 +59,15 @@ public class BaseController: Controller {
             shot.SourceUri = "user_" + album.User.UserId + "/album_" + album.AlbumId + "/shot_" + shot.ShotId;
             Storage.StoreShot(shot, stream1.ToArray());
             await dbContext.SaveChangesAsync();
+            fileErrors.Add(name, "File successfully added");
         }   catch (DbUpdateException e) {
+            dbContext.Entry(shot).State = EntityState.Detached;
             System.Console.Write("The DbUpdateException is " + e.Data);
-            errors.Add(name, e.InnerException.Message);
+            fileErrors.Add(name, "Same file already stored");
         }   catch (Exception e) {
             System.Console.Write("The Exception is " + e.Data);
-            errors.Add(name, e.Message);
+            fileErrors.Add(name, e.Message);
         } 
-        return errors;
     }
 
 }

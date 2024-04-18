@@ -3,6 +3,7 @@ using Data;
 using System;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace Form;
 
@@ -115,10 +116,23 @@ public class ShotDTO {
 
 }
 
-public class LoginDTO {
+public class LoginDTO : DTO {
 
     public string Username {get; set;}
     public string Password {get; set;}
+
+}
+
+public class UploadedFilesDTO : DTO {
+
+    public int AlbumId {get; set;}
+    public List<IFormFile> Files {get; set;}
+    public Dictionary<string, string> FileErrors {get; set;}
+
+}
+
+public class DTO {
+
     public string ErrorMessage {get; set;}
 
 }

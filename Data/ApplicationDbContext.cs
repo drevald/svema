@@ -114,9 +114,6 @@ public class User {
     public string PasswordHash {get; set;}
     [Column("email")]
     public string Email {get; set;}
-    [Column("storage_id")]
-    public int StorageId {get; set;}
-    ShotStorage Storage {get; set;}
 }
 
 [Table("shot_comments")]

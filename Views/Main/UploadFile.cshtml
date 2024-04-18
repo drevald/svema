@@ -1,5 +1,5 @@
 @{Layout = "_Layout";}
-
+@model Form.UploadedFilesDTO
 <script>
 
     function show() {
@@ -25,17 +25,18 @@
 
     <div class="row">
         <div class="col-md-12 p-5 pb-0 text-end">
-            <a class="btn btn-secondary" href="/edit_album?id=@ViewBag.albumId">Отменить</a>
+            <a class="btn btn-secondary" href="/edit_album?id=@Model.AlbumId">Отменить</a>
         </div>
     </div>
     
     <div class="row">
+
         <div class="col-md-2 p-5" style="width:500px">
             <h4 class="mb-3">Добавить снимки</h4>
             <div class="row g-3">
                 <div class="col-sm-12">
-                    <input type="hidden" name="albumId" value="@ViewBag.albumId"/>
-                    <input class="form-control" type="file" name="files" multiple id="formFile" onchange="javascript:show();">
+                    <input type="hidden" asp-for="AlbumId"/>
+                    <input class="form-control" type="file" asp-for="Files" multiple id="formFile" onchange="javascript:show();">
                 </div>
             </div>
         </div>
@@ -47,4 +48,5 @@
         </div>
 
     </div>
+
 </form>

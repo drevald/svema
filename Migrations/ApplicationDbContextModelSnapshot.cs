@@ -299,17 +299,11 @@ namespace svema.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
-                    b.Property<int>("StorageId")
-                        .HasColumnType("integer")
-                        .HasColumnName("storage_id");
-
                     b.Property<string>("Username")
                         .HasColumnType("text")
                         .HasColumnName("username");
 
                     b.HasKey("UserId");
-
-                    b.HasIndex("StorageId");
 
                     b.ToTable("users");
                 });
@@ -399,17 +393,6 @@ namespace svema.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Shot");
-                });
-
-            modelBuilder.Entity("Data.User", b =>
-                {
-                    b.HasOne("Data.ShotStorage", "Storage")
-                        .WithMany()
-                        .HasForeignKey("StorageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Storage");
                 });
 
             modelBuilder.Entity("PersonShot", b =>

@@ -1,0 +1,48 @@
+@{Layout = "_Layout";}
+@model Form.ProfileDTO
+
+<div class="row">
+  <div class="col-md-2 p-5 pb-0 text-start">
+    <h4 class="mb-3">Пользователь</h4>
+  </div>
+  <div class="col-md-2 p-5 pb-0 text-start">
+    <h4 class="mb-3">Хранилище</h4>
+  </div>
+  <div class="col-md-8 p-5 pb-0 text-end">
+    <a class="btn btn-primary" href="add_store">Добавить хранилище</a>  
+    <a class="btn btn-secondary" href="javascript:history.back();">Отменить</a>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-2 p-5">
+    <div class="pb-3">
+      <label class="form-label">Имя</label>
+      <input asp-for="@Model.User.Username" class="form-control"/>
+    </div>
+    <div class="pb-3">
+      <label class="form-label">Почта</label>
+      <input asp-for="@Model.User.Email" class="form-control"/>
+    </div>
+  </div>  
+  <div class="col-md-10 p-5"> 
+    <table class="table table-condensed">
+      <thead>
+        <tr>
+          <th>Auth Token</th>
+          <th>Refresh Token</th>
+          <th>Provider</th>
+          <th>Root</th>          
+        </tr>
+      </thead>
+      @foreach(var store in @Model.Storages) {
+      <tr>
+        <td>@store.AuthToken</td>
+        <td>@store.RefreshToken</td>
+        <td>@store.Provider</td>
+        <td>@store.Root</td>
+      </tr>
+      }        
+    </table>
+  </div>
+</div>

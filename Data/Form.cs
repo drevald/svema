@@ -136,3 +136,8 @@ public class DTO {
     public string ErrorMessage {get; set;}
 
 }
+
+public class ProfileDTO : DTO {
+    public List<ShotStorage> Storages {get; set;}
+    public User User {get; set;}
+}

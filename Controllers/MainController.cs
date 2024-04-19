@@ -387,4 +387,12 @@ public class MainController: BaseController {
         return View(locations);
     }
 
+    [HttpGet("profile")]
+    public async Task<IActionResult> Profile() {
+        var dto = new ProfileDTO();
+        dto.User = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        dto.Storages = await dbContext.ShotStorages.Where(s => s.User == dto.User.UserId).ToListAsync<ShotStorage>();
+        return View(dto);
+    }
+
 }

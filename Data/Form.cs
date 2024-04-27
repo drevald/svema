@@ -141,3 +141,9 @@ public class ProfileDTO : DTO {
     public List<ShotStorage> Storages {get; set;}
     public User User {get; set;}
 }
+
+public class StorageDTO : DTO {
+
+    public ShotStorage Storage {get; set;}
+
+}

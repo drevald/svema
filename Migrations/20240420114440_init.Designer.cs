@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230423111857_init")]
+    [Migration("20240420114440_init")]
     partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -264,6 +264,7 @@ namespace svema.Migrations
                         .HasColumnName("auth_token");
 
                     b.Property<string>("Provider")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provider");
 
@@ -275,11 +276,13 @@ namespace svema.Migrations
                         .HasColumnType("text")
                         .HasColumnName("root");
 
-                    b.Property<int>("User")
+                    b.Property<int>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("storages");
                 });
@@ -301,17 +304,11 @@ namespace svema.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
-                    b.Property<int>("StorageId")
-                        .HasColumnType("integer")
-                        .HasColumnName("storage_id");
-
                     b.Property<string>("Username")
                         .HasColumnType("text")
                         .HasColumnName("username");
 
                     b.HasKey("UserId");
-
-                    b.HasIndex("StorageId");
 
                     b.ToTable("users");
                 });
@@ -403,15 +400,15 @@ namespace svema.Migrations
                     b.Navigation("Shot");
                 });
 
-            modelBuilder.Entity("Data.User", b =>
+            modelBuilder.Entity("Data.ShotStorage", b =>
                 {
-                    b.HasOne("Data.ShotStorage", "Storage")
+                    b.HasOne("Data.User", "User")
                         .WithMany()
-                        .HasForeignKey("StorageId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Storage");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PersonShot", b =>

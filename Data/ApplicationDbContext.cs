@@ -13,10 +13,32 @@ public class ApplicationDbContext : DbContext {
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     }
 
+    public void AddOrUpdateEntity<TEntity>(TEntity entity) where TEntity : class {
+        var entry = Entry(entity);
+        switch (entry.State) {
+            case EntityState.Detached:
+                Add(entity);
+                break;
+            case EntityState.Modified:
+                Update(entity);
+                break;
+            case EntityState.Unchanged:
+                // If the entity is already in the database, but not tracked by the context,
+                // re-attaching it will mark it as modified when SaveChanges is called.
+                Attach(entity);
+                Entry(entity).State = EntityState.Modified;
+                break;
+            // Add additional cases as needed
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder builder) {
         builder.Entity<Shot>(entity => {
             entity.HasIndex(e => e.MD5).IsUnique(true);
         });
+        builder.Entity<ShotStorage>()
+        .Property(e => e.Provider)
+        .HasConversion<string>();
     }
 
     public DbSet<Album> Albums {get; set;}
@@ -42,6 +64,14 @@ public class Album {
     public int PreviewId {get; set;}
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumComment> AlbumComments {get; set;}
+    [Column("longitude")]
+    public float Longitude {get; set;}
+    [Column("latitude")]
+    public float Latitude {get; set;}
+    [Column("location_precision_meters")]
+    public int LocationPrecisionMeters {get; set;}
+    [Column("zoom")]
+    public int Zoom {get; set;}
 }
 
 [Table("shots")]
@@ -75,6 +105,14 @@ public class Shot {
     public ShotStorage Storage {get; set;}
     [Column("size")]
     public long Size {get;set;}
+    [Column("longitude")]
+    public float Longitude {get; set;}
+    [Column("latitude")]
+    public float Latitude {get; set;}
+    [Column("location_precision_meters")]
+    public int LocationPrecisionMeters {get; set;}
+    [Column("zoom")]
+    public int Zoom {get; set;}
 }
 
 [Table("locations")]
@@ -153,18 +191,26 @@ public class AlbumComment {
 }
 
 [Table("storages")]
-public class ShotStorage {
+public class ShotStorage {   
     [Column("id")]
     public int Id {get; set;}
     [Column("user_id")]
-    public int User {get; set;}
+    public int UserId {get; set;}
+    public User User {get; set;}
     [Column("auth_token")]
     public string AuthToken {get; set;}
     [Column("refresh_token")]
     public string RefreshToken {get; set;}
     [Column("provider")]
-    public string Provider {get; set;}
+    public Provider Provider {get; set;}
     [Column("root")]
     public string Root {get; set;}
     public ICollection<Shot> Shots {get; set;}
+}
+
+public enum Provider
+{
+    Local,
+    Yandex,
+    Google
 }

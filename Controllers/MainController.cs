@@ -22,40 +22,54 @@ public class MainController: BaseController {
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Index(AlbumsListDTO dto) {
+    public async Task<IActionResult> Albums(AlbumsListDTO dto) {
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
-        IQueryable<Shot> shotsQuerable = dbContext.Shots;
-        shotsQuerable =  shotsQuerable.Include(s => s.Album);        
-        if (dto.DateStart != null) {
-            var dateStart = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-            shotsQuerable = shotsQuerable.Where(s => s.DateStart >= dateStart);
+        IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
+
+        if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
+        {
+            shotsQuerable = shotsQuerable
+                .Where(s =>
+                    (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
+                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) &&
+                    (dto.LocationId <= 0 || s.LocationId == dto.LocationId)
+                );
         }
-        if (dto.DateEnd != null) {
-            var dateEnd = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-            shotsQuerable = shotsQuerable.Where(s => s.DateEnd <= dateEnd);
-        }
-        if (dto.LocationId > 0) {
-           shotsQuerable = shotsQuerable.Where(s => s.LocationId == dto.LocationId);   
-        }
-        var shots = await shotsQuerable.ToListAsync<Shot>();
-        foreach (Shot s in shots) {
-            albumsList.Albums.Add(s.Album);
-        }
+        albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
+            ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
+            : dbContext.Albums.ToListAsync());
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
         return View(albumsList);
     }
 
-    // [Authorize]
-    // [HttpPost("")]
-    // public async Task<IActionResult> IndexFiltered(AlbumsListDTO dto) {
-    //     var albumsList = new AlbumsListDTO();
-    //     albumsList.Albums = await dbContext.Albums.OrderBy(a => a.AlbumId).ToListAsync(); 
-    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
-    //     return View(albumsList);
-    // }
+    [Authorize]
+    [HttpGet("my")]
+    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
+        var albumsList = new AlbumsListDTO();   
+        CultureInfo provider = CultureInfo.InvariantCulture;
+        IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
+
+        if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
+        {
+            shotsQuerable = shotsQuerable
+                .Where(s =>
+                    (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
+                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) &&
+                    (dto.LocationId <= 0 || s.LocationId == dto.LocationId)
+                );
+        }
+        albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
+            ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
+            : dbContext.Albums.ToListAsync());
+        albumsList.Locations = await dbContext.Locations.ToListAsync();
+        albumsList.DateStart = dto.DateStart;
+        albumsList.DateEnd = dto.DateEnd;
+        return View(albumsList);
+    }    
+
 
 ///////////////////   ALBUM  /////////////////////////////////////////
 
@@ -216,7 +230,7 @@ public class MainController: BaseController {
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(UploadedFilesDTO dto) {
         User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
-        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user.UserId).FirstOrDefault(s => true);
+        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user).FirstOrDefault(s => true);
         if (storage == null) {
             dto.ErrorMessage = "No file storage available";
             return View(dto);
@@ -390,9 +404,30 @@ public class MainController: BaseController {
     [HttpGet("profile")]
     public async Task<IActionResult> Profile() {
         var dto = new ProfileDTO();
-        dto.User = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
-        dto.Storages = await dbContext.ShotStorages.Where(s => s.User == dto.User.UserId).ToListAsync<ShotStorage>();
+        dto.User = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).FirstOrDefault(e => true);
+        dto.Storages = await dbContext.ShotStorages.Where(s => s.User == dto.User).ToListAsync<ShotStorage>();
         return View(dto);
+    }
+
+    [HttpGet("edit_local_storage")]
+    public IActionResult EditLocalStorage(int userId, int storageId) {
+        var dto = new StorageDTO();
+        if (storageId != 0) {
+            dto.Storage = dbContext.ShotStorages.Where(s => s.Id == storageId).First();
+        } else {
+            dto.Storage = new ShotStorage();
+            dto.Storage.Root = "/storage";
+            dto.Storage.Provider = Provider.Local;
+            dto.Storage.UserId = userId;
+        }
+        return View(dto);
+    }
+
+    [HttpPost("edit_local_storage")]
+    public async Task<IActionResult> SaveLocalStorage(StorageDTO dto) {
+        dbContext.AddOrUpdateEntity(dto.Storage);
+        await dbContext.SaveChangesAsync();
+        return Redirect("profile?user_id=" + dto.Storage.UserId);
     }
 
 }

@@ -32,7 +32,7 @@ public class RestController: BaseController {
     public async Task PostShot([FromBody] ShotREST dto) {
         var album = dbContext.Albums.Find(dto.AlbumId);
         var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
-        var storage = dbContext.ShotStorages.Where(s => s.User==user.UserId).First();
+        var storage = dbContext.ShotStorages.Where(s => s.User==user).First();
         var errors = new Dictionary<string, string>();
         var shot = new Shot();
         shot.DateStart = dto.DateStart;

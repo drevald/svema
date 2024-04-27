@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240417165255_removestorefromuser")]
-    partial class removestorefromuser
+    [Migration("20240424220055_locations")]
+    partial class locations
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -33,6 +33,18 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AlbumId"));
 
+                    b.Property<float>("Latitude")
+                        .HasColumnType("real")
+                        .HasColumnName("latitude");
+
+                    b.Property<int>("LocationPrecisionMeters")
+                        .HasColumnType("integer")
+                        .HasColumnName("location_precision_meters");
+
+                    b.Property<float>("Longitude")
+                        .HasColumnType("real")
+                        .HasColumnName("longitude");
+
                     b.Property<string>("Name")
                         .HasColumnType("text")
                         .HasColumnName("name");
@@ -43,6 +55,10 @@ namespace svema.Migrations
 
                     b.Property<int?>("UserId")
                         .HasColumnType("integer");
+
+                    b.Property<int>("Zoom")
+                        .HasColumnType("integer")
+                        .HasColumnName("zoom");
 
                     b.HasKey("AlbumId");
 
@@ -170,9 +186,21 @@ namespace svema.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("date_start");
 
+                    b.Property<float>("Latitude")
+                        .HasColumnType("real")
+                        .HasColumnName("latitude");
+
                     b.Property<int?>("LocationId")
                         .HasColumnType("integer")
                         .HasColumnName("location_id");
+
+                    b.Property<int>("LocationPrecisionMeters")
+                        .HasColumnType("integer")
+                        .HasColumnName("location_precision_meters");
+
+                    b.Property<float>("Longitude")
+                        .HasColumnType("real")
+                        .HasColumnName("longitude");
 
                     b.Property<string>("MD5")
                         .HasColumnType("text")
@@ -197,6 +225,10 @@ namespace svema.Migrations
                     b.Property<int>("StorageId")
                         .HasColumnType("integer")
                         .HasColumnName("storage_id");
+
+                    b.Property<int>("Zoom")
+                        .HasColumnType("integer")
+                        .HasColumnName("zoom");
 
                     b.HasKey("ShotId");
 
@@ -264,6 +296,7 @@ namespace svema.Migrations
                         .HasColumnName("auth_token");
 
                     b.Property<string>("Provider")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provider");
 
@@ -275,11 +308,13 @@ namespace svema.Migrations
                         .HasColumnType("text")
                         .HasColumnName("root");
 
-                    b.Property<int>("User")
+                    b.Property<int>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("storages");
                 });
@@ -300,10 +335,6 @@ namespace svema.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
-
-                    b.Property<int>("StorageId")
-                        .HasColumnType("integer")
-                        .HasColumnName("storage_id");
 
                     b.Property<string>("Username")
                         .HasColumnType("text")
@@ -399,6 +430,17 @@ namespace svema.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Shot");
+                });
+
+            modelBuilder.Entity("Data.ShotStorage", b =>
+                {
+                    b.HasOne("Data.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PersonShot", b =>

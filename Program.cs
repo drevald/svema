@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
 
 using Data;
 
@@ -52,6 +54,7 @@ var app = builder.Build();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+// app.UseMiddleware<AuthRedirectMiddleware>();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
@@ -68,3 +71,18 @@ using(var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// public class AuthRedirectMiddleware {
+//     private readonly RequestDelegate _next;
+//     public AuthRedirectMiddleware(RequestDelegate next) {
+//         _next = next;
+//     }
+//     public async Task Invoke(HttpContext context) {
+//         if (!context.User.Identity.IsAuthenticated) {
+//             // Redirect to login page
+//             context.Response.Redirect("login");
+//             return;
+//         }
+//         await _next(context);
+//     }
+// }

@@ -10,7 +10,7 @@ public class Storage {
             if (shot.Storage == null) {
                 Console.Write("Storage not defined for " + shot);
                 return;
-            } else if (shot.Storage.Provider == "LocalDisk") {
+            } else if (shot.Storage.Provider == Provider.Local) {
                 String path = shot.Storage.Root + shot.SourceUri;
                 String folder = Path.GetDirectoryName(path);
                 Directory.CreateDirectory(folder);        
@@ -30,7 +30,7 @@ public class Storage {
             if (shot.Storage == null) {
                 Console.Write("Storage not defined for " + shot);
                 return null;
-            } else if (shot.Storage.Provider == "LocalDisk") {
+            } else if (shot.Storage.Provider == Provider.Local) {
                 var stream = System.IO.File.OpenRead(shot.Storage.Root + shot.SourceUri);
                 stream.Position = 0;
                 return stream;
@@ -51,7 +51,7 @@ public class Storage {
             if (shot.Storage == null) {
                 Console.Write("Storage not defined for " + shot);
                 return;
-            } else if (shot.Storage.Provider == "LocalDisk") {
+            } else if (shot.Storage.Provider == Provider.Local) {
                 try {
                     System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
                 } catch (Exception e) {

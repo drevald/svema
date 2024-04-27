@@ -42,23 +42,6 @@ namespace svema.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "storages",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<int>(type: "integer", nullable: false),
-                    auth_token = table.Column<string>(type: "text", nullable: true),
-                    refresh_token = table.Column<string>(type: "text", nullable: true),
-                    provider = table.Column<string>(type: "text", nullable: true),
-                    root = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_storages", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
@@ -66,18 +49,11 @@ namespace svema.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     username = table.Column<string>(type: "text", nullable: true),
                     password_hash = table.Column<string>(type: "text", nullable: true),
-                    email = table.Column<string>(type: "text", nullable: true),
-                    storage_id = table.Column<int>(type: "integer", nullable: false)
+                    email = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_users", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_users_storages_storage_id",
-                        column: x => x.storage_id,
-                        principalTable: "storages",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -98,6 +74,29 @@ namespace svema.Migrations
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "storages",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    user_id = table.Column<int>(type: "integer", nullable: false),
+                    auth_token = table.Column<string>(type: "text", nullable: true),
+                    refresh_token = table.Column<string>(type: "text", nullable: true),
+                    provider = table.Column<string>(type: "text", nullable: false),
+                    root = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_storages", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_storages_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -274,9 +273,9 @@ namespace svema.Migrations
                 column: "storage_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_users_storage_id",
-                table: "users",
-                column: "storage_id");
+                name: "IX_storages_user_id",
+                table: "storages",
+                column: "user_id");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -303,10 +302,10 @@ namespace svema.Migrations
                 name: "locations");
 
             migrationBuilder.DropTable(
-                name: "users");
+                name: "storages");
 
             migrationBuilder.DropTable(
-                name: "storages");
+                name: "users");
         }
     }
 }

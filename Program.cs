@@ -35,8 +35,8 @@ dbConnection += ";Include Error Detail=True";
 
 builder.WebHost.ConfigureKestrel(opts =>
 {
-    //opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
-    opts.ListenLocalhost(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
+    opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
+    //opts.ListenLocalhost(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
 });
 
 builder.Services.AddControllersWithViews();

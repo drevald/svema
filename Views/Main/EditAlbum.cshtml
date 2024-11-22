@@ -5,6 +5,8 @@
 
 <script type="text/javascript">
 
+    alert("I AM HERE!!!");
+
   ymaps.ready(init);
  
   var myGeoObject;
@@ -41,7 +43,7 @@
     myGeoObject.geometry.setCoordinates([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
     myGeoObject.properties.set('iconContent', jsModel[i-shift].Name); 
     myMap.setCenter([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
-    myMap.setZoom(jsModel[i-shift].Zoom);
+    myMap.setZoom(jsModel[i-shift].Zoom);n
   }
 
     function setdate(year) {

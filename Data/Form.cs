@@ -35,6 +35,8 @@ public class AlbumDTO {
     public ICollection<AlbumComment> AlbumComments {get; set;}
     public ICollection<Location> Locations {get; set;}
     public List<ShotPreviewDTO> Shots {get; set;}
+    public float Longitude {get; set;}
+    public float Latitude {get; set;}
 }
 
 public class ShotPreviewDTO {

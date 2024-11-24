@@ -1,0 +1,106 @@
+@model Data.Shot
+@using Newtonsoft.Json
+@using System.Web
+@{Layout = "_Layout";}
+
+<script>
+  function editComment(id, text) {
+    document.all("text").value = text;
+    document.all("commentId").value = id;
+  }
+</script>
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@Model.Location)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+      center: [jsModel.Latitude, jsModel.Longitude],
+    zoom: jsModel.Zoom,
+    controls: []
+  })
+
+  myMap.geoObjects.add(
+    new ymaps.GeoObject(
+      {geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude]}, properties: { iconContent: jsModel.Name }}, 
+      {preset: 'islands#blackStretchyIcon', draggable: false}
+    )
+  )
+
+}
+
+</script>
+
+<div class="row h-100">
+  <div class="col-md-2 p-5 h-100" style="width:500px">
+    <div class="row g-3">
+      <div class="col-sm-3">
+        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId">Назад</a>
+      </div>
+      <div class="col-sm-3 text-center">
+        <a class="btn btn-primary" href="/shot?id=@Model.ShotId">Оригинал</a>&nbsp;
+      </div>      
+      <div class="col-sm-6 text-end">
+        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId">Пред</a>&nbsp;
+        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId">След</a>
+      </div>
+      <div class="col-sm-3">Альбом</div>
+      <div class="col-sm-9">@Model.Album.Name</div>
+      <div class="col-sm-3">Год</div>
+      <div class="col-sm-9">@Model.DateStart</div>
+      <div class="col-sm-3">Место</div>
+      @if (@Model.Location != null) {
+        <div class="col-sm-9">@Model.Location.Name</div>
+      }
+      <div class="col-sm-12" id="map" style="height:240px"></div>
+      <div class="col-sm-12">Комментарии</div>
+      @if (@Model.ShotComments != null)      
+      {
+        @foreach (var comment in @Model.ShotComments)
+        {
+          <div class="col-sm-12">
+            <small>
+              <b>@comment.AuthorUsername</b>&nbsp;
+              @comment.Timestamp.ToString("yy-mm-dd")<br>
+              @comment.Text
+              @if (@comment.AuthorUsername == Context.User.Identity.Name)
+              {
+                <a href="delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete&nbsp;</a>
+                <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+              }
+            </small>
+          </div>
+        }
+      }
+
+      <form action="add_shot_comment" method="post">
+        <input type="hidden" id="id" value="@Model.ShotId" name="id">
+        <input type="hidden" id="commentId" name="commentId" value="0">
+        <div class="col-sm-12">
+          <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
+        </div>
+        <div class="col-sm-12">
+          <input class="btn btn-primary btn-sm" value="Set Comment" type="submit">&nbsp;<input
+            class="btn btn-secondary btn-sm" type="reset">
+        </div>
+      </form>       
+
+    </div>
+  </div>
+  <div class="col p-5">
+    <div class="card" style="height: calc(100% - 65px);">
+      <div class="card-body bg-secondary" style="
+        background-image: url('/shot?id=@Model.ShotId'); 
+        background-position: center;
+        background-repeat: no-repeat; 
+        background-size: contain;">
+      </div>
+    </div>
+  </div>
+</div>
+</div>

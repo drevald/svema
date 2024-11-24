@@ -1,0 +1,168 @@
+@using System.Web
+@using Newtonsoft.Json
+@model Form.ShotDTO
+@{Layout = "_Layout";}
+
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Location)))");
+  var myGeoObject;
+  var circle;
+  
+  function init() {
+
+    myMap = new ymaps.Map("map", {
+        center: [0, 0],
+        zoom: 0,
+        controls: []  
+    })
+
+    if (jsShot != null) {
+      myGeoObject = new ymaps.GeoObject(
+          {geometry: { 
+            type: "Point", 
+            coordinates: [jsShot.Latitude, jsShot.Longitude]}, 
+            properties: { iconContent: jsShot.Name },
+          }, 
+          {preset: 'islands#blackStretchyIcon', draggable: true}
+      )
+      myMap.setCenter([jsShot.Latitude, jsShot.Longitude]);
+      myMap.setZoom(jsShot.Zoom);
+      myMap.geoObjects.add(myGeoObject);
+    }
+
+  }
+
+  function show(i) {
+    if (i == 0) {
+        myMap.setCenter([0, 0]);
+        myMap.setZoom(0);
+        myMap.geoObjects.removeAll();
+    }
+    if (myGeoObject == null) {
+        myGeoObject = new ymaps.GeoObject(
+            {geometry: { type: "Point", coordinates: [jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]}, properties: { iconContent: jsLocations[i-1].Name }}, 
+            {preset: 'islands#blackStretchyIcon', draggable: true}
+        )
+        myMap.geoObjects.add(myGeoObject);
+    }
+    myGeoObject.geometry.setCoordinates([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
+    myGeoObject.properties.set('iconContent', jsLocations[i-1].Name); 
+    myMap.setCenter([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
+    myMap.setZoom(jsLocations[i-1].Zoom);
+  }
+
+  function setdate(year) {
+    if (year < 1000) {
+      document.all["DateStart"].value=year + "0-01-01";
+      document.all["DateEnd"].value=year + "9-12-31";
+    } else {
+      document.all["DateStart"].value=year + "-01-01";
+      document.all["DateEnd"].value=year + "-12-31";
+    }
+  }
+
+</script>
+
+<form method="post">
+
+  <div class="row">
+    <div class="col-md-12 p-5 pb-0 text-end">
+      <input type="submit" class="btn btn-primary" value="Сохранить">
+      <a class="btn btn-secondary" href="edit_album?id=@Model.AlbumId">Отменить</a>
+    </div>
+  </div>
+
+  <div class="row h-100">
+
+    <div class="col-md-2 p-5" style="width:500px">
+
+      <h4 class="mb-3">Снимок</h4>
+
+      <form class="needs-validation" novalidate>
+        <div class="row g-3">
+
+          <div class="col-sm-12">
+            <input asp-for="IsCover" class="form-label" type="checkbox"/>
+            <label class="form-label">Сделать заглавным</label>
+          </div>
+
+
+          <div class="col-sm-12">
+            <label class="form-label">Название</label>
+            <input asp-for="ShotId" type="hidden" />
+            <input asp-for="Name" class="form-control" />
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Год</label>
+            <select class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+              @{
+                var startdec = 195;
+                var enddec = DateTime.Now.Year / 10;
+                var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                foreach (var number in numbersdec)
+                {
+                  <option value="@number">@(number + "X")</option>
+                }
+              }
+              @{
+                var start = 1950;
+                var end = DateTime.Now.Year;
+                var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                foreach (var number in numbers)
+                {
+                  <option value="@number">@number</option>
+                }
+              }
+            </select>
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Дата, от</label>
+            <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Дата, до</label>
+            <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+          </div>          
+
+          <div class="col-sm-12">
+            <label class="form-label">Место</label>
+            <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
+              <option></option>
+              @foreach (var location in @Model.Locations)
+              {
+                <option value="@location.Id">@location.Name</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Карта</label>
+            <div id="map" style="height:240px"></div>
+          </div>
+
+        </div>
+      </form>
+    </div>
+
+    <div class="col p-5">
+      <div class="card" style="height: calc(100% - 65px);">
+        <div class="card-body bg-secondary" style="
+        background-image: url('/shot?id=@Model.ShotId'); 
+        background-position: center;
+        background-repeat: no-repeat; 
+        background-size: contain;">
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</form>

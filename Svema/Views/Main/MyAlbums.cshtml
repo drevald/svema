@@ -1,0 +1,169 @@
+@model Form.AlbumsListDTO
+@using System.Web
+@using Newtonsoft.Json
+@{Layout = "_Layout";}
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+
+  function init() {    
+    myMap = new ymaps.Map("map", {
+    center: [0, 0],
+    zoom: 0,
+    controls: []
+  })
+
+  for (i=0; i<jsModel.length; i++) {
+    myMap.geoObjects.add(
+      new ymaps.GeoObject(
+        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
+        {preset: 'islands#blackStretchyIcon', draggable: false}
+      )
+    )
+  }
+
+  }
+
+</script>
+
+    <div class="row">
+      <div class="col-md-2 p-5" style="width:500px">
+
+        <form class="needs-validation" method="get" novalidate>
+          <div class="row g-3">
+
+            <div class="col-sm-6">
+              <h4 class="mb-3">Фильтр</h4>
+            </div>
+            <div class="col-sm-6 text-end">
+              <a class="btn btn-primary" href="add_album">Добавить альбом</a>
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label">Год, от</label>
+              <select asp-for="DateStart" class="form-select" id="state" required>                     
+                  <option>&nbsp;</option>
+                  @{
+                      var start = 1950;
+                      var end = DateTime.Now.Year;
+                      var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                      foreach(var number in numbers){
+                          <option value="@number">@number</option>
+                      }
+                  }                        
+              </select>
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label">Год, до</label>
+              <select asp-for="DateEnd" class="form-select" id="state" required>                     
+                <option>&nbsp;</option>
+                  @{
+                      var start1 = 1950;
+                      var end1 = DateTime.Now.Year;
+                      var numbers1 = Enumerable.Range(start1, end1 - start1 + 1).Reverse();
+                      foreach(var number in numbers1){
+                          <option value="@number">@number</option>
+                      }
+                  }                        
+              </select>
+            </div>
+
+                <div class="col-sm-12">
+                    <label for="lastName" class="form-label">Место</label>
+                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                        <option></option>
+                        @foreach(var location in @Model.Locations) {
+                            <option value="@location.Id">@location.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label for="lastName" class="form-label">Карта</label>
+                    <div id="map" style="height:240px"></div>
+                </div>
+
+            <!-- <div class="col-12" style="white-space: nowrap; overflow:hidden;">
+              <label for="lastName" class="form-label">Персонажи</label>
+              <div class="d-flex flex-wrap" style="width:100%">
+                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
+                  <img src="max.png" class="h-100">
+                  <div class="card-footer p-2" style="font-size:xx-small">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-wrap">
+                        Максим Викторович Дьяконов
+                      </span>
+                      <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-trash" viewBox="0 0 16 16">
+                          <path
+                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                          <path fill-rule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card box-4 me-3 shadow-sm" style="width:6rem;">
+                  <img src="max.png" class="h-100">
+                  <div class="card-footer p-2" style="font-size:xx-small">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-wrap">
+                        Максим Викторович Дьяконов
+                      </span>
+                      <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                          class="bi bi-trash" viewBox="0 0 16 16">
+                          <path
+                            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                          <path fill-rule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <button type="button" class="btn btn-primary">Добавить персонаж</button>
+            </div> -->
+
+            <div class="col-sm-6 text-start">
+              <input type="submit" class="btn btn-primary" value="Обновить">
+            </div>
+
+          </div>
+
+        </form>
+      </div>
+      <div class="col p-5">
+        <div class="d-flex flex-wrap overflow-auto h-100">
+          @foreach(var album in Model.Albums) {
+          <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div>
+                @album.Name
+              </div>
+              <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/delete_album?id=@album.AlbumId">Удалить</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="card-body" onClick="location.href='/edit_album?id=@album.AlbumId'" style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>

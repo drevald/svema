@@ -1,0 +1,19 @@
+@model Data.Shot
+@* <html>
+    <body>
+        <form method="post">
+            <input asp-for="ShotId"/>
+            <input asp-for="Name"/>
+            <dl>
+                <dt>
+                    <label asp-for="FileUpload.FormFile"></label>
+                </dt>
+                <dd>
+                    <input asp-for="FileUpload.FormFile" type="file">
+                    <span asp-validation-for="FileUpload.FormFile"></span>
+                </dd>
+            </dl>
+            <input type="submit"/>
+        </form>
+    </body>
+</html> *@

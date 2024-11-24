@@ -1,0 +1,28 @@
+version: '3.3'
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=svema
+    volumes:
+      - data:/var/lib/postgresql/data
+    ports:
+      - 5433:5433
+    command: -p 5433
+  web:
+    build: .
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5433/svema
+      - DB_CONNECTION=Host=postgres;Username=postgres;Password=password;Database=svema;Port=5433
+      - PORT=7777
+      - STORAGE_DIR=/Users/denis/STORE/
+    ports:
+      - "7777:7777"
+    depends_on:
+      - postgres
+    volumes:
+      - /storage:/storage
+volumes:
+  data:

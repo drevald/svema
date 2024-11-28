@@ -1,115 +1,142 @@
-using Moq;
 using Xunit;
-using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
+using System.Linq;
+using System;
 using Controllers;
 using Data;
 using Form;
-using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.IO;  // For MemoryStream, FileStream, etc.
+using System.Reflection;  // For accessing embedded resources through GetManifestResourceStream
 
-public class RestControllerTests
-{
-    private readonly Mock<ApplicationDbContext> _mockDbContext;
-    private readonly Mock<IConfiguration> _mockConfig;
-    private readonly RestController _controller;
 
-    public RestControllerTests()
-    {
-        _mockDbContext = new Mock<ApplicationDbContext>();
-        _mockConfig = new Mock<IConfiguration>();
-        
-        // Setup any necessary mocks for DbSet
-        var mockAlbums = new Mock<DbSet<Album>>();
-        var mockUsers = new Mock<DbSet<User>>();
-        var mockShotStorages = new Mock<DbSet<ShotStorage>>();
-        var mockShots = new Mock<DbSet<Shot>>();
-        
-        _mockDbContext.Setup(db => db.Albums).Returns(mockAlbums.Object);
-        _mockDbContext.Setup(db => db.Users).Returns(mockUsers.Object);
-        _mockDbContext.Setup(db => db.ShotStorages).Returns(mockShotStorages.Object);
-        _mockDbContext.Setup(db => db.Shots).Returns(mockShots.Object);
+public class RestControllerTests {
 
-        _controller = new RestController(_mockDbContext.Object, _mockConfig.Object);
+    private ApplicationDbContext CreateInMemoryContext() {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: "TestDatabase")
+            .Options;
+
+        var dbContext = new ApplicationDbContext(options);
+
+        // Seed initial data for testing
+        User user = new User { UserId = 1, Username = "John Doe" };
+        ShotStorage storage = new ShotStorage { Id=1, UserId=1 } ;
+        dbContext.Users.Add(user);
+        dbContext.Albums.Add(new Album { AlbumId = 1, Name = "Holiday Photos", User = user });
+        dbContext.Shots.Add(new Shot { ShotId = 1, Name = "Shot1", AlbumId = 1, Storage=storage });
+        dbContext.SaveChanges();
+        return dbContext;
     }
 
     [Fact]
-    public void GetAlbums_ReturnsJsonResult()
-    {
+    public void GetAlbums_ReturnsAllAlbums()   {
+        Console.Write(">>>>> 1 started");
         // Arrange
-        var mockAlbums = new List<Album> { new Album { Name = "Album 1" }, new Album { Name = "Album 2" } }.AsQueryable();
-        var mockDbSet = new Mock<DbSet<Album>>();
-        mockDbSet.As<IQueryable<Album>>().Setup(m => m.Provider).Returns(mockAlbums.Provider);
-        mockDbSet.As<IQueryable<Album>>().Setup(m => m.Expression).Returns(mockAlbums.Expression);
-        mockDbSet.As<IQueryable<Album>>().Setup(m => m.ElementType).Returns(mockAlbums.ElementType);
-        mockDbSet.As<IQueryable<Album>>().Setup(m => m.GetEnumerator()).Returns(mockAlbums.GetEnumerator());
-
-        _mockDbContext.Setup(db => db.Albums).Returns(mockDbSet.Object);
+        var dbContext = CreateInMemoryContext();
+        var configuration = new ConfigurationBuilder().Build();
+        var controller = new RestController(dbContext, configuration);
 
         // Act
-        var result = _controller.GetAlbums();
+        var result = controller.GetAlbums();
 
         // Assert
-        var jsonResult = Assert.IsType<JsonResult>(result);
-        var albums = Assert.IsAssignableFrom<IEnumerable<Album>>(jsonResult.Value);
-        Assert.Equal(2, albums.Count());
+        var albums = Assert.IsType<JsonResult>(result).Value as IEnumerable<Album>;
+        Assert.NotNull(albums);
+        Assert.Single(albums);
+        dbContext.Database.EnsureDeleted();
+        dbContext.Dispose();
+        Console.Write("<<<<< 1 ended");
     }
 
     [Fact]
-    public async Task PostShot_CreatesShotAndProcessesIt()
-    {
+    public void GetAlbum_ReturnsSpecificAlbum() {
+
+        Console.Write(">>>>> 2 started");
+
         // Arrange
-        var dto = new ShotREST
+        var dbContext = CreateInMemoryContext();
+        var configuration = new ConfigurationBuilder().Build();
+        var controller = new RestController(dbContext, configuration);
+
+        // Act
+        var result = controller.GetAlbum(1);
+
+        // Assert
+        var album = Assert.IsType<JsonResult>(result).Value as Album;
+        Assert.NotNull(album);
+        Assert.Equal("Holiday Photos", album.Name);
+        dbContext.Database.EnsureDeleted();
+        dbContext.Dispose();
+
+        Console.Write("<<<<< 2 ended");
+
+    }
+
+    [Fact]
+    public void PostAlbum_AddsNewAlbum() {
+
+        Console.Write(">>>>> 3 started");
+        
+        // Arrange
+        var dbContext = CreateInMemoryContext();
+        var configuration = new ConfigurationBuilder().Build();
+        var controller = new RestController(dbContext, configuration);
+
+        var newAlbum = new AlbumDTO { UserId = 1, Name = "New Album" };
+
+        // Act
+        var result = controller.PostAlbum(newAlbum);
+
+        // Assert
+        var album = Assert.IsType<JsonResult>(result).Value as Album;
+        Assert.NotNull(album);
+        Assert.Equal("New Album", album.Name);
+
+        // Verify the album is in the database
+        Assert.Equal(2, dbContext.Albums.Count());
+        dbContext.Database.EnsureDeleted();
+        dbContext.Dispose();
+
+        Console.Write("<<<<< 3 ended");
+
+    }
+
+    [Fact]
+    public async Task PostShot_AddsNewShot() {
+
+        Console.Write(">>>>> 4 started");
+
+        // Arrange
+        var dbContext = CreateInMemoryContext();
+        var configuration = new ConfigurationBuilder().Build();
+        var controller = new RestController(dbContext, configuration);
+
+        var newShot = new ShotREST
         {
-            AlbumId = 1,
             UserId = 1,
+            AlbumId = 1,
+            Name = "New Shot",
             DateStart = DateTime.Now,
             DateEnd = DateTime.Now.AddHours(1),
-            Data = new byte[] { 1, 2, 3 },
-            Name = "Shot1",
-            Mime = "image/jpeg"
+            Data = File.ReadAllBytes("e:\\PROJECTS\\svema\\Tests\\Resources\\DSC02678.png"),
+            Mime = "image/jpeg"            
         };
 
-        var mockAlbum = new Album { AlbumId = 1 };
-        var mockUser = new User { UserId = 1 };
-        var mockStorage = new ShotStorage { User = mockUser };
-
-        _mockDbContext.Setup(db => db.Albums.Find(1)).Returns(mockAlbum);
-        _mockDbContext.Setup(db => db.Users.Where(u => u.UserId == 1).First()).Returns(mockUser);
-        _mockDbContext.Setup(db => db.ShotStorages.Where(s => s.User == mockUser).First()).Returns(mockStorage);
-
-        var mockShot = new Mock<Shot>();
-        _mockDbContext.Setup(db => db.Shots.Add(It.IsAny<Shot>()));
-
         // Act
-        await _controller.PostShot(dto);
+        await controller.PostShot(newShot);
 
         // Assert
-        _mockDbContext.Verify(db => db.Shots.Add(It.IsAny<Shot>()), Times.Once);
-        _mockDbContext.Verify(db => db.SaveChangesAsync(), Times.Once);
-    }
+        Assert.Equal(2, dbContext.Shots.Count());
+        var shot = dbContext.Shots.Last();
+        Assert.Equal("New Shot", shot.Name);
+        dbContext.Dispose();
 
-    [Fact]
-    public async Task PostAlbum_ReturnsCreatedAlbum()
-    {
-        // Arrange
-        var dto = new AlbumDTO { UserId = 1, Name = "New Album" };
-        var mockUser = new User { UserId = 1 };
+        Console.Write("<<<<< 4 ended");
 
-        _mockDbContext.Setup(db => db.Users.Where(u => u.UserId == 1).First()).Returns(mockUser);
-        
-        var mockAlbum = new Album { User = mockUser, Name = "New Album" };
-        _mockDbContext.Setup(db => db.Add(It.IsAny<Album>()));
-        _mockDbContext.Setup(db => db.SaveChangesAsync()).Returns(Task.CompletedTask);
-
-        // Act
-        var result = _controller.PostAlbum(dto);
-
-        // Assert
-        var jsonResult = Assert.IsType<JsonResult>(result);
-        var album = Assert.IsType<Album>(jsonResult.Value);
-        Assert.Equal("New Album", album.Name);
     }
 }

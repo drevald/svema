@@ -65,7 +65,7 @@
           <div class="col-sm-12">
             <small>
               <b>@comment.AuthorUsername</b>&nbsp;
-              @comment.Timestamp.ToString("yy-mm-dd")<br>
+              @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br>
               @comment.Text
               @if (@comment.AuthorUsername == Context.User.Identity.Name)
               {

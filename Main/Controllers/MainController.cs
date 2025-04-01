@@ -343,13 +343,13 @@ public class MainController: BaseController {
             comment.AuthorUsername = user.Username;
             comment.Text = text;
             comment.AlbumId = id;
-            comment.Timestamp = new DateTime();
+            comment.Timestamp = DateTime.Now;
             dbContext.AlbumComments.Add(comment);    
         } else {            
             comment = await dbContext.AlbumComments.FindAsync(commentId);
             comment.Text = text;
             comment.AlbumId = id;
-            comment.Timestamp = new DateTime();            
+            comment.Timestamp = DateTime.Now;            
             dbContext.AlbumComments.Update(comment);
         }
         await dbContext.SaveChangesAsync();
@@ -374,13 +374,13 @@ public class MainController: BaseController {
             comment.AuthorUsername = user.Username;            
             comment.Text = text;
             comment.ShotId = id;
-            comment.Timestamp = new DateTime();
+            comment.Timestamp = DateTime.Now;
             dbContext.ShotComments.Add(comment);    
         } else {            
             comment = await dbContext.ShotComments.FindAsync(commentId);
             comment.Text = text;
             comment.ShotId = id;
-            comment.Timestamp = new DateTime();            
+            comment.Timestamp = DateTime.Now;            
             dbContext.ShotComments.Update(comment);
         }
         await dbContext.SaveChangesAsync();

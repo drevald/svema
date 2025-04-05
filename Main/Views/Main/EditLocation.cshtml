@@ -1,3 +1,5 @@
+@using System.Web
+@using Newtonsoft.Json
 @model Data.Location
 @{Layout = "_Layout";}
 
@@ -7,20 +9,22 @@
 
   var myGeoObject;
   var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+
   
   function init() {
     myMap = new ymaps.Map("map", {
-    center: [@Model.Latitude, @Model.Longitude],
-    zoom: @Model.Zoom,
+    center: [jsModel.Latitude, jsModel.Longitude],
+    zoom: jsModel.Zoom,
     controls: []
   }),
 
   myGeoObject = new ymaps.GeoObject(
-    {geometry: { type: "Point", coordinates: [@Model.Latitude, @Model.Longitude]}, properties: { iconContent: '@Model.Name' }}, 
-    {preset: 'islands#blackStretchyIcon', draggable: true}
+    { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: 'jsModel.Name' } },
+    { preset: 'islands#blackStretchyIcon', draggable: true }
   )
 
-  circle = new ymaps.Circle([[@Model.Latitude, @Model.Longitude], @Model.LocationPrecisionMeters], { }, {
+  circle = new ymaps.Circle([[jsModel.Latitude, jsModel.Longitude], jsModel.LocationPrecisionMeters], {}, {
     geodesic: true
   });
 

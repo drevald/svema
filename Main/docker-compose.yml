@@ -1,4 +1,5 @@
-version: '3.3'
+version: '3.8'
+name: svema 
 services:
   postgres:
     image: postgres:12-alpine

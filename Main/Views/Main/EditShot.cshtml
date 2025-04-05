@@ -9,52 +9,72 @@
   ymaps.ready(init);
 
   var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
-  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Location)))");
+  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
   var myGeoObject;
   var circle;
-  
+
   function init() {
-
-    myMap = new ymaps.Map("map", {
-        center: [0, 0],
-        zoom: 0,
-        controls: []  
-    })
-
-    if (jsShot != null) {
+      // Initialize the map
+      myMap = new ymaps.Map("map", {
+          center: [jsShot.Latitude, jsShot.Longitude],
+          zoom: jsShot.Zoom,
+          controls: []  
+      });
+  
+      // Create the GeoObject with initial coordinates
       myGeoObject = new ymaps.GeoObject(
-          {geometry: { 
-            type: "Point", 
-            coordinates: [jsShot.Latitude, jsShot.Longitude]}, 
-            properties: { iconContent: jsShot.Name },
-          }, 
-          {preset: 'islands#blackStretchyIcon', draggable: true}
-      )
-      myMap.setCenter([jsShot.Latitude, jsShot.Longitude]);
-      myMap.setZoom(jsShot.Zoom);
+          { geometry: { type: "Point", coordinates: [jsShot.Latitude, jsShot.Longitude] } },
+          { preset: 'islands#blackStretchyIcon', draggable: true }
+      );
+  
+      // Add the GeoObject to the map
       myMap.geoObjects.add(myGeoObject);
-    }
+  
+      myMap.events.add('click', function (e) {
+          var coords = e.get('coords');
+          myGeoObject.geometry.setCoordinates(coords);
+          myGeoObject.properties.set('iconContent', '');
+          document.all['LocationId'].selectedIndex = 0;
+          document.all['Latitude'].value = coords[0];
+          document.all['Longitude'].value = coords[1];
+          document.all['Zoom'].value = myMap.getZoom();
+      });
+
+      myGeoObject.events.add(['wheel'],
+        function (e) {
+        document.all['Zoom'].value = myMap.getZoom();
+    });
+
+      myMap.geoObjects.add(myGeoObject);
 
   }
 
   function show(i) {
-    if (i == 0) {
-        myMap.setCenter([0, 0]);
-        myMap.setZoom(0);
-        myMap.geoObjects.removeAll();
+
+      var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+
+      var shift = 2;
+  
+      if (i == 0) {
+          myMap.setCenter([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
+          myMap.setZoom(jsModel[i-shift].Zoom);
+          myMap.geoObjects.removeAll();
+      }
+      if (myGeoObject == null) {
+          myGeoObject = new ymaps.GeoObject(
+              {geometry: { type: "Point", coordinates: [jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]}, properties: { iconContent: jsModel[i-shift].Name }}, 
+              {preset: 'islands#blackStretchyIcon', draggable: true}
+          );
+          myMap.geoObjects.add(myGeoObject);
+      }
+      myGeoObject.geometry.setCoordinates([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
+      myGeoObject.properties.set('iconContent', jsModel[i-shift].Name); 
+      myMap.setCenter([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
+      myMap.setZoom(jsModel[i-shift].Zoom);
+      document.all['Latitude'].value = jsModel[i-shift].Latitude;
+      document.all['Longitude'].value = jsModel[i-shift].Longitude;
+      document.all['Zoom'].value = jsModel[i-shift].Zoom;
     }
-    if (myGeoObject == null) {
-        myGeoObject = new ymaps.GeoObject(
-            {geometry: { type: "Point", coordinates: [jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]}, properties: { iconContent: jsLocations[i-1].Name }}, 
-            {preset: 'islands#blackStretchyIcon', draggable: true}
-        )
-        myMap.geoObjects.add(myGeoObject);
-    }
-    myGeoObject.geometry.setCoordinates([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
-    myGeoObject.properties.set('iconContent', jsLocations[i-1].Name); 
-    myMap.setCenter([jsLocations[i-1].Latitude, jsLocations[i-1].Longitude]);
-    myMap.setZoom(jsLocations[i-1].Zoom);
-  }
 
   function setdate(year) {
     if (year < 1000) {
@@ -122,12 +142,12 @@
             </select>
           </div>
 
-          <div class="col-sm-12">
+          <div class="col-sm-6">
             <label class="form-label">Дата, от</label>
             <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
           </div>
 
-          <div class="col-sm-12">
+          <div class="col-sm-6">
             <label class="form-label">Дата, до</label>
             <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
           </div>          
@@ -143,10 +163,28 @@
             </select>
           </div>
 
+
+          <input asp-for="Zoom" class="form-control" type="hidden" value="" />
+
+          <div class="col-sm-6">
+              <label class="form-label">Долгота</label>
+              <input asp-for="Longitude" class="form-control"/>
+          </div> 
+
+          <div class="col-sm-6">
+              <label class="form-label">Широта</label>
+              <input asp-for="Latitude" class="form-control" />
+          </div> 
+
           <div class="col-12">
             <label class="form-label">Карта</label>
             <div id="map" style="height:240px"></div>
           </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Название места</label>
+            <input asp-for="LocationName" class="form-control"/>
+          </div> 
 
         </div>
       </form>

@@ -3,6 +3,8 @@
 @model Form.AlbumDTO
 @{Layout = "_Layout";}
 
+<script src="map.js" type="text/javascript"> </script>
+
 <script type="text/javascript">
 
     ymaps.ready(init);
@@ -21,7 +23,7 @@
   
       // Create the GeoObject with initial coordinates
       myGeoObject = new ymaps.GeoObject(
-          { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
+          { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] } },
           { preset: 'islands#blackStretchyIcon', draggable: true }
       );
   
@@ -69,6 +71,7 @@
       myMap.setZoom(jsModel[i-shift].Zoom);
       document.all['Latitude'].value = jsModel[i-shift].Latitude;
       document.all['Longitude'].value = jsModel[i-shift].Longitude;
+      document.all['Zoom'].value = jsModel[i-shift].Zoom;
     }
   
     function setdate(year) {
@@ -156,12 +159,12 @@
                     </select>
                 </div>
     
-                <div class="col-sm-12">
+                <div class="col-sm-6">
                     <label class="form-label">Дата, от</label>
                     <input asp-for="DateStart" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
                 </div>
     
-                <div class="col-sm-12">
+                <div class="col-sm-6">
                     <label class="form-label">Дата, до</label>
                     <input asp-for="DateEnd" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
                 </div> 
@@ -179,12 +182,12 @@
 
                 <input asp-for="Zoom" class="form-control" type="hidden" value="" />
 
-                <div class="col-sm-12">
+                <div class="col-sm-6">
                     <label class="form-label">Долгота</label>
                     <input asp-for="Longitude" class="form-control" value="" />
                 </div> 
 
-                <div class="col-sm-12">
+                <div class="col-sm-6">
                     <label class="form-label">Широта</label>
                     <input asp-for="Latitude" class="form-control" value="" />
                 </div> 
@@ -193,6 +196,11 @@
                     <label for="lastName" class="form-label">Карта</label>
                     <div id="map" style="height:240px"></div>
                 </div>
+
+                <div class="col-sm-12">
+                    <label class="form-label">Название места</label>
+                    <input asp-for="LocationName" class="form-control"/>
+                </div> 
 
             </div>
     </div>
@@ -216,7 +224,7 @@
                     <div class="card-body text-end"
                         onClick="location.href='/edit_shot?id=@Model.Shots[index].ShotId'"
                         style="background-image: url('/preview?id=@Model.Shots[index].ShotId'); background-repeat: no-repeat; background-size: cover;">
-                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem">
+                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem" onclick="event.stopPropagation()">
                         <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
                         <input type="hidden" asp-for="@Model.Shots[index].Name" />
                     </div>                    

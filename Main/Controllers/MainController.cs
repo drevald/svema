@@ -117,8 +117,23 @@ public class MainController: BaseController {
                 } else if (dto.LocationId < 0) {
                     shot.LocationId = null;
                 }
+                //todo - fix for photos made in Grinwitch
+                if (dto.Longitude != 0 && dto.Latitude != 0) {
+                    shot.Longitude = dto.Longitude;
+                    shot.Latitude = dto.Latitude;
+                    shot.Zoom = dto.Zoom;
+                }
                 await dbContext.SaveChangesAsync();
             }
+        }
+        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0) {
+            Location location = new Location();
+            location.Zoom = dto.Zoom;
+            location.Latitude = dto.Latitude;
+            location.Longitude = dto.Longitude;
+            location.Name = dto.LocationName;
+            dbContext.Add(location);
+            await dbContext.SaveChangesAsync();
         }
         System.Console.Write("STORING ALBUM (" + dto.AlbumId + ")");
         await dbContext.SaveChangesAsync();
@@ -176,6 +191,9 @@ public class MainController: BaseController {
         var locations = await dbContext.Locations.ToListAsync();
         dto.Locations = locations;    
         dto.Location = location;
+        dto.Longitude = shot.Longitude;
+        dto.Latitude = shot.Latitude;
+        dto.Zoom = shot.Zoom;
         dto.IsCover = shot.ShotId == album.PreviewId;    
         return View(dto);
     }
@@ -188,8 +206,19 @@ public class MainController: BaseController {
         shot.Name = dto.Name;
         shot.DateStart = dto.DateStart;
         shot.DateEnd = dto.DateEnd;
+        shot.Longitude = dto.Longitude;
+        shot.Latitude = dto.Latitude;
+        shot.Zoom = dto.Zoom;
         if (dto.IsCover) {
             album.PreviewId = dto.ShotId;
+        }
+        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0) {
+            Location location = new Location();
+            location.Latitude = dto.Latitude;
+            location.Longitude = dto.Longitude;
+            location.Zoom = dto.Zoom;
+            location.Name = dto.LocationName;
+            dbContext.Add(location);
         }
         await dbContext.SaveChangesAsync();
         return Redirect("edit_album?id=" + shot.AlbumId);

@@ -96,6 +96,7 @@ public class MainController: BaseController {
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto) {
         Console.Write("!!!!STORE ALBUM");
+        Console.WriteLine("!!!!STORE ALBUM");
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
         foreach (var s in dto.Shots)  {

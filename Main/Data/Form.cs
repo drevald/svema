@@ -37,6 +37,8 @@ public class AlbumDTO {
     public List<ShotPreviewDTO> Shots {get; set;}
     public float Longitude {get; set;}
     public float Latitude {get; set;}
+    public float Zoom {get; set;}
+
 }
 
 public class ShotPreviewDTO {
@@ -100,6 +102,9 @@ public class ShotDTO {
     public ICollection<ShotComment> ShotComments {get; set;}     
     public ICollection<Location> Locations {get; set;} 
     public bool IsCover {get; set;}
+    public float Longitude {get; set;}
+    public float Latitude {get; set;}
+    public float Zoom {get; set;}
 
     public ShotDTO() {
 

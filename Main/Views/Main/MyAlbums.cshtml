@@ -46,8 +46,8 @@
 
             <div class="col-sm-6">
               <label class="form-label">Год, от</label>
-              <select asp-for="DateStart" class="form-select" id="state" required>                     
-                  <option>&nbsp;</option>
+              <select asp-for="DateStart" class="form-select" id="DateStart" onchange="document.getElementById('DateEnd').selectedIndex = this.selectedIndex;" required>
+                <option>&nbsp;</option>
                   @{
                       var start = 1950;
                       var end = DateTime.Now.Year;
@@ -61,7 +61,7 @@
 
             <div class="col-sm-6">
               <label class="form-label">Год, до</label>
-              <select asp-for="DateEnd" class="form-select" id="state" required>                     
+              <select asp-for="DateEnd" class="form-select" id="DateEnd" required>                     
                 <option>&nbsp;</option>
                   @{
                       var start1 = 1950;

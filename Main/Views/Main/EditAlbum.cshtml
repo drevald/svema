@@ -6,32 +6,13 @@
 <script asp-append-version="true">
     var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
     var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
     var initFunc = function () { init(jsShot);};
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
 <script src="~/js/dates.js" asp-append-version="true"> </script>
-
-<script type="text/javascript">
-
-function selectAll() {
-    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
-    for (i=0; i<jsShots.length; i++) {
-        document.all["Shots["+i+"].IsChecked"][0].checked = true;
-        document.all["Shots["+i+"].IsChecked"][1].checked = true;
-    }
-}
-
-function deselectAll() {
-    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
-    for (i=0; i<jsShots.length; i++) {
-        document.all["Shots["+i+"].IsChecked"][0].checked = false;
-        document.all["Shots["+i+"].IsChecked"][1].checked = false;
-    }
-}
-
-</script>
-  
+<script src="~/js/shots.js" asp-append-version="true"> </script>
 
 <form method="post">
 

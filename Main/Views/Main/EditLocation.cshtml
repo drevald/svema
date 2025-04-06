@@ -20,7 +20,7 @@
   }),
 
   myGeoObject = new ymaps.GeoObject(
-    { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: 'jsModel.Name' } },
+    { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
     { preset: 'islands#blackStretchyIcon', draggable: true }
   )
 
@@ -34,6 +34,10 @@
     circle.geometry.setCoordinates(coords);
     document.all['Latitude'].value = coords[0];
     document.all['Longitude'].value = coords[1];
+  });
+
+  myMap.events.add('wheel', function (e) {
+    var coords = e.get('coords');
     document.all['Zoom'].value = myMap.getZoom();
   });
 

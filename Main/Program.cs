@@ -51,6 +51,7 @@ builder.Services.AddAuthentication("CookieScheme")
     });
 
 var app = builder.Build();
+app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

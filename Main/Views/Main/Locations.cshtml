@@ -36,7 +36,6 @@
     }
   }
 
-
   function show(i) {
     if (i == 0) {
         myMap.setCenter([0, 0]);
@@ -82,19 +81,26 @@
           <th class="small">&nbsp;</th>
         </tr>
       </thead>
-      @foreach(var location in Model) {
-      <tr>
-        <td>@location.Name</td>
-        <td>@location.Longitude</td>
-        <td>@location.Latitude</td>
-        <td>@location.LocationPrecisionMeters</td>
-        <td>
-          <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
-          <a class="btn btn-sm btn-info" href="javascript:show(2);">Показать</a>
-          <a class="btn btn-sm btn-primary" href="edit_location?LocationId=@location.Id">Редактировать</a>
-        </td>
-      </tr>
-      }        
+      @{
+        var index = 1;
+    }
+    
+    @foreach (var location in Model)
+    {
+        <tr>
+            <td>@location.Name</td>
+            <td>@location.Longitude</td>
+            <td>@location.Latitude</td>
+            <td>@location.LocationPrecisionMeters</td>
+            <td>
+                <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
+                <a class="btn btn-sm btn-info" href="javascript:show(@index);">Показать</a>
+                <a class="btn btn-sm btn-primary" href="edit_location?LocationId=@location.Id">Редактировать</a>
+            </td>
+        </tr>
+    
+        index++;
+    }    
     </table>
   </div>
 </div>

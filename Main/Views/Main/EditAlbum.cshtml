@@ -3,9 +3,14 @@
 @model Form.AlbumDTO
 @{Layout = "_Layout";}
 
-<script src="map.js" type="text/javascript"> </script>
+<script asp-append-version="true">
+    var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+    var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+</script>
 
-<script type="text/javascript">
+<script src="~/js/map.js" asp-append-version="true"> </script>
+
+<!-- <script type="text/javascript">
 
     ymaps.ready(init);
   
@@ -87,7 +92,11 @@
         document.all["DateEnd"].value=year + "-12-31";
       }
     }
-  
+
+    </script> -->
+
+    <script type="text/javascript">
+
     function selectAll() {
       var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
       for (i=0; i<jsShots.length; i++) {
@@ -171,7 +180,7 @@
 
                 <div class="col-sm-12">
                     <label class="form-label">Место</label>
-                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)">
+                    <select asp-for="LocationId" class="form-select" id="state"  onchange="javascript:show(this.selectedIndex, jsLocations)">
                         <option></option>
                         <option value=-1>Unknown</option>
                         @foreach(var location in @Model.Locations) {

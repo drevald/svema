@@ -1,11 +1,10 @@
 var myGeoObject;
 var circle;
 
-ymaps.ready(function () {
-  init(jsShot);
-});
+ymaps.ready(initFunc);
 
 function init(jsShot) {
+
   // Initialize the map
   myMap = new ymaps.Map("map", {
     center: [jsShot.Latitude, jsShot.Longitude],
@@ -41,6 +40,49 @@ function init(jsShot) {
 
 }
 
+function init_edit(jsModel) {
+  myMap = new ymaps.Map("map", {
+    center: [jsModel.Latitude, jsModel.Longitude],
+    zoom: jsModel.Zoom,
+    controls: []
+  }),
+
+    myGeoObject = new ymaps.GeoObject(
+      { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
+      { preset: 'islands#blackStretchyIcon', draggable: true }
+    )
+
+  circle = new ymaps.Circle([[jsModel.Latitude, jsModel.Longitude], jsModel.LocationPrecisionMeters], {}, {
+    geodesic: true
+  });
+
+  myMap.events.add('click', function (e) {
+    var coords = e.get('coords');
+    myGeoObject.geometry.setCoordinates(coords);
+    circle.geometry.setCoordinates(coords);
+    document.all['Latitude'].value = coords[0];
+    document.all['Longitude'].value = coords[1];
+  });
+
+  myMap.events.add('wheel', function (e) {
+    var coords = e.get('coords');
+    document.all['Zoom'].value = myMap.getZoom();
+  });
+
+  myGeoObject.events.add(['mapchange', 'dragend'],
+    function (e) {
+      coords = myGeoObject.geometry.getCoordinates();
+      circle.geometry.setCoordinates(coords);
+      document.all['Latitude'].value = coords[0];
+      document.all['Longitude'].value = coords[1];
+      document.all['Zoom'].value = myMap.getZoom();
+    }
+  );
+
+  myMap.geoObjects.add(myGeoObject);
+
+}
+
 function show(i, jsModel) {
 
   var shift = 2;
@@ -66,12 +108,3 @@ function show(i, jsModel) {
   document.all['Zoom'].value = jsModel[i - shift].Zoom;
 }
 
-function setdate(year) {
-  if (year < 1000) {
-    document.all["DateStart"].value = year + "0-01-01";
-    document.all["DateEnd"].value = year + "9-12-31";
-  } else {
-    document.all["DateStart"].value = year + "-01-01";
-    document.all["DateEnd"].value = year + "-12-31";
-  }
-}

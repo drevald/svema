@@ -6,114 +6,31 @@
 <script asp-append-version="true">
     var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
     var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var initFunc = function () { init(jsShot);};
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/dates.js" asp-append-version="true"> </script>
 
-<!-- <script type="text/javascript">
+<script type="text/javascript">
 
-    ymaps.ready(init);
-  
-    var myGeoObject;
-    var myMap;
-    var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  
-    function init() {
-      // Initialize the map
-      myMap = new ymaps.Map("map", {
-          center: [0, 0],
-          zoom: 0,
-          controls: []  
-      });
-  
-      // Create the GeoObject with initial coordinates
-      myGeoObject = new ymaps.GeoObject(
-          { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] } },
-          { preset: 'islands#blackStretchyIcon', draggable: true }
-      );
-  
-      // Add the GeoObject to the map
-      myMap.geoObjects.add(myGeoObject);
-  
-      myMap.events.add('click', function (e) {
-          var coords = e.get('coords');
-          myGeoObject.geometry.setCoordinates(coords);
-          myGeoObject.properties.set('iconContent', '');
-          document.all['LocationId'].selectedIndex = 0;
-          document.all['Latitude'].value = coords[0];
-          document.all['Longitude'].value = coords[1];
-          document.all['Zoom'].value = myMap.getZoom();
-      });
-
-      myGeoObject.events.add(['wheel'],
-        function (e) {
-        document.all['Zoom'].value = myMap.getZoom();
-    });
-
-      myMap.geoObjects.add(myGeoObject);
-
+function selectAll() {
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    for (i=0; i<jsShots.length; i++) {
+        document.all["Shots["+i+"].IsChecked"][0].checked = true;
+        document.all["Shots["+i+"].IsChecked"][1].checked = true;
     }
-  
-    function show(i) {
-      var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
-      var shift = 2;
-  
-      if (i == 0) {
-          myMap.setCenter([0, 0]);
-          myMap.setZoom(0);
-          myMap.geoObjects.removeAll();
-      }
-      if (myGeoObject == null) {
-          myGeoObject = new ymaps.GeoObject(
-              {geometry: { type: "Point", coordinates: [jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]}, properties: { iconContent: jsModel[i-shift].Name }}, 
-              {preset: 'islands#blackStretchyIcon', draggable: true}
-          );
-          myMap.geoObjects.add(myGeoObject);
-      }
-      myGeoObject.geometry.setCoordinates([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
-      myGeoObject.properties.set('iconContent', jsModel[i-shift].Name); 
-      myMap.setCenter([jsModel[i-shift].Latitude, jsModel[i-shift].Longitude]);
-      myMap.setZoom(jsModel[i-shift].Zoom);
-      document.all['Latitude'].value = jsModel[i-shift].Latitude;
-      document.all['Longitude'].value = jsModel[i-shift].Longitude;
-      document.all['Zoom'].value = jsModel[i-shift].Zoom;
-    }
-  
-    function setdate(year) {
-      if (year == -1) {
-          document.all["DateStart"].value="";
-          document.all["DateEnd"].value="";    
-      }
-      if (year < 1000) {
-        document.all["DateStart"].value=year + "0-01-01";
-        document.all["DateEnd"].value=year + "9-12-31";
-      } else {
-        document.all["DateStart"].value=year + "-01-01";
-        document.all["DateEnd"].value=year + "-12-31";
-      }
-    }
+}
 
-    </script> -->
-
-    <script type="text/javascript">
-
-    function selectAll() {
-      var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
-      for (i=0; i<jsShots.length; i++) {
-          document.all["Shots["+i+"].IsChecked"][0].checked = true;
-          document.all["Shots["+i+"].IsChecked"][1].checked = true;
-      }
+function deselectAll() {
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    for (i=0; i<jsShots.length; i++) {
+        document.all["Shots["+i+"].IsChecked"][0].checked = false;
+        document.all["Shots["+i+"].IsChecked"][1].checked = false;
     }
-  
-    function deselectAll() {
-      var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
-      for (i=0; i<jsShots.length; i++) {
-          document.all["Shots["+i+"].IsChecked"][0].checked = false;
-          document.all["Shots["+i+"].IsChecked"][1].checked = false;
-      }
-    }
-  
-  </script>
+}
+
+</script>
   
 
 <form method="post">

@@ -3,7 +3,15 @@
 @model Data.Location
 @{Layout = "_Layout";}
 
-<script type="text/javascript">
+
+<script asp-append-version="true">
+  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () { init_edit(jsShot);};
+</script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
+
+<!-- <script type="text/javascript">
 
   ymaps.ready(init);
 
@@ -12,55 +20,9 @@
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
 
   
-  function init() {
-    myMap = new ymaps.Map("map", {
-    center: [jsModel.Latitude, jsModel.Longitude],
-    zoom: jsModel.Zoom,
-    controls: []
-  }),
 
-  myGeoObject = new ymaps.GeoObject(
-    { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
-    { preset: 'islands#blackStretchyIcon', draggable: true }
-  )
 
-  circle = new ymaps.Circle([[jsModel.Latitude, jsModel.Longitude], jsModel.LocationPrecisionMeters], {}, {
-    geodesic: true
-  });
-
-  myMap.events.add('click', function (e) {
-    var coords = e.get('coords');
-    myGeoObject.geometry.setCoordinates(coords);
-    circle.geometry.setCoordinates(coords);
-    document.all['Latitude'].value = coords[0];
-    document.all['Longitude'].value = coords[1];
-  });
-
-  myMap.events.add('wheel', function (e) {
-    var coords = e.get('coords');
-    document.all['Zoom'].value = myMap.getZoom();
-  });
-
-  myGeoObject.events.add(['mapchange', 'dragend'],
-    function (e) {
-      coords = myGeoObject.geometry.getCoordinates();
-      circle.geometry.setCoordinates(coords);
-      document.all['Latitude'].value = coords[0];
-      document.all['Longitude'].value = coords[1];
-      document.all['Zoom'].value = myMap.getZoom();
-    }
-  );
-
-  myMap.geoObjects.add(myGeoObject);
-  myMap.geoObjects.add(circle);
-  
-  }
-
-  function prec(radius) {
-    circle.geometry.setRadius(radius);
-  }
-
-</script>
+</script> -->
 
 <form class="needs-validation" method="post" novalidate>
 

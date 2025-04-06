@@ -7,9 +7,11 @@
 <script asp-append-version="true">
     var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
     var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var initFunc = function () { init(jsShot);};
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/dates.js" asp-append-version="true"> </script>
 
 <form method="post">
 

@@ -68,7 +68,7 @@
     
                 <div class="col-sm-6">
                     <label class="form-label">Дата, от</label>
-                    <input asp-for="DateStart" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
+                    <input asp-for="DateStart" class="form-control" value="" asp-format="{0:yyyy-MM-dd}" onchange="javascript:document.getElementById('DateEnd').value=this.value"/>
                 </div>
     
                 <div class="col-sm-6">

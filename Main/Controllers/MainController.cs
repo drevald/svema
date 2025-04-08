@@ -22,7 +22,8 @@ public class MainController: BaseController {
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Albums(AlbumsListDTO dto) {
+    public async Task<IActionResult> Albums(AlbumsListDTO dto)
+    {
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
@@ -32,22 +33,56 @@ public class MainController: BaseController {
             shotsQuerable = shotsQuerable
                 .Where(s =>
                     (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
-                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) &&
-                    (dto.LocationId <= 0 || s.LocationId == dto.LocationId)
+                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider))
                 );
         }
-        albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
-            ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
-            : dbContext.Albums.ToListAsync());
+
+        albumsList.Albums = await (
+            dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
+                ? shotsQuerable
+                    .Select(s => s.Album)
+                    .Distinct()
+                    .OrderBy(a => a.Name)
+                    .ToListAsync()
+                : dbContext.Albums
+                    .OrderBy(a => a.Name)
+                    .ToListAsync()
+        );
+
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
         return View(albumsList);
     }
 
+    // [Authorize]
+    // [HttpGet("my")]
+    // public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
+    //     var albumsList = new AlbumsListDTO();   
+    //     CultureInfo provider = CultureInfo.InvariantCulture;
+    //     IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
+
+    //     if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
+    //     {
+    //         shotsQuerable = shotsQuerable
+    //             .Where(s =>
+    //                 (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
+    //                 (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) 
+    //             );
+    //     }
+    //     albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
+    //         ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
+    //         : dbContext.Albums.ToListAsync());
+    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
+    //     albumsList.DateStart = dto.DateStart;
+    //     albumsList.DateEnd = dto.DateEnd;
+    //     return View(albumsList);
+    // }    
+
     [Authorize]
     [HttpGet("my")]
-    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
+    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
+    {
         var albumsList = new AlbumsListDTO();   
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
@@ -57,18 +92,28 @@ public class MainController: BaseController {
             shotsQuerable = shotsQuerable
                 .Where(s =>
                     (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
-                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) &&
-                    (dto.LocationId <= 0 || s.LocationId == dto.LocationId)
+                    (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) 
                 );
         }
-        albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
-            ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
-            : dbContext.Albums.ToListAsync());
+
+        albumsList.Albums = await (
+            dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
+                ? shotsQuerable
+                    .Select(s => s.Album)
+                    .Distinct()
+                    .OrderBy(a => a.Name)
+                    .ToListAsync()
+                : dbContext.Albums
+                    .OrderBy(a => a.Name)
+                    .ToListAsync()
+        );
+
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
+
         return View(albumsList);
-    }    
+    }
 
 
 ///////////////////   ALBUM  /////////////////////////////////////////
@@ -77,17 +122,22 @@ public class MainController: BaseController {
     public async Task<IActionResult> EditAlbum(int id) {
         AlbumDTO dto = new AlbumDTO();
         var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId==id).FirstAsync();
-        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
+        
+        //var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
+        dto.Shots = await dbContext.Shots
+            .Where(s => s.AlbumId == id)
+            .OrderBy(s => s.ShotId)
+            .Select(s => new ShotPreviewDTO {
+                ShotId = s.ShotId,
+                Name = s.Name,
+                SourceUri = s.SourceUri,
+            })
+            .ToListAsync();
+
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments;
         dto.Locations = await dbContext.Locations.ToListAsync();
-        dto.Shots = new List<ShotPreviewDTO>();
-        foreach (var shot in shots) {
-            dto.Shots.Add(
-                new ShotPreviewDTO(shot)
-            );
-        }
 
         return View(dto);
 
@@ -111,11 +161,6 @@ public class MainController: BaseController {
                 }
                 if (DateTime.MinValue != dto.DateEnd) {
                     shot.DateEnd = dto.DateEnd;
-                }
-                if (dto.LocationId > 0) {
-                    shot.LocationId = dto.LocationId;
-                } else if (dto.LocationId < 0) {
-                    shot.LocationId = null;
                 }
                 //todo - fix for photos made in Grinwitch
                 if (dto.Longitude != 0 && dto.Latitude != 0) {
@@ -155,18 +200,30 @@ public class MainController: BaseController {
         return Redirect("/");
     }
 
-    //todo - cascade delete originals
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id) {
-        Album album = await dbContext.Albums.FindAsync(id);
-        List<Shot> shots = dbContext.Shots.Where(s => s.AlbumId == id).Include(s => s.Storage).ToList();
-        foreach (Shot s in shots) {
-            Storage.DeleteFile(s);
+        var album = await dbContext.Albums.FindAsync(id);
+        if (album == null)
+            return NotFound();
+        var shotInfos = dbContext.Shots
+            .Where(s => s.AlbumId == id)
+            .Select(s => new {
+                s.SourceUri,
+                s.Storage                
+            })
+            .ToList();
+
+        foreach (var shot in shotInfos) {
+            Storage.DeleteFile(shot.Storage, shot.SourceUri);
         }
-        dbContext.Remove(album);
+
+        dbContext.Shots.RemoveRange(dbContext.Shots.Where(s => s.AlbumId == id));
+        dbContext.Albums.Remove(album);
         await dbContext.SaveChangesAsync();
-        return Redirect("/");
+
+        return Redirect("/my");
     }
+
 
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id) {
@@ -186,11 +243,9 @@ public class MainController: BaseController {
     public async Task<IActionResult> EditShot(int id) {
         var shot = await dbContext.Shots.FindAsync(id);
         var album = await dbContext.Albums.FindAsync(shot.AlbumId);        
-        var location = await dbContext.Locations.FindAsync(shot.LocationId);
         ShotDTO dto = new ShotDTO(shot);
         var locations = await dbContext.Locations.ToListAsync();
         dto.Locations = locations;    
-        dto.Location = location;
         dto.Longitude = shot.Longitude;
         dto.Latitude = shot.Latitude;
         dto.Zoom = shot.Zoom;
@@ -202,7 +257,6 @@ public class MainController: BaseController {
     public async Task<IActionResult> StoreShot(ShotDTO dto) {
         Shot shot = await dbContext.Shots.FindAsync(dto.ShotId);
         Album album = await dbContext.Albums.FindAsync(shot.AlbumId);
-        shot.LocationId = dto.LocationId;
         shot.Name = dto.Name;
         shot.DateStart = dto.DateStart;
         shot.DateEnd = dto.DateEnd;
@@ -241,13 +295,27 @@ public class MainController: BaseController {
         return new FileStreamResult(stream, "image/jpeg");
     }
 
+    // [HttpGet("shot")]
+    // public IActionResult Shot(int id) {
+    //     var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
+    //     var stream = Storage.GetFile(shot);
+    //     stream.Position = 0;
+    //     return new FileStreamResult(stream, shot.ContentType);
+    // }
+
     [HttpGet("shot")]
     public IActionResult Shot(int id) {
-        var shot = dbContext.Shots.Where(s => s.ShotId==id).Include(s => s.Storage).First();
-        var stream = Storage.GetFile(shot);
-        stream.Position = 0;
-        return new FileStreamResult(stream, shot.ContentType);
+        var shot = dbContext.Shots
+                            .Where(s => s.ShotId == id)
+                            .Include(s => s.Storage)
+                            .FirstOrDefault();
+
+        if (shot == null || shot.FullScreen == null) {
+            return NotFound(); // Return 404 if shot is not found or fullscreen is null
+        }
+        return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
     }
+
 
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id) {
@@ -322,7 +390,6 @@ public class MainController: BaseController {
     [HttpGet("view_shot")]
     public async Task<IActionResult> ViewShot(int id) {
         var shot = await dbContext.Shots
-            .Include(s => s.Location)
             .Include(s => s.ShotComments)
             .Include(s => s.Album)
             .FirstOrDefaultAsync(s => s.ShotId == id);

@@ -43,6 +43,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(dbConnection);
+    
 });
 builder.Services.AddAuthentication("CookieScheme")
     .AddCookie("CookieScheme", options => {

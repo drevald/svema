@@ -48,6 +48,7 @@ public class ShotPreviewDTO {
     public int ShotId {get; set;}
     public string Name {get; set;}
     public bool IsChecked {get; set;}
+    public string SourceUri {get; set;}
 
     public ShotPreviewDTO () {
     }    
@@ -56,6 +57,7 @@ public class ShotPreviewDTO {
         ShotId = shot.ShotId;
         Name = shot.Name;
         IsChecked = false;
+        SourceUri = shot.SourceUri;
     }
 
 }
@@ -69,10 +71,11 @@ public class ShotREST {
     public DateTime DateStart {get; set;}
     [BindProperty, DataType(DataType.Date)] 
     public DateTime DateEnd {get; set;}
+    [BindProperty, DataType(DataType.Date)] 
+    public DateTime DateUploaded {get; set;}
     public byte[] Data {get; set;}
-
-    public string Mime {get; set;}
-
+    public string Mime {get; set;}  
+    public string OrigPath {get; set;}  
     public ShotREST() {
 
     }
@@ -84,7 +87,9 @@ public class ShotREST {
         UserId = shot.Album.User.UserId;
         DateStart = shot.DateStart;
         DateEnd = shot.DateEnd;
-        Mime = shot.ContentType;;
+        DateUploaded = shot.DateUploaded;
+        OrigPath = shot.OrigPath;
+        Mime = shot.ContentType;
     }
 
 }
@@ -120,7 +125,6 @@ public class ShotDTO {
         DateStart = shot.DateStart;
         DateEnd = shot.DateEnd;
         Preview = shot.Preview;
-        LocationId = shot.LocationId;
         ShotComments = shot.ShotComments;
     }
 

@@ -66,4 +66,24 @@ public class Storage {
         }
     }
 
+    public static void DeleteFile(ShotStorage storage, string uri) {
+        try {
+            if (storage == null) {
+                Console.Write("Storage not defined for shot");
+                return;
+            } else if (storage.Provider == Provider.Local) {
+                try {
+                    System.IO.File.Delete(storage.Root + uri);
+                } catch (Exception e) {
+                    Console.Write("Error " + e);
+                }
+            } else {
+                YandexDisk yandexDisk = new YandexDisk();
+                yandexDisk.DeleteFileByPath(storage.Root + uri, storage.AuthToken);             
+            }    
+        } catch (Exception e) {
+            Console.Write("Error " + e);
+        }
+    }
+
 }

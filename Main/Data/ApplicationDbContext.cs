@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace Data;
 
@@ -62,14 +63,13 @@ public class Album {
     public User User {get; set;}
     [Column("preview_id")]
     public int PreviewId {get; set;}
+    [JsonIgnore]
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumComment> AlbumComments {get; set;}
     [Column("longitude")]
     public float Longitude {get; set;}
     [Column("latitude")]
     public float Latitude {get; set;}
-    [Column("location_precision_meters")]
-    public int LocationPrecisionMeters {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
 }
@@ -87,14 +87,16 @@ public class Shot {
     public DateTime DateStart {get; set;}
     [BindProperty, DataType(DataType.Date), Column("date_end")] 
     public DateTime DateEnd {get; set;}
+    [BindProperty, DataType(DataType.Date), Column("date_uploaded")] 
+    public DateTime DateUploaded {get; set;}
     [Column("preview")]
     public byte[] Preview {get; set;}
+    [Column("fullscreen")]
+    public byte[] FullScreen {get; set;}
     [Column("source_uri")]
     public string SourceUri {get; set;}
-    public Location Location {get; set;}    
-    [Column("location_id")]
-    public System.Nullable<int> LocationId {get; set;}    
-    [Column("md5")]
+    [Column("orig_path")]
+    public string OrigPath {get; set;}
     public string MD5 {get; set;}
     public ICollection<Person> Persons {get; set;}
     [Column("content_type")]
@@ -109,10 +111,21 @@ public class Shot {
     public float Longitude {get; set;}
     [Column("latitude")]
     public float Latitude {get; set;}
-    [Column("location_precision_meters")]
-    public int LocationPrecisionMeters {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
+    [Column("rotate")]
+    public int Rotate {get; set;}
+    [Column("flip")]
+    public bool Flip {get; set;}
+    [Column("direction")]
+    public float Direction {get; set;}
+    [Column("angle")]
+    public float Angle {get; set;}    
+    [Column("camera_manufacturer")]
+    public string CameraManufacturer {get; set;}
+    [Column("camera_model")]
+    public string CameraModel {get; set;}
+    
 }
 
 [Table("locations")]
@@ -125,8 +138,6 @@ public class Location {
     public float Longitude {get; set;}
     [Column("latitude")]
     public float Latitude {get; set;}
-    [Column("location_precision_meters")]
-    public int LocationPrecisionMeters {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
 }

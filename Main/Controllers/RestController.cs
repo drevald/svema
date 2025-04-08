@@ -1,8 +1,8 @@
+using System;
 using System.Data;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Data;
@@ -39,19 +39,42 @@ public class RestController: BaseController {
         shot.DateEnd = dto.DateEnd;
         shot.Album = album;
         shot.AlbumId = dto.AlbumId;
+        shot.OrigPath = dto.OrigPath;
+        shot.DateUploaded = DateTime.Now;
         await ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, storage, errors);
     }
 
     [HttpPost("albums")]
     public JsonResult PostAlbum([FromBody] AlbumDTO dto) {
-        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
-        Album album = new Album();
-        album.User = user;
-        album.Name = dto.Name;
+        
+        var user = dbContext.Users.Where(u => u.UserId == dto.UserId).FirstOrDefault();
+        
+        // Check if user exists
+        if (user == null) {
+            return new JsonResult(new { message = "User not found" }) { StatusCode = 404 };
+        }
+
+        // Check if the album already exists for the given user
+        var existingAlbum = dbContext.Albums
+                                    .Where(a => a.User.UserId == dto.UserId && a.Name == dto.Name)
+                                    .FirstOrDefault();
+        
+        if (existingAlbum != null) {
+            // If album exists, return the existing one
+            return new JsonResult(existingAlbum);
+        }
+
+        // If album doesn't exist, create a new one
+        Album album = new Album {
+            User = user,
+            Name = dto.Name
+        };
         dbContext.Add(album);
         dbContext.SaveChanges();
+
         return new JsonResult(album);
     }
+
 
     [HttpGet("albums/{albumId}/shots")]
     public JsonResult GetShots(int albumId) {

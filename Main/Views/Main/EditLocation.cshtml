@@ -49,34 +49,6 @@
         <input asp-for="Zoom" class="form-control" id="Zoom" name="Zoom">
       </div>
 
-      <div class="col-sm-6 pb-3">
-        <label for="lastName" class="form-label">Точность</label>
-        <div class="form-control btn-group p-0" role="group" aria-label="Basic radio toggle button group">
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio1"
-            onClick="javascript:prec(10000);" value=10000>
-            <label class="btn btn-outline-primary" for="btnradio1">10000 м</label>
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio2"
-            onClick="javascript:prec(5000);" value=5000>
-          <label class="btn btn-outline-primary" for="btnradio2">5000 м</label>
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio3"
-            onClick="javascript:prec(1000);" value=1000>
-          <label class="btn btn-outline-primary" for="btnradio3">1000 м</label>
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio4"
-            onClick="javascript:prec(500);" value=500>
-          <label class="btn btn-outline-primary" for="btnradio4">500 м</label>
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio5"
-            onClick="javascript:prec(100);" value=100>
-          <label class="btn btn-outline-primary" for="btnradio5">100 м</label>
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio6"
-            onClick="javascript:prec(50);" value=50>
-          <label class="btn btn-outline-primary" for="btnradio6">50 м</label>          
-          <input asp-for="LocationPrecisionMeters" type="radio" class="btn-check" name="LocationPrecisionMeters" id="btnradio7"
-            onClick="javascript:prec(10);" value=10>
-          <label class="btn btn-outline-primary" for="btnradio7">10 м</label>
-        </div>
-      </div>
-
-
     </div>
   </div>
 

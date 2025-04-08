@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace svema.Migrations
+namespace Svema.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240420114440_init")]
-    partial class init
+    [Migration("20250408212519_camera")]
+    partial class camera
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -33,6 +33,14 @@ namespace svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AlbumId"));
 
+                    b.Property<float>("Latitude")
+                        .HasColumnType("real")
+                        .HasColumnName("latitude");
+
+                    b.Property<float>("Longitude")
+                        .HasColumnType("real")
+                        .HasColumnName("longitude");
+
                     b.Property<string>("Name")
                         .HasColumnType("text")
                         .HasColumnName("name");
@@ -43,6 +51,10 @@ namespace svema.Migrations
 
                     b.Property<int?>("UserId")
                         .HasColumnType("integer");
+
+                    b.Property<int>("Zoom")
+                        .HasColumnType("integer")
+                        .HasColumnName("zoom");
 
                     b.HasKey("AlbumId");
 
@@ -102,10 +114,6 @@ namespace svema.Migrations
                         .HasColumnType("real")
                         .HasColumnName("latitude");
 
-                    b.Property<int>("LocationPrecisionMeters")
-                        .HasColumnType("integer")
-                        .HasColumnName("location_precision_meters");
-
                     b.Property<float>("Longitude")
                         .HasColumnType("real")
                         .HasColumnName("longitude");
@@ -158,6 +166,18 @@ namespace svema.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("album_id");
 
+                    b.Property<float>("Angle")
+                        .HasColumnType("real")
+                        .HasColumnName("angle");
+
+                    b.Property<string>("CameraManufacturer")
+                        .HasColumnType("text")
+                        .HasColumnName("camera_manufacturer");
+
+                    b.Property<string>("CameraModel")
+                        .HasColumnType("text")
+                        .HasColumnName("camera_model");
+
                     b.Property<string>("ContentType")
                         .HasColumnType("text")
                         .HasColumnName("content_type");
@@ -170,21 +190,48 @@ namespace svema.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("date_start");
 
-                    b.Property<int?>("LocationId")
-                        .HasColumnType("integer")
-                        .HasColumnName("location_id");
+                    b.Property<DateTime>("DateUploaded")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("date_uploaded");
+
+                    b.Property<float>("Direction")
+                        .HasColumnType("real")
+                        .HasColumnName("direction");
+
+                    b.Property<bool>("Flip")
+                        .HasColumnType("boolean")
+                        .HasColumnName("flip");
+
+                    b.Property<byte[]>("FullScreen")
+                        .HasColumnType("bytea")
+                        .HasColumnName("fullscreen");
+
+                    b.Property<float>("Latitude")
+                        .HasColumnType("real")
+                        .HasColumnName("latitude");
+
+                    b.Property<float>("Longitude")
+                        .HasColumnType("real")
+                        .HasColumnName("longitude");
 
                     b.Property<string>("MD5")
-                        .HasColumnType("text")
-                        .HasColumnName("md5");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<string>("OrigPath")
+                        .HasColumnType("text")
+                        .HasColumnName("orig_path");
+
                     b.Property<byte[]>("Preview")
                         .HasColumnType("bytea")
                         .HasColumnName("preview");
+
+                    b.Property<int>("Rotate")
+                        .HasColumnType("integer")
+                        .HasColumnName("rotate");
 
                     b.Property<long>("Size")
                         .HasColumnType("bigint")
@@ -198,11 +245,13 @@ namespace svema.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("storage_id");
 
+                    b.Property<int>("Zoom")
+                        .HasColumnType("integer")
+                        .HasColumnName("zoom");
+
                     b.HasKey("ShotId");
 
                     b.HasIndex("AlbumId");
-
-                    b.HasIndex("LocationId");
 
                     b.HasIndex("MD5")
                         .IsUnique();
@@ -364,10 +413,6 @@ namespace svema.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Data.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId");
-
                     b.HasOne("Data.ShotStorage", "Storage")
                         .WithMany("Shots")
                         .HasForeignKey("StorageId")
@@ -375,8 +420,6 @@ namespace svema.Migrations
                         .IsRequired();
 
                     b.Navigation("Album");
-
-                    b.Navigation("Location");
 
                     b.Navigation("Storage");
                 });

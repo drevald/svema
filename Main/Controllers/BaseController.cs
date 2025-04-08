@@ -10,64 +10,172 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Data;
 using Microsoft.AspNetCore.Mvc.Diagnostics;
+using Utils;
 
 namespace Controllers;
 
-public class BaseController: Controller {
+public class BaseController : Controller
+{
 
     protected ApplicationDbContext dbContext;
 
     protected IConfiguration config;
 
-    public BaseController (ApplicationDbContext dbContext, IConfiguration config) {
+    public BaseController(ApplicationDbContext dbContext, IConfiguration config)
+    {
         this.dbContext = dbContext;
         this.config = config;
     }
 
-    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors) {
-        try {
+
+    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors)
+    {
+        try
+        {
             using var md5 = MD5.Create();
-            using var stream = new MemoryStream(data);
-            using var stream1 = new MemoryStream(data);
-            using var outputStream = new MemoryStream();
-            stream.Position = 0;
-            stream1.Position = 0;
-            using var image = Image.Load(stream);
-            float ratio = (float)image.Width/(float)image.Height;
-            if (ratio > 1 ) {
-                image.Mutate(x => x.Resize((int)(200 * ratio), 200));
-                image.Mutate(x => x.Crop(new Rectangle((image.Width-200)/2, 0, 200, 200)));
-            } else {
-                image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
-                image.Mutate(x => x.Crop(new Rectangle(0, (image.Height-200)/2, 200, 200)));
-            }
-            ImageExtensions.SaveAsJpeg(image, outputStream);
+            using var originalStream = new MemoryStream(data);
+            using var previewStream = new MemoryStream(data);
+            using var fullStream = new MemoryStream(data);
+            using var previewImage = Image.Load(previewStream);
+            using var fullImage = Image.Load(fullStream);
+            
+            PhotoMetadata photoMetadata = ImageMetadataUtil.GetMetadata(data);
+
+            // Preview
+            shot.Preview = GetImagePreview(previewImage);
+
+            // Fullscreen
+            shot.FullScreen = GetFullSizeImage(fullImage);
+
+            // Metadata
             shot.Size = data.Length;
             shot.ContentType = mime;
             shot.Name = name;
             shot.Album = album;
-            shot.Preview = outputStream.GetBuffer();
             shot.Storage = storage;
-            stream.Position = 0;
-            shot.MD5 = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-            dbContext.Shots.Add(shot);
-            await dbContext.SaveChangesAsync();
-            if (album.PreviewId == 0) {
-                album.PreviewId = shot.ShotId;
-                dbContext.Albums.Update(album);
+            shot.CameraManufacturer = photoMetadata.CameraManufacturer;
+            shot.CameraModel =  photoMetadata.CameraModel;
+            
+            if (photoMetadata.Latitude != null && photoMetadata.Longitude != null) {
+                shot.Latitude = (float) photoMetadata.Latitude;
+                shot.Longitude = (float) photoMetadata.Longitude;
+                shot.Zoom = 15;
             }
-            shot.SourceUri = "user_" + album.User.UserId + "/album_" + album.AlbumId + "/shot_" + shot.ShotId;
-            Storage.StoreShot(shot, stream1.ToArray());
-            await dbContext.SaveChangesAsync();
+            if (photoMetadata.CreationDate != null) {
+                shot.DateStart = (DateTime) photoMetadata.CreationDate;
+                shot.DateEnd = shot.DateStart;
+            }
+
+            originalStream.Position = 0;
+            shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
+            shot.SourceUri = $"user_{album.User.UserId}/album_{album.AlbumId}/shot_{shot.ShotId}";
+
+            await AddShotToDatabase(shot, album);
+
+            Storage.StoreShot(shot, originalStream.ToArray());
+
             fileErrors.Add(name, "File successfully added");
-        }   catch (DbUpdateException e) {
+        }
+        catch (DbUpdateException e)
+        {
             dbContext.Entry(shot).State = EntityState.Detached;
-            System.Console.Write("The DbUpdateException is " + e.Data);
+            Console.WriteLine("The DbUpdateException is " + e.Data);
             fileErrors.Add(name, "Same file already stored");
-        }   catch (Exception e) {
-            System.Console.Write("The Exception is " + e.Data);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("The Exception is " + e.Data);
             fileErrors.Add(name, e.Message);
-        } 
+        }
     }
+
+
+    private void ProcessImage(Image image)
+    {
+        float ratio = (float)image.Width / image.Height;
+
+        // Resize for preview (200px max)
+        if (ratio > 1)
+        {
+            image.Mutate(x => x.Resize((int)(200 * ratio), 200));
+            image.Mutate(x => x.Crop(new Rectangle((image.Width - 200) / 2, 0, 200, 200)));
+        }
+        else
+        {
+            image.Mutate(x => x.Resize(200, (int)(200 / ratio)));
+            image.Mutate(x => x.Crop(new Rectangle(0, (image.Height - 200) / 2, 200, 200)));
+        }
+    }
+
+    private byte[] GetImagePreview(Image image)
+    {
+        using var outputStream = new MemoryStream();
+        ImageExtensions.SaveAsJpeg(image, outputStream);
+        return outputStream.GetBuffer();
+    }
+
+    private byte[] GetFullSizeImage(Image image)
+    {
+        // Define max width and height
+        int maxWidth = 1920;
+        int maxHeight = 1080;
+
+        // Calculate the scaling factors for width and height
+        float widthRatio = (float)maxWidth / image.Width;
+        float heightRatio = (float)maxHeight / image.Height;
+
+        // Choose the smaller ratio to maintain the aspect ratio
+        float scaleRatio = Math.Min(widthRatio, heightRatio);
+
+        // Calculate the new dimensions
+        int newWidth = (int)(image.Width * scaleRatio);
+        int newHeight = (int)(image.Height * scaleRatio);
+
+        // Resize the image
+        image.Mutate(x => x.Resize(newWidth, newHeight));
+
+        using var outputStream = new MemoryStream();
+        ImageExtensions.SaveAsJpeg(image, outputStream);
+        return outputStream.GetBuffer();
+    }
+
+    private string CalculateMD5(MemoryStream stream, MD5 md5)
+    {
+        stream.Position = 0;
+        return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+    }
+
+    private async Task AddShotToDatabase(Shot shot, Album album)
+    {
+        dbContext.Shots.Add(shot);
+        await dbContext.SaveChangesAsync();
+
+        if (album.PreviewId == 0)
+        {
+            album.PreviewId = shot.ShotId;
+            dbContext.Albums.Update(album);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private void StoreShotInStorage(Shot shot, Album album, MemoryStream stream)
+    {
+        Storage.StoreShot(shot, stream.ToArray());
+    }
+
+    private void HandleDbUpdateException(DbUpdateException e, Shot shot, Dictionary<string, string> fileErrors, string name)
+    {
+        dbContext.Entry(shot).State = EntityState.Detached;
+        System.Console.WriteLine("The DbUpdateException is " + e.Data);
+        fileErrors.Add(name, "Same file already stored");
+    }
+
+    private void HandleException(Exception e, Dictionary<string, string> fileErrors, string name)
+    {
+        System.Console.WriteLine("The Exception is " + e.Data);
+        fileErrors.Add(name, e.Message);
+    }
+
 
 }

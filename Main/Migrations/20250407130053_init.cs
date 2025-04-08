@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace svema.Migrations
+namespace Svema.Migrations
 {
     public partial class init : Migration
     {
@@ -19,7 +19,6 @@ namespace svema.Migrations
                     name = table.Column<string>(type: "text", nullable: true),
                     longitude = table.Column<float>(type: "real", nullable: false),
                     latitude = table.Column<float>(type: "real", nullable: false),
-                    location_precision_meters = table.Column<int>(type: "integer", nullable: false),
                     zoom = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -64,7 +63,10 @@ namespace svema.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "text", nullable: true),
                     UserId = table.Column<int>(type: "integer", nullable: true),
-                    preview_id = table.Column<int>(type: "integer", nullable: false)
+                    preview_id = table.Column<int>(type: "integer", nullable: false),
+                    longitude = table.Column<float>(type: "real", nullable: false),
+                    latitude = table.Column<float>(type: "real", nullable: false),
+                    zoom = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -139,12 +141,19 @@ namespace svema.Migrations
                     date_start = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     date_end = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     preview = table.Column<byte[]>(type: "bytea", nullable: true),
+                    fullscreen = table.Column<byte[]>(type: "bytea", nullable: true),
                     source_uri = table.Column<string>(type: "text", nullable: true),
-                    location_id = table.Column<int>(type: "integer", nullable: true),
-                    md5 = table.Column<string>(type: "text", nullable: true),
+                    MD5 = table.Column<string>(type: "text", nullable: true),
                     content_type = table.Column<string>(type: "text", nullable: true),
                     storage_id = table.Column<int>(type: "integer", nullable: false),
-                    size = table.Column<long>(type: "bigint", nullable: false)
+                    size = table.Column<long>(type: "bigint", nullable: false),
+                    longitude = table.Column<float>(type: "real", nullable: false),
+                    latitude = table.Column<float>(type: "real", nullable: false),
+                    zoom = table.Column<int>(type: "integer", nullable: false),
+                    rotate = table.Column<int>(type: "integer", nullable: false),
+                    flip = table.Column<bool>(type: "boolean", nullable: false),
+                    direction = table.Column<float>(type: "real", nullable: false),
+                    angle = table.Column<float>(type: "real", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -155,11 +164,6 @@ namespace svema.Migrations
                         principalTable: "albums",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_shots_locations_location_id",
-                        column: x => x.location_id,
-                        principalTable: "locations",
-                        principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_shots_storages_storage_id",
                         column: x => x.storage_id,
@@ -257,14 +261,9 @@ namespace svema.Migrations
                 column: "album_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_shots_location_id",
+                name: "IX_shots_MD5",
                 table: "shots",
-                column: "location_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_shots_md5",
-                table: "shots",
-                column: "md5",
+                column: "MD5",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -284,6 +283,9 @@ namespace svema.Migrations
                 name: "album_comments");
 
             migrationBuilder.DropTable(
+                name: "locations");
+
+            migrationBuilder.DropTable(
                 name: "PersonShot");
 
             migrationBuilder.DropTable(
@@ -297,9 +299,6 @@ namespace svema.Migrations
 
             migrationBuilder.DropTable(
                 name: "albums");
-
-            migrationBuilder.DropTable(
-                name: "locations");
 
             migrationBuilder.DropTable(
                 name: "storages");

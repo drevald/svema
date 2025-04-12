@@ -49,6 +49,8 @@ public class ShotPreviewDTO {
     public string Name {get; set;}
     public bool IsChecked {get; set;}
     public string SourceUri {get; set;}
+    public int Rotate {get; set;}
+    public bool Flip {get; set;}
 
     public ShotPreviewDTO () {
     }    
@@ -58,6 +60,8 @@ public class ShotPreviewDTO {
         Name = shot.Name;
         IsChecked = false;
         SourceUri = shot.SourceUri;
+        Flip = shot.Flip;
+        Rotate = shot.Rotate;
     }
 
 }

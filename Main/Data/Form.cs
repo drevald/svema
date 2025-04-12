@@ -7,16 +7,25 @@ using Microsoft.AspNetCore.Http;
 
 namespace Form;
 
+public class AlbumCardDTO {
+
+    public int AlbumId {get; set;}
+    public String Name {get; set;}
+    public int PreviewId {get; set;}
+    public int Size {get; set;}
+
+}
+
 public class AlbumsListDTO {
     public String DateStart {get; set;}
     public String DateEnd {get; set;}
     public int LocationId {get; set;}
     public ICollection<Location> Locations {get; set;}
-    public ICollection<Album> Albums {get; set;}
+    public ICollection<AlbumCardDTO> Albums {get; set;}
     public AlbumsListDTO() {
         // DateStart = "1961";
         // DateEnd = DateTime.Now.Year.ToString();
-        Albums = new HashSet<Album>();
+        Albums = new HashSet<AlbumCardDTO>();
     }
 }
 

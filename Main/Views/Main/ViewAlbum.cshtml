@@ -96,7 +96,8 @@
 
       @foreach(var shot in @ViewBag.shots) {
       <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
-        <div class="card-body" style="background-image: url('/preview?id=@shot.ShotId'); background-repeat: no-repeat; background-size: cover;"></div>
+        <div class="card-body" 
+        style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;"></div>      
         <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
       </div>
       }

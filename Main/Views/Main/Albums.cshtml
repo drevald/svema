@@ -3,6 +3,15 @@
 @using Newtonsoft.Json
 @{Layout = "_Layout";}
 
+<style>
+  .bg-image {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+</style>
+
 <script type="text/javascript">
 
   ymaps.ready(init);
@@ -161,10 +170,13 @@
           <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
             <div class="card-header d-flex justify-content-between align-items-center">
               <div>
-                @album.Name
+                @album.Name (@album.Size)
               </div>              
             </div>
             <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
+            <!-- <div class="card-body position-relative overflow-hidden" onClick="location.href='/view_album?id=@album.AlbumId'">
+              <div id="bg-@album.AlbumId" class="bg-image position-absolute top-0 start-0 w-100 h-100"></div>
+            </div> -->
           </div>
           }
         </div>

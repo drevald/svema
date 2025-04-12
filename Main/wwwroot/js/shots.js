@@ -6,7 +6,6 @@ function flip() {
             if (flipInput) {
                 const currentValue = flipInput.value === "true";
                 flipInput.value = (!currentValue).toString();
-                alert(flipInput.value);
             }
             applyTransform(i);
         }
@@ -21,7 +20,6 @@ function rotate() {
             if (rotateInput) {
                 const currentValue = parseInt(rotateInput.value, 10) || 0;
                 rotateInput.value = (currentValue + 90) % 360;
-                alert(rotateInput.value);
             }
             applyTransform(i);
         }
@@ -30,7 +28,6 @@ function rotate() {
 
 function applyAllTransformsCheckedOnly() {
     const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="Shots["][name$="].IsChecked"]');
-
     checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
             const match = checkbox.id.match(/Shots_(\d+)__IsChecked/);
@@ -43,18 +40,14 @@ function applyAllTransformsCheckedOnly() {
 }
 
 function applyTransform(index) {
-    const rotateInput = document.getElementById(`Shots_${index}__Rotate`);
-    const flipInput = document.getElementById(`Shots_${index}__Flip`);
+    const shotId = document.getElementById(`Shots_${index}__ShotId`).value;
+    const rotateInput = document.getElementById(`Shots_${index}__Rotate`).value;
+    const flipInput = document.getElementById(`Shots_${index}__Flip`).value;
     const cardBody = document.querySelector(`#Shots_${index}__Flip`).closest('.card-body');
-
-    if (rotateInput && flipInput && cardBody) {
-        const rotate = parseInt(rotateInput.value, 10) || 0;
-        const flip = flipInput.value.toLowerCase() === "true";
-
-        const scaleX = flip ? -1 : 1;
-        cardBody.style.transform = `rotate(${rotate}deg) scaleX(${scaleX})`;
-        cardBody.style.transformOrigin = "center center";
-    }
+    const newUrl = `url("/preview?id=${shotId}&flip=${flipInput}&rotate=${rotateInput}")`;
+    cardBody.style.backgroundImage = "none";
+    cardBody.offsetHeight;
+    cardBody.style.backgroundImage = newUrl;
 }
 
 

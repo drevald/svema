@@ -134,7 +134,7 @@
                     </div>
                     <div class="card-body text-end"
                         onClick="location.href='/edit_shot?id=@Model.Shots[index].ShotId'"
-                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId'); background-repeat: no-repeat; background-size: cover;">
+                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId&flip=@Model.Shots[index].Flip&rotate=@Model.Shots[index].Rotate'); background-repeat: no-repeat; background-size: cover;">
                         <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem" onclick="event.stopPropagation()">
                         <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
                         <input type="hidden" asp-for="@Model.Shots[index].Name" />

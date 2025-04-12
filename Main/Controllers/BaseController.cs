@@ -39,7 +39,7 @@ public class BaseController : Controller
             using var previewImage = Image.Load(previewStream);
             using var fullImage = Image.Load(fullStream);
             
-            PhotoMetadata photoMetadata = ImageMetadataUtil.GetMetadata(data);
+            PhotoMetadata photoMetadata = ImageUtils.GetMetadata(data);
 
             // Preview
             shot.Preview = GetImagePreview(previewImage);
@@ -68,8 +68,6 @@ public class BaseController : Controller
 
             originalStream.Position = 0;
             shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
-            shot.SourceUri = $"user_{album.User.UserId}/album_{album.AlbumId}/shot_{shot.ShotId}";
-
             await AddShotToDatabase(shot, album);
 
             Storage.StoreShot(shot, originalStream.ToArray());
@@ -107,9 +105,9 @@ public class BaseController : Controller
         }
     }
 
-    private byte[] GetImagePreview(Image image)
-    {
+    private byte[] GetImagePreview(Image image) {
         using var outputStream = new MemoryStream();
+        ProcessImage(image);
         ImageExtensions.SaveAsJpeg(image, outputStream);
         return outputStream.GetBuffer();
     }
@@ -145,22 +143,18 @@ public class BaseController : Controller
         return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
     }
 
-    private async Task AddShotToDatabase(Shot shot, Album album)
-    {
+    private async Task AddShotToDatabase(Shot shot, Album album) {
         dbContext.Shots.Add(shot);
         await dbContext.SaveChangesAsync();
-
-        if (album.PreviewId == 0)
-        {
+        if (album.PreviewId == 0) {
             album.PreviewId = shot.ShotId;
             dbContext.Albums.Update(album);
         }
-
+        shot.SourceUri = $"user_{album.User.UserId}/album_{album.AlbumId}/shot_{shot.ShotId}";
         await dbContext.SaveChangesAsync();
     }
 
-    private void StoreShotInStorage(Shot shot, Album album, MemoryStream stream)
-    {
+    private void StoreShotInStorage(Shot shot, Album album, MemoryStream stream) {
         Storage.StoreShot(shot, stream.ToArray());
     }
 

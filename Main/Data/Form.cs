@@ -12,6 +12,8 @@ public class AlbumCardDTO {
     public int AlbumId {get; set;}
     public String Name {get; set;}
     public int PreviewId {get; set;}
+    public bool PreviewFlip {get; set;}
+    public int PreviewRotate {get; set;}
     public int Size {get; set;}
 
 }

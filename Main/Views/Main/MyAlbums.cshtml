@@ -162,10 +162,8 @@
                 </ul>
               </div>
             </div>
-            <div class="card-body" onClick="location.href='/edit_album?id=@album.AlbumId'" style="background-image: url('/preview?id=@album.PreviewId'); background-repeat: no-repeat; background-size: cover;"></div>
-            <!-- <div class="card-body position-relative overflow-hidden" onClick="location.href='/view_album?id=@album.AlbumId'">
-              <div id="bg-@album.AlbumId" class="bg-image position-absolute top-0 start-0 w-100 h-100"></div>
-            </div> -->
+            <div class="card-body" onClick="location.href='/edit_album?id=@album.AlbumId'" 
+            style="background-image: url('/preview?id=@album.PreviewId&flip=@album.PreviewFlip&rotate=@album.PreviewRotate'); background-repeat: no-repeat; background-size: cover;"></div>
           </div>
           }
         </div>

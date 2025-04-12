@@ -25,45 +25,52 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Albums(AlbumsListDTO dto)
-    {
+    public async Task<IActionResult> Albums(AlbumsListDTO dto) {
         var albumsList = new AlbumsListDTO();
         CultureInfo provider = CultureInfo.InvariantCulture;
         IQueryable<Shot> shotsQuery = dbContext.Shots.Include(s => s.Album);
-
-        if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
-        {
-            if (dto.DateStart != null)
-            {
+        if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0) {
+            if (dto.DateStart != null) {
                 var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
                 shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
             }
-            if (dto.DateEnd != null)
-            {
+            if (dto.DateEnd != null) {
                 var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
                 shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
             }
             albumsList.Albums = await shotsQuery
                 .GroupBy(s => s.Album)
-                .Select(g => new AlbumCardDTO
-                {
+                .Select(g => new AlbumCardDTO {
                     AlbumId = g.Key.AlbumId,
                     Name = g.Key.Name,
                     Size = g.Count(),
-                    PreviewId = g.Key.PreviewId
+                    PreviewId = g.Key.PreviewId,
+                    PreviewFlip = dbContext.Shots
+                        .Where(ps => ps.ShotId == g.Key.PreviewId)
+                        .Select(ps => ps.Flip)
+                        .FirstOrDefault(),
+                    PreviewRotate = dbContext.Shots
+                        .Where(ps => ps.ShotId == g.Key.PreviewId)
+                        .Select(ps => ps.Rotate)
+                        .FirstOrDefault()
                 })
                 .OrderBy(a => a.Name)
                 .ToListAsync();
-        }
-        else
-        {
+        } else {
             albumsList.Albums = await dbContext.Albums
-                .Select(a => new AlbumCardDTO
-                {
+                .Select(a => new AlbumCardDTO {
                     AlbumId = a.AlbumId,
                     Name = a.Name,
                     Size = a.Shots.Count(),
-                    PreviewId = a.PreviewId
+                    PreviewId = a.PreviewId, 
+                    PreviewFlip = dbContext.Shots
+                        .Where(ps => ps.ShotId == a.PreviewId)
+                        .Select(ps => ps.Flip)
+                        .FirstOrDefault(),
+                    PreviewRotate = dbContext.Shots
+                        .Where(ps => ps.ShotId == a.PreviewId)
+                        .Select(ps => ps.Rotate)
+                        .FirstOrDefault()
                 })
                 .OrderBy(a => a.Name)
                 .ToListAsync();
@@ -76,124 +83,66 @@ public class MainController : BaseController
         return View(albumsList);
     }
 
-
-    // [Authorize]
-    // [HttpGet("my")]
-    // public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
-    //     var albumsList = new AlbumsListDTO();   
-    //     CultureInfo provider = CultureInfo.InvariantCulture;
-    //     IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
-
-    //     if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
-    //     {
-    //         shotsQuerable = shotsQuerable
-    //             .Where(s =>
-    //                 (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
-    //                 (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) 
-    //             );
-    //     }
-    //     albumsList.Albums = await (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
-    //         ? shotsQuerable.Select(s => s.Album).Distinct().ToListAsync()
-    //         : dbContext.Albums.ToListAsync());
-    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
-    //     albumsList.DateStart = dto.DateStart;
-    //     albumsList.DateEnd = dto.DateEnd;
-    //     return View(albumsList);
-    // }    
 
     [Authorize]
     [HttpGet("my")]
-    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
-    {
+    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
         var albumsList = new AlbumsListDTO();
         CultureInfo provider = CultureInfo.InvariantCulture;
-
         IQueryable<Shot> shotsQuery = dbContext.Shots.Include(s => s.Album);
 
         // Apply filters if necessary
-        if (dto.DateStart != null || dto.DateEnd != null)
-        {
-            if (dto.DateStart != null)
-            {
+        if (dto.DateStart != null || dto.DateEnd != null) {
+            if (dto.DateStart != null) {
                 var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
                 shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
             }
-            if (dto.DateEnd != null)
-            {
+            if (dto.DateEnd != null) {
                 var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
                 shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
             }
             albumsList.Albums = await shotsQuery
                 .GroupBy(s => s.Album)
-                .Select(g => new AlbumCardDTO
-                {
+                .Select(g => new AlbumCardDTO {
                     AlbumId = g.Key.AlbumId,
                     Name = g.Key.Name,
                     Size = g.Count(),
-                    PreviewId = g.Key.PreviewId
+                    PreviewId = g.Key.PreviewId,
+                    PreviewFlip = dbContext.Shots
+                        .Where(ps => ps.ShotId == g.Key.PreviewId)
+                        .Select(ps => ps.Flip)
+                        .FirstOrDefault(),
+                    PreviewRotate = dbContext.Shots
+                        .Where(ps => ps.ShotId == g.Key.PreviewId)
+                        .Select(ps => ps.Rotate)
+                        .FirstOrDefault()
                 })
                 .OrderBy(dto => dto.Name)
                 .ToListAsync();
-        }
-        else
-        {
+        } else {
             albumsList.Albums = await dbContext.Albums
-                .Select(a => new AlbumCardDTO
-                {
+                .Select(a => new AlbumCardDTO {
                     AlbumId = a.AlbumId,
                     Name = a.Name,
                     Size = a.Shots.Count(),
-                    PreviewId = a.PreviewId
+                    PreviewId = a.PreviewId,
+                    PreviewFlip = dbContext.Shots
+                        .Where(ps => ps.ShotId == a.PreviewId)
+                        .Select(ps => ps.Flip)
+                        .FirstOrDefault(),
+                    PreviewRotate = dbContext.Shots
+                        .Where(ps => ps.ShotId == a.PreviewId)
+                        .Select(ps => ps.Rotate)
+                        .FirstOrDefault()
                 })
                 .OrderBy(a => a.Name)
                 .ToListAsync();
         }
-
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
-
         return View(albumsList);
     }
-
-
-
-
-    // public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
-    // {
-    //     var albumsList = new AlbumsListDTO();   
-    //     CultureInfo provider = CultureInfo.InvariantCulture;
-    //     IQueryable<Shot> shotsQuerable = dbContext.Shots.Include(s => s.Album);
-
-    //     if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0)
-    //     {
-    //         shotsQuerable = shotsQuerable
-    //             .Where(s =>
-    //                 (dto.DateStart == null || s.DateStart >= DateTime.ParseExact(dto.DateStart, "yyyy", provider)) &&
-    //                 (dto.DateEnd == null || s.DateEnd <= DateTime.ParseExact(dto.DateEnd, "yyyy", provider)) 
-    //             );
-    //     }
-
-    //     albumsList.Albums = await (
-    //         dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0
-    //             ? shotsQuerable
-    //                 .Select(s => s.Album)
-    //                 .Distinct()
-    //                 .OrderBy(a => a.Name)
-    //                 .ToListAsync()
-    //             : dbContext.Albums
-    //                 .OrderBy(a => a.Name)
-    //                 .ToListAsync()
-    //     );
-
-    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
-    //     albumsList.DateStart = dto.DateStart;
-    //     albumsList.DateEnd = dto.DateEnd;
-
-    //     return View(albumsList);
-    // }
-
-
 
 
     ///////////////////   ALBUM  /////////////////////////////////////////
@@ -409,23 +358,24 @@ public class MainController : BaseController
         return new FileStreamResult(stream, mimeType);  // Ensure the MIME type is correctly set
     }
 
-
-
     [HttpGet("shot")]
-    public IActionResult Shot(int id)
-    {
-        var shot = dbContext.Shots
-                            .Where(s => s.ShotId == id)
-                            .Include(s => s.Storage)
-                            .FirstOrDefault();
-
-        if (shot == null || shot.FullScreen == null)
-        {
+    public IActionResult Shot(int id) {
+        var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
+        if (shot == null || shot.FullScreen == null) {
             return NotFound(); // Return 404 if shot is not found or fullscreen is null
         }
         return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
     }
 
+    [HttpGet("orig")]
+    public IActionResult Orig(int id) {
+        var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
+        if (shot == null || shot.FullScreen == null) {
+            return NotFound();
+        }
+        Stream stream = Storage.GetFile(shot);
+        return File(stream, shot.ContentType);
+    }
 
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id)

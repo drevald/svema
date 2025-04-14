@@ -18,41 +18,85 @@
 
   var counter = 0;
   var circle;
-  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var jsPlacemarks = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Placemarks)))");
 
-  function init() {    
+  function init() {
+
+    const north = jsModel.North;
+    const south = jsModel.South;
+    const east = jsModel.East;
+    const west = jsModel.West;
+
+    // Construct bounds: [[southWestLat, southWestLng], [northEastLat, northEastLng]]
+    const bounds = [[south, west], [north, east]];
+
+    // Init map with bounds
     myMap = new ymaps.Map("map", {
-    center: [0, 0],
-    zoom: 0,
-    //controls: []
-  })
+      bounds: bounds
+    }, {
+      checkZoomRange: true,
+      zoomMargin: [10]
+    });
+  
+    myMap.events.add('boundschange', function (e) {
+      var bounds = myMap.getBounds();
+      var south = bounds[0][0]; // North latitude
+      var north = bounds[1][0]; // South latitude
+      var west = bounds[0][1];  // East longitude
+      var east = bounds[1][1];  // West longitude
 
-  myMap.events.add(['wheel','drag','zoom'], function (e) {
-    var bounds = myMap.getBounds();
-    var north = bounds[0][0]; // North latitude
-    var south = bounds[1][0]; // South latitude
-    var east = bounds[0][1];  // East longitude
-    var west = bounds[1][1];  // West longitude
-    alert("north " + north + " south " + south + " east " + east + " west " + west);
-  });
+      document.querySelector('#North').value = north;
+      document.querySelector('#South').value = south;
+      document.querySelector('#East').value = east;
+      document.querySelector('#West').value = west;
 
-  for (i=0; i<jsModel.length; i++) {
-    myMap.geoObjects.add(
-      new ymaps.GeoObject(
-        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
-        {preset: 'islands#blackStretchyIcon', draggable: true}
-      )
-    )
-  }
+      // Submit the form
+      document.forms[0].submit();
+    });
 
-  }
+    for (let i = 0; i < jsPlacemarks.length; i++) {
+      let placemark = new ymaps.GeoObject({
+        geometry: {
+          type: "Point",
+          coordinates: [jsPlacemarks[i].Latitude, jsPlacemarks[i].Longitude]
+        },
+        properties: {
+          iconContent: jsPlacemarks[i].Label
+        }
+      }, {
+        preset: 'islands#invertedGreenClusterIcons',
+        draggable: false
+      }
+    );
+
+    // Add a click handler
+    placemark.events.add('click', function (e) {
+      
+      let coords = e.get('target').geometry.getCoordinates();
+      alert('coordinates ' + (coords[0] + 0.01) + 'coordinates ' + (coords[0] - 0.01));
+      document.querySelector('#North').value = coords[0] + 0.01;
+      document.querySelector('#South').value = coords[0] - 0.01;
+      document.querySelector('#East').value = coords[1] + 0.01;
+      document.querySelector('#West').value = coords[1] - 0.01;
+      document.forms[0].submit();
+      // You can also access coordinates:
+      // let coords = e.get('target').geometry.getCoordinates();
+    });
+
+    // Add the placemark to the map
+    myMap.geoObjects.add(placemark);
+}
+
+
+}
 
 </script>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const startSelect = document.querySelector('select[asp-for="DateStart"]');
-    const endSelect = document.querySelector('select[asp-for="DateEnd"]');
+    const startSelect = document.querySelector('#DateStart');
+    const endSelect = document.querySelector('#DateEnd');
 
     startSelect.addEventListener("change", function () {
       endSelect.selectedIndex = startSelect.selectedIndex;
@@ -64,6 +108,12 @@
       <div class="col-md-2 p-5" style="width:500px">
 
         <form class="needs-validation" method="get" novalidate>
+
+          <input type="hidden" asp-for="North" /><br />
+          <input type="hidden" asp-for="South" /><br />
+          <input type="hidden" asp-for="East" /><br />
+          <input type="hidden" asp-for="West" /><br />
+
           <div class="row g-3">
 
             <div class="col-sm-12">

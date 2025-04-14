@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 using Form;
 using Data;
 using Utils;
+using Npgsql;
+using System.Security.Cryptography;
 
 namespace Controllers;
 
@@ -22,6 +24,69 @@ public class MainController : BaseController
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
     {
     }
+
+
+//To get clustered view of locations on map
+public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax) {
+
+    string sql = @"
+        SELECT 
+            COUNT(*) AS count,
+            ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
+            ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
+        FROM (
+            SELECT ST_SnapToGrid(
+                     ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), @gridSize
+                   ) AS tile_geom,
+                   ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) AS geom
+            FROM shots
+            WHERE longitude BETWEEN @longitudeMin AND @longitudeMax
+              AND latitude BETWEEN @latitudeMin AND @latitudeMax
+        ) AS clustered
+        GROUP BY tile_geom;";
+
+    // Create the list to store the results
+    var locationList = new List<LocationDTO>();
+
+    // Open the database connection
+    using (var connection = dbContext.Database.GetDbConnection())
+    {
+        connection.Open();
+        
+        // Create the SQL command
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = sql;
+            
+            // Add parameters to the command
+            command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin)/10));
+            command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
+            command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
+            command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
+            command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
+            
+            // Execute the query and process the results
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var location = new LocationDTO
+                    {
+                        Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(), // Assuming Label is count as string
+                        Longitude = reader.GetDouble(reader.GetOrdinal("lon")), // Longitude of the centroid
+                        Latitude = reader.GetDouble(reader.GetOrdinal("lat")) // Latitude of the centroid
+                    };
+
+                    locationList.Add(location);
+                }
+            }
+        }
+    }
+
+    return locationList;
+}
+
+
 
     [Authorize]
     [HttpGet("")]
@@ -79,7 +144,11 @@ public class MainController : BaseController
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
-
+        albumsList.North = dto.North;
+        albumsList.South = dto.South;
+        albumsList.West = dto.West;
+        albumsList.East = dto.East;
+        albumsList.Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North);
         return View(albumsList);
     }
 

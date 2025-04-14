@@ -24,11 +24,28 @@ public class AlbumsListDTO {
     public int LocationId {get; set;}
     public ICollection<Location> Locations {get; set;}
     public ICollection<AlbumCardDTO> Albums {get; set;}
+    public ICollection<LocationDTO> Placemarks {get; set;}
+    [Required]
+    [Range(-90, 90)]
+    public double North {get; set;}
+    [Required]
+    [Range(-90, 90)]
+    public double South {get; set;}
+    [Required]
+    [Range(-180, 180)]
+    public double East {get; set;}
+    [Required]
+    [Range(-180, 180)]
+    public double West {get; set;}
+
     public AlbumsListDTO() {
-        // DateStart = "1961";
-        // DateEnd = DateTime.Now.Year.ToString();
         Albums = new HashSet<AlbumCardDTO>();
+        North = 90;
+        South = -90;
+        West = -180;
+        East = 180;
     }
+
 }
 
 public class AlbumDTO {
@@ -174,5 +191,12 @@ public class ProfileDTO : DTO {
 public class StorageDTO : DTO {
 
     public ShotStorage Storage {get; set;}
+
+}
+
+public class LocationDTO : DTO {
+    public string Label {get; set;}
+    public double Longitude {get; set;}
+    public double Latitude {get; set;}
 
 }

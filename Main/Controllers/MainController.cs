@@ -91,56 +91,48 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
     [Authorize]
     [HttpGet("")]
     public async Task<IActionResult> Albums(AlbumsListDTO dto) {
+        var provider = CultureInfo.InvariantCulture;
         var albumsList = new AlbumsListDTO();
-        CultureInfo provider = CultureInfo.InvariantCulture;
-        IQueryable<Shot> shotsQuery = dbContext.Shots.Include(s => s.Album);
-        if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0) {
-            if (dto.DateStart != null) {
-                var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-                shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
-            }
-            if (dto.DateEnd != null) {
-                var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-                shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
-            }
-            albumsList.Albums = await shotsQuery
-                .GroupBy(s => s.Album)
-                .Select(g => new AlbumCardDTO {
-                    AlbumId = g.Key.AlbumId,
-                    Name = g.Key.Name,
-                    Size = g.Count(),
-                    PreviewId = g.Key.PreviewId,
-                    PreviewFlip = dbContext.Shots
-                        .Where(ps => ps.ShotId == g.Key.PreviewId)
-                        .Select(ps => ps.Flip)
-                        .FirstOrDefault(),
-                    PreviewRotate = dbContext.Shots
-                        .Where(ps => ps.ShotId == g.Key.PreviewId)
-                        .Select(ps => ps.Rotate)
-                        .FirstOrDefault()
-                })
-                .OrderBy(a => a.Name)
-                .ToListAsync();
-        } else {
-            albumsList.Albums = await dbContext.Albums
-                .Select(a => new AlbumCardDTO {
-                    AlbumId = a.AlbumId,
-                    Name = a.Name,
-                    Size = a.Shots.Count(),
-                    PreviewId = a.PreviewId, 
-                    PreviewFlip = dbContext.Shots
-                        .Where(ps => ps.ShotId == a.PreviewId)
-                        .Select(ps => ps.Flip)
-                        .FirstOrDefault(),
-                    PreviewRotate = dbContext.Shots
-                        .Where(ps => ps.ShotId == a.PreviewId)
-                        .Select(ps => ps.Rotate)
-                        .FirstOrDefault()
-                })
-                .OrderBy(a => a.Name)
-                .ToListAsync();
+        var shotsQuery = dbContext.Shots.AsQueryable();
+        if (dto.DateStart != null) {
+            var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
+            shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
         }
-
+        if (dto.DateEnd != null) {
+            var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
+            shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
+        }
+        shotsQuery = shotsQuery.Where(s =>
+            s.Latitude <= dto.North &&
+            s.Latitude >= dto.South &&
+            s.Longitude >= dto.West &&
+            s.Longitude <= dto.East
+        );
+        albumsList.Albums = await shotsQuery
+            .GroupBy(s => s.AlbumId)
+            .Select(g => new {
+                AlbumId = g.Key,
+                Size = g.Count()
+            })
+            .Join(dbContext.Albums,
+                grouped => grouped.AlbumId,
+                album => album.AlbumId,
+                (grouped, album) => new AlbumCardDTO {
+                    AlbumId = album.AlbumId,
+                    Name = album.Name,
+                    Size = grouped.Size,
+                    PreviewId = album.PreviewId,
+                    PreviewFlip = dbContext.Shots
+                        .Where(ps => ps.ShotId == album.PreviewId)
+                        .Select(ps => ps.Flip)
+                        .FirstOrDefault(),
+                    PreviewRotate = dbContext.Shots
+                        .Where(ps => ps.ShotId == album.PreviewId)
+                        .Select(ps => ps.Rotate)
+                        .FirstOrDefault()
+                })
+            .OrderBy(a => a.Name)
+            .ToListAsync();
         albumsList.Locations = await dbContext.Locations.ToListAsync();
         albumsList.DateStart = dto.DateStart;
         albumsList.DateEnd = dto.DateEnd;
@@ -149,8 +141,71 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
         albumsList.West = dto.West;
         albumsList.East = dto.East;
         albumsList.Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North);
-        return View(albumsList);
+        return View(albumsList);            
     }
+
+
+    // public async Task<IActionResult> Albums(AlbumsListDTO dto) {
+    //     var albumsList = new AlbumsListDTO();
+    //     CultureInfo provider = CultureInfo.InvariantCulture;
+    //     IQueryable<Shot> shotsQuery = dbContext.Shots.Include(s => s.Album);
+    //     if (dto.DateStart != null || dto.DateEnd != null || dto.LocationId > 0) {
+    //         if (dto.DateStart != null) {
+    //             var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
+    //             shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
+    //         }
+    //         if (dto.DateEnd != null) {
+    //             var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
+    //             shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
+    //         }
+    //         albumsList.Albums = await shotsQuery
+    //             .GroupBy(s => s.Album)
+    //             .Select(g => new AlbumCardDTO {
+    //                 AlbumId = g.Key.AlbumId,
+    //                 Name = g.Key.Name,
+    //                 Size = g.Count(),
+    //                 PreviewId = g.Key.PreviewId,
+    //                 PreviewFlip = dbContext.Shots
+    //                     .Where(ps => ps.ShotId == g.Key.PreviewId)
+    //                     .Select(ps => ps.Flip)
+    //                     .FirstOrDefault(),
+    //                 PreviewRotate = dbContext.Shots
+    //                     .Where(ps => ps.ShotId == g.Key.PreviewId)
+    //                     .Select(ps => ps.Rotate)
+    //                     .FirstOrDefault()
+    //             })
+    //             .OrderBy(a => a.Name)
+    //             .ToListAsync();
+    //     } else {
+    //         albumsList.Albums = await dbContext.Albums
+    //             .Select(a => new AlbumCardDTO {
+    //                 AlbumId = a.AlbumId,
+    //                 Name = a.Name,
+    //                 Size = a.Shots.Count(),
+    //                 PreviewId = a.PreviewId, 
+    //                 PreviewFlip = dbContext.Shots
+    //                     .Where(ps => ps.ShotId == a.PreviewId)
+    //                     .Select(ps => ps.Flip)
+    //                     .FirstOrDefault(),
+    //                 PreviewRotate = dbContext.Shots
+    //                     .Where(ps => ps.ShotId == a.PreviewId)
+    //                     .Select(ps => ps.Rotate)
+    //                     .FirstOrDefault()
+    //             })
+    //             .OrderBy(a => a.Name)
+    //             .ToListAsync();
+    //     }
+
+    //     albumsList.Locations = await dbContext.Locations.ToListAsync();
+    //     albumsList.DateStart = dto.DateStart;
+    //     albumsList.DateEnd = dto.DateEnd;
+    //     albumsList.North = dto.North;
+    //     albumsList.South = dto.South;
+    //     albumsList.West = dto.West;
+    //     albumsList.East = dto.East;
+    //     albumsList.Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North);
+    //     return View(albumsList);
+    // }
 
 
     [Authorize]

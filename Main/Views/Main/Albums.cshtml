@@ -71,20 +71,14 @@
     );
 
     // Add a click handler
-    placemark.events.add('click', function (e) {
-      
+    placemark.events.add('click', function (e) {     
       let coords = e.get('target').geometry.getCoordinates();
-      alert('coordinates ' + (coords[0] + 0.01) + 'coordinates ' + (coords[0] - 0.01));
       document.querySelector('#North').value = coords[0] + 0.01;
       document.querySelector('#South').value = coords[0] - 0.01;
       document.querySelector('#East').value = coords[1] + 0.01;
       document.querySelector('#West').value = coords[1] - 0.01;
       document.forms[0].submit();
-      // You can also access coordinates:
-      // let coords = e.get('target').geometry.getCoordinates();
     });
-
-    // Add the placemark to the map
     myMap.geoObjects.add(placemark);
 }
 

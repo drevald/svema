@@ -7,6 +7,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Data;
 using Form;
+using System.IO;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+
 
 namespace Controllers;
 
@@ -30,6 +34,14 @@ public class RestController: BaseController {
 
     [HttpPost("shots")]
     public async Task PostShot([FromBody] ShotREST dto) {
+
+        // Request.EnableBuffering(); // <-- This is important if you're also using [FromBody]
+        // using var reader = new StreamReader(Request.Body, encoding: Encoding.UTF8, leaveOpen: true);
+        // var rawBody = await reader.ReadToEndAsync();
+        // Request.Body.Position = 0; // Reset stream position for model binding to still work
+
+        // Console.WriteLine("RAW JSON: " + rawBody);
+
         var album = dbContext.Albums.Find(dto.AlbumId);
         var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
         var storage = dbContext.ShotStorages.Where(s => s.User==user).First();

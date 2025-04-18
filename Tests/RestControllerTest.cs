@@ -130,7 +130,7 @@ namespace Tests {
                 Name = "New Shot",
                 DateStart = DateTime.Now,
                 DateEnd = DateTime.Now.AddHours(1),
-                Data = File.ReadAllBytes("e:\\PROJECTS\\svema\\Tests\\Resources\\DSC02678.png"),
+                Data = File.ReadAllBytes("Resources\\DSC02678.png"),
                 Mime = "image/jpeg"
             };
 

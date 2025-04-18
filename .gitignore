@@ -1,0 +1,36 @@
+## User-specific files ##
+# User-specific files for Visual Studio
+.vs/
+.vscode/
+.idea/
+
+## .NET Core ##
+# Build results
+bin/
+obj/
+
+# User-specific files for Visual Studio Code
+.vscode/
+
+# Files created by dotnet CLI
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows Installer files
+*.pdb
+*.exe
+*.dll
+*.bak
+*.swp
+
+## Windows ##
+# Windows Installer files
+Thumbs.db
+ehthumbs.db

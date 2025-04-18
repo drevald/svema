@@ -34,3 +34,6 @@ artifacts/
 # Windows Installer files
 Thumbs.db
 ehthumbs.db
+
+.dockerignore
+.prettierrc

@@ -33,10 +33,8 @@ var dbConnection =
 
 dbConnection += ";Include Error Detail=True";
 
-builder.WebHost.ConfigureKestrel(opts =>
-{
+builder.WebHost.ConfigureKestrel(opts => {
     opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
-    //opts.ListenLocalhost(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
 });
 
 builder.Services.AddControllersWithViews();
@@ -56,11 +54,8 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-// app.UseMiddleware<AuthRedirectMiddleware>();
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-});
+app.MapControllers();
+
 
 using(var scope = app.Services.CreateScope())
 {
@@ -73,18 +68,3 @@ using(var scope = app.Services.CreateScope())
 }
 
 app.Run();
-
-// public class AuthRedirectMiddleware {
-//     private readonly RequestDelegate _next;
-//     public AuthRedirectMiddleware(RequestDelegate next) {
-//         _next = next;
-//     }
-//     public async Task Invoke(HttpContext context) {
-//         if (!context.User.Identity.IsAuthenticated) {
-//             // Redirect to login page
-//             context.Response.Redirect("login");
-//             return;
-//         }
-//         await _next(context);
-//     }
-// }

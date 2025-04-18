@@ -1,35 +1,55 @@
 using Xunit;
+using System;
 using System.IO;
+using System.Collections.Generic;
 using OpenCvSharp;
+using DlibDotNet;
+using DlibDotNet.Extensions;
+using DlibDotNet.Dnn;
 
 namespace Tests
 {
-    public class FaceDetectionExample
+    public class PersonRecognitionTest
     {
         [Fact]
-        public void DetectFaces()
+        public void DetectAndEncodeFaces()
         {
-            var imagePath = "Resources\\IMG_20161210_184748.jpg";
-            Assert.True(File.Exists(imagePath), $"Image file not found: {imagePath}");
+            // Load image using OpenCvSharp
+            var imagePath = "Resources\\PICT1612.JPG";
+            Assert.True(File.Exists(imagePath), $"Image not found: {imagePath}");
+            var image = Cv2.ImRead(imagePath);
 
-            using var image = Cv2.ImRead(imagePath);
-            using var gray = new Mat();
+            // Convert to grayscale for face detection
+            var gray = new Mat();
             Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
 
-            var cascadePath = "Resources\\haarcascade_frontalface_default.xml";
-            Assert.True(File.Exists(cascadePath), $"Cascade file not found: {cascadePath}");
+            // Load face detector models
+            var shapePredictorPath = "Resources\\shape_predictor_68_face_landmarks.dat";
+            var faceRecognitionModelPath = "Resources\\dlib_face_recognition_resnet_model_v1.dat";
 
-            using var faceCascade = new CascadeClassifier(cascadePath);
-            var faces = faceCascade.DetectMultiScale(gray, scaleFactor: 1.1, minNeighbors: 10, flags: HaarDetectionTypes.ScaleImage);
+            Assert.True(File.Exists(shapePredictorPath));
+            Assert.True(File.Exists(faceRecognitionModelPath));
 
-            foreach (var face in faces)
+            using var detector = Dlib.GetFrontalFaceDetector();
+            using var shapePredictor = ShapePredictor.Deserialize(shapePredictorPath);
+            using var faceRecognitionModel = DlibDotNet.Dnn.FaceRecognitionModelV1.Deserialize(faceRecognitionModelPath);
+
+            // Convert OpenCV image to Dlib image
+            using var dlibImage = Dlib.LoadImage<RgbPixel>(imagePath);
+
+            // Detect faces
+            var faces = detector.Operator(dlibImage);
+
+            var descriptors = new List<Matrix<float>>();
+
+            foreach (var rect in faces)
             {
-                Cv2.Rectangle(image, face, Scalar.Red, thickness: 3);
+                var shape = shapePredictor.Detect(dlibImage, rect);
+                var descriptor = faceRecognitionModel.ComputeFaceDescriptor(dlibImage, shape);
+                descriptors.Add(descriptor);
             }
 
-            Cv2.ImShow("Detected Faces", image);
-            Cv2.WaitKey(0);
-
+            Assert.True(descriptors.Count > 0, "No face descriptors found.");
         }
     }
 }

@@ -7,7 +7,7 @@ namespace Tests {
 
         [Fact]
         public void LoadImage() {
-            var mat = Cv2.ImRead("Resources\\IMG_20161210_184748.jpg");
+            var mat = Cv2.ImRead("Resources\\PICT0023.jpg");
             Assert.NotEmpty(mat.ToBytes());
         }
     }

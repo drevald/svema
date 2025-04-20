@@ -61,10 +61,6 @@ public class BaseController : Controller
                 shot.Longitude = (float) photoMetadata.Longitude;
                 shot.Zoom = 15;
             }
-            if (photoMetadata.CreationDate != null) {
-                shot.DateStart = (DateTime) photoMetadata.CreationDate;
-                shot.DateEnd = shot.DateStart;
-            }
 
             originalStream.Position = 0;
             shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();

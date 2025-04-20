@@ -31,7 +31,14 @@ public static class ImageUtils
         // Creation Date (DateTimeOriginal from EXIF)
         var exif = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
         var ifd0 = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-        metadata.CreationDate = exif?.GetDateTime(ExifDirectoryBase.TagDateTimeOriginal);
+
+        try {
+            if (exif != null) {
+                metadata.CreationDate = exif.GetDateTime(ExifDirectoryBase.TagDateTimeOriginal);
+            }
+        } catch (Exception e) {
+            Console.WriteLine($"Error reading EXIF date: {e.Message}");
+        }
 
         metadata.CameraManufacturer = ifd0?.GetDescription(ExifDirectoryBase.TagMake);
         metadata.CameraModel = ifd0?.GetDescription(ExifDirectoryBase.TagModel);
@@ -40,8 +47,7 @@ public static class ImageUtils
         var gps = directories.OfType<GpsDirectory>().FirstOrDefault();
         var location = gps?.GetGeoLocation();
 
-        if (location != null && !location.IsZero)
-        {
+        if (location != null && !location.IsZero) {
             metadata.Latitude = location.Latitude;
             metadata.Longitude = location.Longitude;
         }
@@ -50,21 +56,17 @@ public static class ImageUtils
 
     }
 
-    public static Stream GetTransformedImage(Stream originalStream, int rotate, bool flip)
-    {
+    public static Stream GetTransformedImage(Stream originalStream, int rotate, bool flip) {
         // Load image from the stream
-        using (var image = Image.Load(originalStream))
-        {
+        using (var image = Image.Load(originalStream)) {
             // Rotate image if the "rotate" parameter is provided and non-zero
-            if (rotate != 0)
-            {
+            if (rotate != 0) {
                 image.Mutate(x => x.Rotate(rotate)); // Rotate by the given angle
                 Console.WriteLine($"Rotated image by {rotate} degrees.");
             }
 
             // Flip image if the "flip" parameter is true
-            if (flip)
-            {
+            if (flip) {
                 image.Mutate(x => x.Flip(FlipMode.Horizontal)); // Flip horizontally
                 Console.WriteLine("Flipped image horizontally.");
             }

@@ -12,102 +12,20 @@
 }
 </style>
 
-<script type="text/javascript">
-
-  ymaps.ready(init);
-
-  var counter = 0;
-  var circle;
+<script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  var jsPlacemarks = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Placemarks)))");
-
-  function init() {
-
-    const north = jsModel.North;
-    const south = jsModel.South;
-    const east = jsModel.East;
-    const west = jsModel.West;
-
-    // Construct bounds: [[southWestLat, southWestLng], [northEastLat, northEastLng]]
-    const bounds = [[south, west], [north, east]];
-
-    // Init map with bounds
-    myMap = new ymaps.Map("map", {
-      bounds: bounds
-    }, {
-      checkZoomRange: true,
-      zoomMargin: [10]
-    });
-  
-    myMap.events.add('boundschange', function (e) {
-      var bounds = myMap.getBounds();
-      var south = bounds[0][0]; // North latitude
-      var north = bounds[1][0]; // South latitude
-      var west = bounds[0][1];  // East longitude
-      var east = bounds[1][1];  // West longitude
-
-      document.querySelector('#North').value = north;
-      document.querySelector('#South').value = south;
-      document.querySelector('#East').value = east;
-      document.querySelector('#West').value = west;
-
-      // Submit the form
-      document.forms[0].submit();
-    });
-
-    for (let i = 0; i < jsPlacemarks.length; i++) {
-      let placemark = new ymaps.GeoObject({
-        geometry: {
-          type: "Point",
-          coordinates: [jsPlacemarks[i].Latitude, jsPlacemarks[i].Longitude]
-        },
-        properties: {
-          iconContent: jsPlacemarks[i].Label
-        }
-      }, {
-        preset: 'islands#invertedGreenClusterIcons',
-        draggable: false
-      }
-    );
-
-    // Add a click handler
-    placemark.events.add('click', function (e) {     
-      let coords = e.get('target').geometry.getCoordinates();
-      document.querySelector('#North').value = coords[0] + 0.01;
-      document.querySelector('#South').value = coords[0] - 0.01;
-      document.querySelector('#East').value = coords[1] + 0.01;
-      document.querySelector('#West').value = coords[1] - 0.01;
-      document.forms[0].submit();
-    });
-    myMap.geoObjects.add(placemark);
-}
-
-
-}
-
+  var initFunc = function () { init_locations(jsModel);};
 </script>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const startSelect = document.querySelector('#DateStart');
-    const endSelect = document.querySelector('#DateEnd');
-
-    startSelect.addEventListener("change", function () {
-      endSelect.selectedIndex = startSelect.selectedIndex;
-    });
-  });
-</script>
+<script src="~/js/map.js" asp-append-version="true"> </script>
 
     <div class="row">
       <div class="col-md-2 p-5" style="width:500px">
-
         <form class="needs-validation" method="get" novalidate>
-
-          <input type="hidden" asp-for="North" /><br />
-          <input type="hidden" asp-for="South" /><br />
-          <input type="hidden" asp-for="East" /><br />
-          <input type="hidden" asp-for="West" /><br />
-
+          <input type="hidden" asp-for="North" />
+          <input type="hidden" asp-for="South" />
+          <input type="hidden" asp-for="East" />
+          <input type="hidden" asp-for="West" />
           <div class="row g-3">
 
             <div class="col-sm-12">

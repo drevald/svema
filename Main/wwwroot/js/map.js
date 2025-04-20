@@ -3,6 +3,72 @@ var circle;
 
 ymaps.ready(initFunc);
 
+
+function init_locations(jsShot) {
+
+  const north = jsModel.North;
+  const south = jsModel.South;
+  const east = jsModel.East;
+  const west = jsModel.West;
+
+  // Construct bounds: [[southWestLat, southWestLng], [northEastLat, northEastLng]]
+  const bounds = [[south, west], [north, east]];
+
+  // Init map with bounds
+  myMap = new ymaps.Map("map", {
+    bounds: bounds
+  }, {
+    checkZoomRange: true,
+    zoomMargin: [10]
+  });
+
+  myMap.events.add('boundschange', function (e) {
+    var bounds = myMap.getBounds();
+    var south = bounds[0][0]; // North latitude
+    var north = bounds[1][0]; // South latitude
+    var west = bounds[0][1];  // East longitude
+    var east = bounds[1][1];  // West longitude
+
+    document.querySelector('#North').value = north;
+    document.querySelector('#South').value = south;
+    document.querySelector('#East').value = east;
+    document.querySelector('#West').value = west;
+
+    // Submit the form
+    document.forms[0].submit();
+  });
+
+  for (let i = 0; i < jsModel.Placemarks.length; i++) {
+    let placemark = new ymaps.GeoObject({
+      geometry: {
+        type: "Point",
+        coordinates: [jsModel.Placemarks[i].Latitude, jsModel.Placemarks[i].Longitude]
+      },
+      properties: {
+        iconContent: jsModel.Placemarks[i].Label
+      }
+    }, {
+      preset: 'islands#invertedGreenClusterIcons',
+      draggable: false
+    }
+    );
+
+    // Add a click handler
+    placemark.events.add('click', function (e) {
+      let coords = e.get('target').geometry.getCoordinates();
+      document.querySelector('#North').value = coords[0] + 0.01;
+      document.querySelector('#South').value = coords[0] - 0.01;
+      document.querySelector('#East').value = coords[1] + 0.01;
+      document.querySelector('#West').value = coords[1] - 0.01;
+      document.forms[0].submit();
+    });
+    myMap.geoObjects.add(placemark);
+  }
+
+
+}
+
+
 function init(jsShot) {
 
   // Initialize the map

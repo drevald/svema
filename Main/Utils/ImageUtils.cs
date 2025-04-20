@@ -31,13 +31,8 @@ public static class ImageUtils
         // Creation Date (DateTimeOriginal from EXIF)
         var exif = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
         var ifd0 = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-
-        try {
-            if (exif != null) {
-                metadata.CreationDate = exif.GetDateTime(ExifDirectoryBase.TagDateTimeOriginal);
-            }
-        } catch (Exception e) {
-            Console.WriteLine($"Error reading EXIF date: {e.Message}");
+        if (exif != null && exif.ContainsTag(ExifDirectoryBase.TagDateTimeOriginal)) {
+            metadata.CreationDate = exif.GetDateTime(ExifDirectoryBase.TagDateTimeOriginal);
         }
 
         metadata.CameraManufacturer = ifd0?.GetDescription(ExifDirectoryBase.TagMake);

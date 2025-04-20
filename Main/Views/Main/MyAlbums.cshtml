@@ -3,38 +3,23 @@
 @using Newtonsoft.Json
 @{Layout = "_Layout";}
 
-<script type="text/javascript">
 
-  ymaps.ready(init);
-
-  var counter = 0;
-  var circle;
-  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(ViewBag.locations)))");
-
-  function init() {    
-    myMap = new ymaps.Map("map", {
-    center: [0, 0],
-    zoom: 0,
-    controls: []
-  })
-
-  for (i=0; i<jsModel.length; i++) {
-    myMap.geoObjects.add(
-      new ymaps.GeoObject(
-        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
-        {preset: 'islands#blackStretchyIcon', draggable: false}
-      )
-    )
-  }
-
-  }
-
+<script asp-append-version="true">
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () { init_locations(jsModel);};
 </script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
 
     <div class="row">
       <div class="col-md-2 p-5" style="width:500px">
-
         <form class="needs-validation" method="get" novalidate>
+
+          <input type="hidden" asp-for="North" />
+          <input type="hidden" asp-for="South" />
+          <input type="hidden" asp-for="East" />
+          <input type="hidden" asp-for="West" />
+
           <div class="row g-3">
 
             <div class="col-sm-6">

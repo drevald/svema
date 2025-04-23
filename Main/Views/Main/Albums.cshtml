@@ -63,20 +63,30 @@
               </select>
             </div>
 
-                <div class="col-sm-12">
-                    <label for="lastName" class="form-label">Место</label>
-                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
-                        <option></option>
-                        @foreach(var location in @Model.Locations) {
-                            <option value="@location.Id">@location.Name</option>
-                        }
-                    </select>
-                </div>
+            <div class="col-sm-12">
+              <label class="form-label">Камера</label>
+              <select asp-for="Camera" class="form-select">
+                  <option></option>
+                  @foreach(var camera in @Model.Cameras) {
+                      <option value="@camera">@camera</option>
+                  }
+              </select>
+            </div>
 
-                <div class="col-12">
-                    <label for="lastName" class="form-label">Карта</label>
-                    <div id="map" style="height:240px"></div>
-                </div>
+            <div class="col-sm-12">
+                <label class="form-label">Место</label>
+                <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                    <option></option>
+                    @foreach(var location in @Model.Locations) {
+                        <option value="@location.Id">@location.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Карта</label>
+                <div id="map" style="height:240px"></div>
+            </div>
 
             <!-- <div class="col-12" style="white-space: nowrap; overflow:hidden;">
               <label for="lastName" class="form-label">Персонажи</label>

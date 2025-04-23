@@ -22,9 +22,11 @@ public class AlbumsListDTO {
     public String DateStart {get; set;}
     public String DateEnd {get; set;}
     public int LocationId {get; set;}
+    public string Camera {get; set;}
     public ICollection<Location> Locations {get; set;}
     public ICollection<AlbumCardDTO> Albums {get; set;}
     public ICollection<LocationDTO> Placemarks {get; set;}
+    public ICollection<string> Cameras {get; set;}
     [Required]
     [Range(-90, 90)]
     public double North {get; set;}
@@ -63,8 +65,8 @@ public class AlbumDTO {
     public ICollection<AlbumComment> AlbumComments {get; set;}
     public ICollection<Location> Locations {get; set;}
     public List<ShotPreviewDTO> Shots {get; set;}
-    public float Longitude {get; set;}
-    public float Latitude {get; set;}
+    public double Longitude {get; set;}
+    public double Latitude {get; set;}
     public int Zoom {get; set;}
     public String LocationName {get; set;}
 
@@ -141,8 +143,8 @@ public class ShotDTO {
     public ICollection<ShotComment> ShotComments {get; set;}     
     public ICollection<Location> Locations {get; set;} 
     public bool IsCover {get; set;}
-    public float Longitude {get; set;}
-    public float Latitude {get; set;}
+    public double Longitude {get; set;}
+    public double Latitude {get; set;}
     public int Zoom {get; set;}
     public String LocationName {get; set;}
 

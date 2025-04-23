@@ -33,28 +33,42 @@ public class RestController: BaseController {
     }
 
     [HttpPost("shots")]
-    public async Task PostShot([FromBody] ShotREST dto) {
-
-        // Request.EnableBuffering(); // <-- This is important if you're also using [FromBody]
-        // using var reader = new StreamReader(Request.Body, encoding: Encoding.UTF8, leaveOpen: true);
-        // var rawBody = await reader.ReadToEndAsync();
-        // Request.Body.Position = 0; // Reset stream position for model binding to still work
-
-        // Console.WriteLine("RAW JSON: " + rawBody);
-
+    public async Task<IActionResult> PostShot([FromBody] ShotREST dto)
+    {
         var album = dbContext.Albums.Find(dto.AlbumId);
-        var user = dbContext.Users.Where(u => u.UserId==dto.UserId).First();
-        var storage = dbContext.ShotStorages.Where(s => s.User==user).First();
+        var user = dbContext.Users.FirstOrDefault(u => u.UserId == dto.UserId);
+        if (user == null)
+        {
+            return BadRequest(new { error = "User not found." });
+        }
+
+        var storage = dbContext.ShotStorages.FirstOrDefault(s => s.User == user);
+        if (storage == null)
+        {
+            return BadRequest(new { error = "Storage not found for user." });
+        }
+
         var errors = new Dictionary<string, string>();
-        var shot = new Shot();
-        shot.DateStart = dto.DateStart;
-        shot.DateEnd = dto.DateEnd;
-        shot.Album = album;
-        shot.AlbumId = dto.AlbumId;
-        shot.OrigPath = dto.OrigPath;
-        shot.DateUploaded = DateTime.Now;
+        var shot = new Shot
+        {
+            DateStart = dto.DateStart,
+            DateEnd = dto.DateEnd,
+            Album = album,
+            AlbumId = dto.AlbumId,
+            OrigPath = dto.OrigPath,
+            DateUploaded = DateTime.Now
+        };
+
         await ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, storage, errors);
+
+        if (errors.Any())
+        {
+            return BadRequest(errors); // returns dictionary as JSON
+        }
+
+        return Ok(new { message = "Shot uploaded successfully" });
     }
+
 
     [HttpPost("albums")]
     public JsonResult PostAlbum([FromBody] AlbumDTO dto) {

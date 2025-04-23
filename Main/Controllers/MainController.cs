@@ -15,6 +15,7 @@ using Data;
 using Utils;
 using Npgsql;
 using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 
 namespace Controllers;
 
@@ -24,12 +25,35 @@ public class MainController : BaseController
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
     {
     }
+public List<string> GetCameraModels()
+{
+    // return dbContext.Shots
+    //     .AsNoTracking()
+    //     .Select(s => s.CameraModel)
+    //     .Where(model => model != null && model != "") // optional: filter out empty/null
+    //     .Distinct()
+    //     .OrderBy(m => m)
+    //     .ToList();
+
+    return dbContext.Shots.Select(s => s.Name).ToList();
 
 
-//To get clustered view of locations on map
-public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax) {
+}
 
-    string sql = @"
+    // return dbContext.Shots
+    //     .Select(s => s.CameraModel)
+    //     .Where(model => model != null)
+    //     .Distinct()
+    //     .OrderBy(model => model) // Optional: to get sorted results
+    //     .ToList();
+//}
+
+
+    //To get clustered view of locations on map
+    public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
+    {
+
+        string sql = @"
         SELECT 
             COUNT(*) AS count,
             ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
@@ -45,136 +69,77 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
         ) AS clustered
         GROUP BY tile_geom;";
 
-    // Create the list to store the results
-    var locationList = new List<LocationDTO>();
+        // Create the list to store the results
+        var locationList = new List<LocationDTO>();
 
-    // Open the database connection
-    using (var connection = dbContext.Database.GetDbConnection())
-    {
-        connection.Open();
-        
-        // Create the SQL command
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = sql;
+        // Open the database connection
+        using (var connection = dbContext.Database.GetDbConnection()) {
             
-            // Add parameters to the command
-            command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin)/10));
-            command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
-            command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
-            command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
-            command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
-            
-            // Execute the query and process the results
-            using (var reader = command.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    var location = new LocationDTO
-                    {
-                        Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(), // Assuming Label is count as string
-                        Longitude = reader.GetDouble(reader.GetOrdinal("lon")), // Longitude of the centroid
-                        Latitude = reader.GetDouble(reader.GetOrdinal("lat")) // Latitude of the centroid
-                    };
+            connection.Open();
 
-                    locationList.Add(location);
+            // Create the SQL command
+            using (var command = connection.CreateCommand()) {
+
+                command.CommandText = sql;
+
+                // Add parameters to the command
+                command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 10));
+                command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
+                command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
+                command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
+                command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
+
+                // Execute the query and process the results
+                using (var reader = command.ExecuteReader()) {
+                    
+                    while (reader.Read()) {
+
+                        var location = new LocationDTO
+                        {
+                            Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(), // Assuming Label is count as string
+                            Longitude = reader.GetDouble(reader.GetOrdinal("lon")), // Longitude of the centroid
+                            Latitude = reader.GetDouble(reader.GetOrdinal("lat")) // Latitude of the centroid
+                        };
+                        locationList.Add(location);
+                    }
                 }
             }
         }
+        return locationList;
     }
-
-    return locationList;
-}
-
-
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Albums(AlbumsListDTO dto) {
-        var provider = CultureInfo.InvariantCulture;
-        var albumsList = new AlbumsListDTO();
-        var shotsQuery = dbContext.Shots.AsQueryable();
-        if (dto.DateStart != null) {
-            var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-            shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
-        }
-        if (dto.DateEnd != null) {
-            var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-            shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
-        }
-        shotsQuery = shotsQuery.Where(s =>
-            s.Latitude <= dto.North &&
-            s.Latitude >= dto.South &&
-            s.Longitude >= dto.West &&
-            s.Longitude <= dto.East
-        );
-        albumsList.Albums = await shotsQuery
-            .GroupBy(s => s.AlbumId)
-            .Select(g => new {
-                AlbumId = g.Key,
-                Size = g.Count()
-            })
-            .Join(dbContext.Albums,
-                grouped => grouped.AlbumId,
-                album => album.AlbumId,
-                (grouped, album) => new AlbumCardDTO {
-                    AlbumId = album.AlbumId,
-                    Name = album.Name,
-                    Size = grouped.Size,
-                    PreviewId = album.PreviewId,
-                    PreviewFlip = dbContext.Shots
-                        .Where(ps => ps.ShotId == album.PreviewId)
-                        .Select(ps => ps.Flip)
-                        .FirstOrDefault(),
-                    PreviewRotate = dbContext.Shots
-                        .Where(ps => ps.ShotId == album.PreviewId)
-                        .Select(ps => ps.Rotate)
-                        .FirstOrDefault()
-                })
-            .OrderBy(a => a.Name)
-            .ToListAsync();
-        albumsList.Locations = await dbContext.Locations.ToListAsync();
-        albumsList.DateStart = dto.DateStart;
-        albumsList.DateEnd = dto.DateEnd;
-        albumsList.North = dto.North;
-        albumsList.South = dto.South;
-        albumsList.West = dto.West;
-        albumsList.East = dto.East;
-        albumsList.Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North);
-        return View(albumsList);            
+    public async Task<IActionResult> Albums(AlbumsListDTO dto)
+    {
+        var model = await BuildAlbumsListAsync(dto, onlyMine: false);
+        return View(model);
     }
-
 
     [Authorize]
     [HttpGet("my")]
-    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto) {
-      var provider = CultureInfo.InvariantCulture;
-        var albumsList = new AlbumsListDTO();
-        var shotsQuery = dbContext.Shots.AsQueryable();
-        if (dto.DateStart != null) {
-            var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-            shotsQuery = shotsQuery.Where(s => s.DateStart >= start);
-        }
-        if (dto.DateEnd != null) {
-            var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-            shotsQuery = shotsQuery.Where(s => s.DateEnd <= end);
-        }
-        shotsQuery = shotsQuery.Where(s =>
-            s.Latitude <= dto.North &&
-            s.Latitude >= dto.South &&
-            s.Longitude >= dto.West &&
-            s.Longitude <= dto.East
-        );
-        albumsList.Albums = await shotsQuery
+    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
+    {
+        var model = await BuildAlbumsListAsync(dto, onlyMine: true);
+        return View(model);
+    }
+
+    private async Task<AlbumsListDTO> BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
+    {
+        var filteredShots = ApplyShotFilters(dto, onlyMine);
+
+        var albumCards = await filteredShots
             .GroupBy(s => s.AlbumId)
-            .Select(g => new {
+            .Select(g => new
+            {
                 AlbumId = g.Key,
                 Size = g.Count()
             })
             .Join(dbContext.Albums,
                 grouped => grouped.AlbumId,
                 album => album.AlbumId,
-                (grouped, album) => new AlbumCardDTO {
+                (grouped, album) => new AlbumCardDTO
+                {
                     AlbumId = album.AlbumId,
                     Name = album.Name,
                     Size = grouped.Size,
@@ -190,15 +155,66 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
                 })
             .OrderBy(a => a.Name)
             .ToListAsync();
-        albumsList.Locations = await dbContext.Locations.ToListAsync();
-        albumsList.DateStart = dto.DateStart;
-        albumsList.DateEnd = dto.DateEnd;
-        albumsList.North = dto.North;
-        albumsList.South = dto.South;
-        albumsList.West = dto.West;
-        albumsList.East = dto.East;
-        albumsList.Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North);
-        return View(albumsList);    
+
+        return new AlbumsListDTO
+        {
+            Albums = albumCards,
+            Locations = await dbContext.Locations.ToListAsync(),
+            DateStart = dto.DateStart,
+            DateEnd = dto.DateEnd,
+            North = dto.North,
+            South = dto.South,
+            West = dto.West,
+            East = dto.East,
+            Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
+            Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North)
+        };
+    }
+
+    private IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
+    {
+        var provider = CultureInfo.InvariantCulture;
+        var query = dbContext.Shots.AsQueryable();
+
+        if (!string.IsNullOrEmpty(dto.DateStart))
+        {
+            var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
+            query = query.Where(s => s.DateStart >= start);
+        }
+
+        if (!string.IsNullOrEmpty(dto.DateEnd))
+        {
+            var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
+            query = query.Where(s => s.DateEnd <= end);
+        }
+
+        query = query.Where(s =>
+            s.Latitude <= dto.North &&
+            s.Latitude >= dto.South &&
+            s.Longitude >= dto.West &&
+            s.Longitude <= dto.East
+        );
+
+        var username = HttpContext.User.FindFirst("user")?.Value;
+
+        if (onlyMine)
+        {
+           query = query.Where(s => s.Album.User.Username == username); 
+        }
+        else 
+        {
+            query = dbContext.Shots
+                .Where(shot =>
+                    shot.Album.User.Username == username
+                    || dbContext.SharedUsers.Any(su =>
+                        su.GuestUser.Username == username &&
+                        su.HostUser.UserId == shot.Album.User.UserId)
+                    || dbContext.SharedAlbums.Any(sa =>
+                        sa.GuestUser.Username == username &&
+                        sa.Album.AlbumId == shot.Album.AlbumId));
+        }
+
+        return query;
     }
 
 
@@ -238,21 +254,27 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
     {
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
-        foreach (var s in dto.Shots) {
+        foreach (var s in dto.Shots)
+        {
             Shot shot = await dbContext.Shots.FindAsync(s.ShotId);
-            if (s.IsChecked || s.Rotate != shot.Rotate || s.Flip != shot.Flip) {
-                if (dto.Year < 0) {
+            if (s.IsChecked || s.Rotate != shot.Rotate || s.Flip != shot.Flip)
+            {
+                if (dto.Year < 0)
+                {
                     shot.DateEnd = DateTime.MinValue;
                     shot.DateStart = DateTime.MinValue;
                 }
-                if (DateTime.MinValue != dto.DateStart) {
+                if (DateTime.MinValue != dto.DateStart)
+                {
                     shot.DateStart = dto.DateStart;
                 }
-                if (DateTime.MinValue != dto.DateEnd) {
+                if (DateTime.MinValue != dto.DateEnd)
+                {
                     shot.DateEnd = dto.DateEnd;
                 }
                 //todo - fix for photos made in Grinwitch
-                if (dto.Longitude != 0 && dto.Latitude != 0) {
+                if (dto.Longitude != 0 && dto.Latitude != 0)
+                {
                     shot.Longitude = dto.Longitude;
                     shot.Latitude = dto.Latitude;
                     shot.Zoom = dto.Zoom;
@@ -262,7 +284,8 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
                 await dbContext.SaveChangesAsync();
             }
         }
-        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0) {
+        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0)
+        {
             Location location = new Location();
             location.Zoom = dto.Zoom;
             location.Latitude = dto.Latitude;
@@ -387,7 +410,8 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
     }
 
     [HttpGet("preview")]
-    public async Task<IActionResult> Preview(int id, int? rotate, bool? flip) {
+    public async Task<IActionResult> Preview(int id, int? rotate, bool? flip)
+    {
         Console.WriteLine("PREVIEW `" + id);
         var result = await dbContext.Shots.FindAsync(id);
         Console.WriteLine("PREVIEW result is " + result);
@@ -414,18 +438,22 @@ public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double
     }
 
     [HttpGet("shot")]
-    public IActionResult Shot(int id) {
+    public IActionResult Shot(int id)
+    {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
-        if (shot == null || shot.FullScreen == null) {
+        if (shot == null || shot.FullScreen == null)
+        {
             return NotFound(); // Return 404 if shot is not found or fullscreen is null
         }
         return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
     }
 
     [HttpGet("orig")]
-    public IActionResult Orig(int id) {
+    public IActionResult Orig(int id)
+    {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
-        if (shot == null || shot.FullScreen == null) {
+        if (shot == null || shot.FullScreen == null)
+        {
             return NotFound();
         }
         Stream stream = Storage.GetFile(shot);

@@ -77,7 +77,6 @@ public class AccessController: Controller {
             // return Redirect("/login");
             return View(dto);
         }
-
     } 
 
     [HttpGet("logout")]

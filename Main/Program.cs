@@ -35,6 +35,7 @@ dbConnection += ";Include Error Detail=True";
 
 builder.WebHost.ConfigureKestrel(opts => {
     opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
+    opts.Limits.MaxRequestBodySize = 104857600;
 });
 
 builder.Services.AddControllersWithViews();

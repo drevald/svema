@@ -50,6 +50,8 @@ public class ApplicationDbContext : DbContext {
     public DbSet<AlbumComment> AlbumComments {get; set;}
     public DbSet<ShotComment> ShotComments {get; set;}
     public DbSet<ShotStorage> ShotStorages {get; set;}
+    public DbSet<SharedUser> SharedUsers {get; set;}
+    public DbSet<SharedAlbum> SharedAlbums {get; set;}
 
 }
 
@@ -67,9 +69,9 @@ public class Album {
     public ICollection<Shot> Shots {get;}
     public ICollection<AlbumComment> AlbumComments {get; set;}
     [Column("longitude")]
-    public float Longitude {get; set;}
+    public double Longitude {get; set;}
     [Column("latitude")]
-    public float Latitude {get; set;}
+    public double Latitude {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
 }
@@ -108,9 +110,9 @@ public class Shot {
     [Column("size")]
     public long Size {get;set;}
     [Column("longitude")]
-    public float Longitude {get; set;}
+    public double Longitude {get; set;}
     [Column("latitude")]
-    public float Latitude {get; set;}
+    public double Latitude {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
     [Column("rotate")]
@@ -135,9 +137,9 @@ public class Location {
     [Column("name")]
     public string Name {get; set;}
     [Column("longitude")]
-    public float Longitude {get; set;}
+    public double Longitude {get; set;}
     [Column("latitude")]
-    public float Latitude {get; set;}
+    public double Latitude {get; set;}
     [Column("zoom")]
     public int Zoom {get; set;}
 }
@@ -201,6 +203,30 @@ public class AlbumComment {
     public string Text {get; set;}
 }
 
+[Table("shared_users")]
+public class SharedUser {
+    [Column("id")]
+    public int Id {get; set;}
+    [Column("host_user_id")]
+    public int HostUserId {get; set;}
+    public User HostUser {get; set;}
+    [Column("guest_user_id")]
+    public int GuestUserId {get; set;}
+    public User GuestUser {get; set;}
+}
+
+[Table("shared_albums")]
+public class SharedAlbum {
+    [Column("id")]
+    public int Id {get; set;}    
+    [Column("guest_user_id")]
+    public int GuestUserId {get; set;}
+    public User GuestUser {get; set;}
+    [Column("shared_album_id")]
+    public int AlbumId {get; set;}
+    public Album Album {get; set;}
+}
+
 [Table("storages")]
 public class ShotStorage {   
     [Column("id")]
@@ -225,3 +251,4 @@ public enum Provider
     Yandex,
     Google
 }
+

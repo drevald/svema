@@ -51,8 +51,12 @@
       </div>
       <div class="col-sm-3">Альбом</div>
       <div class="col-sm-9">@Model.Album.Name</div>
-      <div class="col-sm-3">Год</div>
+      <div class="col-sm-3">Дата снимка</div>
       <div class="col-sm-9">@Model.DateStart</div>
+      <div class="col-sm-3">Камера</div>
+      <div class="col-sm-9">@Model.CameraManufacturer&nbsp;@Model.CameraModel</div>
+      <div class="col-sm-3">Источник</div>
+      <div class="col-sm-9">@Model.OrigPath</div>      
       <div class="col-sm-3">Место</div>
       <div class="col-sm-12" id="map" style="height:240px"></div>
       <div class="col-sm-12">Комментарии</div>

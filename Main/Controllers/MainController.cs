@@ -124,7 +124,7 @@ public List<string> GetCameraModels()
         return View(model);
     }
 
-    private async Task<AlbumsListDTO> BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
+    protected async Task<AlbumsListDTO> BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
     {
         var filteredShots = ApplyShotFilters(dto, onlyMine);
 
@@ -171,7 +171,7 @@ public List<string> GetCameraModels()
         };
     }
 
-    private IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
+    public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
     {
         var provider = CultureInfo.InvariantCulture;
         var query = dbContext.Shots.AsQueryable();
@@ -195,6 +195,10 @@ public List<string> GetCameraModels()
             s.Longitude <= dto.East
         );
 
+        if (!string.IsNullOrEmpty(dto.Camera)) {
+            query = query.Where(s => s.CameraModel == dto.Camera);  
+        }
+
         var username = HttpContext.User.FindFirst("user")?.Value;
 
         if (onlyMine)
@@ -203,8 +207,7 @@ public List<string> GetCameraModels()
         }
         else 
         {
-            query = dbContext.Shots
-                .Where(shot =>
+            query = query.Where(shot =>
                     shot.Album.User.Username == username
                     || dbContext.SharedUsers.Any(su =>
                         su.GuestUser.Username == username &&
@@ -710,3 +713,4 @@ public List<string> GetCameraModels()
     }
 
 }
+

@@ -66,7 +66,6 @@
             <div class="col-sm-12">
               <label class="form-label">Камера</label>
               <select asp-for="Camera" class="form-select">
-                  <option></option>
                   @foreach(var camera in @Model.Cameras) {
                       <option value="@camera">@camera</option>
                   }

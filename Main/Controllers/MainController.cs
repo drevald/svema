@@ -257,15 +257,28 @@ public List<string> GetCameraModels()
     {
         Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
         storedAlbum.Name = dto.Name;
+
+        // 1. Load all shots we need in one query
+        var shotIds = dto.Shots.Select(s => s.ShotId).ToList();
+        var shots = await dbContext.Shots
+            .Where(s => shotIds.Contains(s.ShotId))
+            .ToListAsync();
+
+        // 2. Make a dictionary for faster lookup
+        var shotsDict = shots.ToDictionary(s => s.ShotId);
+
+        // 3. Update all shots in memory
         foreach (var s in dto.Shots)
         {
-            Shot shot = await dbContext.Shots.FindAsync(s.ShotId);
+            if (!shotsDict.TryGetValue(s.ShotId, out var shot))
+                continue; // just skip if somehow missing
+
             if (s.IsChecked || s.Rotate != shot.Rotate || s.Flip != shot.Flip)
             {
                 if (dto.Year < 0)
                 {
-                    shot.DateEnd = DateTime.MinValue;
                     shot.DateStart = DateTime.MinValue;
+                    shot.DateEnd = DateTime.MinValue;
                 }
                 if (DateTime.MinValue != dto.DateStart)
                 {
@@ -275,32 +288,38 @@ public List<string> GetCameraModels()
                 {
                     shot.DateEnd = dto.DateEnd;
                 }
-                //todo - fix for photos made in Grinwitch
                 if (dto.Longitude != 0 && dto.Latitude != 0)
                 {
-                    shot.Longitude = dto.Longitude;
                     shot.Latitude = dto.Latitude;
+                    shot.Longitude = dto.Longitude;
                     shot.Zoom = dto.Zoom;
                 }
                 shot.Flip = s.Flip;
                 shot.Rotate = s.Rotate;
-                await dbContext.SaveChangesAsync();
             }
         }
-        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0)
+
+        // 4. Create location if needed
+        if (!string.IsNullOrEmpty(dto.LocationName) && dto.Longitude != 0 && dto.Latitude != 0)
         {
-            Location location = new Location();
-            location.Zoom = dto.Zoom;
-            location.Latitude = dto.Latitude;
-            location.Longitude = dto.Longitude;
-            location.Name = dto.LocationName;
+            var location = new Location
+            {
+                Zoom = dto.Zoom,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Name = dto.LocationName
+            };
             dbContext.Add(location);
-            await dbContext.SaveChangesAsync();
         }
-        System.Console.Write("STORING ALBUM (" + dto.AlbumId + ")");
+
+        System.Console.WriteLine($"STORING ALBUM ({dto.AlbumId})");
+
+        // 5. Save everything at once
         await dbContext.SaveChangesAsync();
+
         return Redirect("/my");
     }
+
 
     [HttpGet("add_album")]
     public IActionResult AddAlbum()

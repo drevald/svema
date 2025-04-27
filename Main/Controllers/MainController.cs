@@ -25,20 +25,20 @@ public class MainController : BaseController
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
     {
     }
-public List<string> GetCameraModels()
-{
-    // return dbContext.Shots
-    //     .AsNoTracking()
-    //     .Select(s => s.CameraModel)
-    //     .Where(model => model != null && model != "") // optional: filter out empty/null
-    //     .Distinct()
-    //     .OrderBy(m => m)
-    //     .ToList();
+    public List<string> GetCameraModels()
+    {
+        // return dbContext.Shots
+        //     .AsNoTracking()
+        //     .Select(s => s.CameraModel)
+        //     .Where(model => model != null && model != "") // optional: filter out empty/null
+        //     .Distinct()
+        //     .OrderBy(m => m)
+        //     .ToList();
 
-    return dbContext.Shots.Select(s => s.Name).ToList();
+        return dbContext.Shots.Select(s => s.Name).ToList();
 
 
-}
+    }
 
     // return dbContext.Shots
     //     .Select(s => s.CameraModel)
@@ -46,7 +46,7 @@ public List<string> GetCameraModels()
     //     .Distinct()
     //     .OrderBy(model => model) // Optional: to get sorted results
     //     .ToList();
-//}
+    //}
 
 
     //To get clustered view of locations on map
@@ -73,12 +73,14 @@ public List<string> GetCameraModels()
         var locationList = new List<LocationDTO>();
 
         // Open the database connection
-        using (var connection = dbContext.Database.GetDbConnection()) {
-            
+        using (var connection = dbContext.Database.GetDbConnection())
+        {
+
             connection.Open();
 
             // Create the SQL command
-            using (var command = connection.CreateCommand()) {
+            using (var command = connection.CreateCommand())
+            {
 
                 command.CommandText = sql;
 
@@ -90,9 +92,11 @@ public List<string> GetCameraModels()
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
 
                 // Execute the query and process the results
-                using (var reader = command.ExecuteReader()) {
-                    
-                    while (reader.Read()) {
+                using (var reader = command.ExecuteReader())
+                {
+
+                    while (reader.Read())
+                    {
 
                         var location = new LocationDTO
                         {
@@ -195,17 +199,18 @@ public List<string> GetCameraModels()
             s.Longitude <= dto.East
         );
 
-        if (!string.IsNullOrEmpty(dto.Camera)) {
-            query = query.Where(s => s.CameraModel == dto.Camera);  
+        if (!string.IsNullOrEmpty(dto.Camera))
+        {
+            query = query.Where(s => s.CameraModel == dto.Camera);
         }
 
         var username = HttpContext.User.FindFirst("user")?.Value;
 
         if (onlyMine)
         {
-           query = query.Where(s => s.Album.User.Username == username); 
+            query = query.Where(s => s.Album.User.Username == username);
         }
-        else 
+        else
         {
             query = query.Where(shot =>
                     shot.Album.User.Username == username
@@ -255,23 +260,49 @@ public List<string> GetCameraModels()
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto)
     {
-        Album storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
+        if (dto == null)
+        {
+            Console.WriteLine("DTO is null");
+            return BadRequest();
+        }
+
+        var storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
+        if (storedAlbum == null)
+        {
+            Console.WriteLine($"Album with id {dto.AlbumId} not found");
+            return NotFound();
+        }
+
+        if (dto.Shots == null)
+        {
+            Console.WriteLine($"DTO.Shots is null for album {dto.AlbumId}");
+            return BadRequest();
+        }
+
         storedAlbum.Name = dto.Name;
 
-        // 1. Load all shots we need in one query
         var shotIds = dto.Shots.Select(s => s.ShotId).ToList();
+        if (!shotIds.Any())
+        {
+            Console.WriteLine($"No shots to update for album {dto.AlbumId}");
+        }
+
         var shots = await dbContext.Shots
             .Where(s => shotIds.Contains(s.ShotId))
             .ToListAsync();
 
-        // 2. Make a dictionary for faster lookup
         var shotsDict = shots.ToDictionary(s => s.ShotId);
 
-        // 3. Update all shots in memory
         foreach (var s in dto.Shots)
         {
+            if (s == null)
+                continue;
+
             if (!shotsDict.TryGetValue(s.ShotId, out var shot))
-                continue; // just skip if somehow missing
+            {
+                Console.WriteLine($"Shot {s.ShotId} not found in database, skipping");
+                continue;
+            }
 
             if (s.IsChecked || s.Rotate != shot.Rotate || s.Flip != shot.Flip)
             {
@@ -299,7 +330,6 @@ public List<string> GetCameraModels()
             }
         }
 
-        // 4. Create location if needed
         if (!string.IsNullOrEmpty(dto.LocationName) && dto.Longitude != 0 && dto.Latitude != 0)
         {
             var location = new Location
@@ -312,9 +342,7 @@ public List<string> GetCameraModels()
             dbContext.Add(location);
         }
 
-        System.Console.WriteLine($"STORING ALBUM ({dto.AlbumId})");
-
-        // 5. Save everything at once
+        Console.WriteLine($"STORING ALBUM ({dto.AlbumId})");
         await dbContext.SaveChangesAsync();
 
         return Redirect("/my");

@@ -18,21 +18,21 @@
   var circle;
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@ViewBag.locations)))");
 
-  function init() {    
+  function init() {
     myMap = new ymaps.Map("map", {
       center: [0, 0],
-    zoom: 0,
-    controls: []
-  })
+      zoom: 0,
+      controls: []
+    })
 
-  for (i=0; i<jsModel.length; i++) {
-    myMap.geoObjects.add(
-      new ymaps.GeoObject(
-        {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
-        {preset: 'islands#blackStretchyIcon', draggable: false}
+    for (i = 0; i < jsModel.length; i++) {
+      myMap.geoObjects.add(
+        new ymaps.GeoObject(
+          { geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude] }, properties: { iconContent: jsModel[i].Name } },
+          { preset: 'islands#blackStretchyIcon', draggable: false }
+        )
       )
-    )
-  }
+    }
 
   }
 
@@ -42,39 +42,41 @@
 <div class="row">
   <div class="col-md-2 p-5" style="width:500px">
     <div class="row g-3">
-      <div class="col-sm-6">
+      <div class="col-sm-4">
         <a class="btn btn-secondary" href="/">Вернуться</a>
       </div>
-      <div class="col-sm-6 text-end">
-        <a  class="btn btn-primary" href="#">Слайдшоу</a>&nbsp;
-      </div>
-      <div class="col-sm-3">Название</div><div class="col-sm-9">@Model.Name</div>      
+      <div class="col-sm-8 text-end">
+        <a class="btn btn-primary" href="#">Слайдшоу</a>&nbsp;
+        <a class="btn btn-primary" href="/edit_album?id=@Model.AlbumId">Ред</a>&nbsp;
+      </div>      
+      <div class="col-sm-3">Название</div>
+      <div class="col-sm-9">@Model.Name</div>
       @if (@ViewBag.Locations != null) {
-        @foreach(var location in @ViewBag.locations) {
-            @* <div class="col-sm-12">@location.Name</div> *@
-        }
+      @foreach(var location in @ViewBag.locations) {
+      @* <div class="col-sm-12">@location.Name</div> *@
+      }
       }
       <div class="col-sm-12" id="map" style="height:240px"></div>
 
       <div class="col-sm-12">Комментарии</div>
 
-      @if (@Model.AlbumComments != null)      
+      @if (@Model.AlbumComments != null)
       {
-        @foreach (var comment in @Model.AlbumComments)
-        {
-          <div class="col-sm-12">
-            <small>
-              <b>@comment.AuthorUsername</b>&nbsp;
-              @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br>
-              @comment.Text
-              @if (@comment.AuthorUsername == Context.User.Identity.Name)
-              {
-                <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
-                <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
-              }
-            </small>
-          </div>
-        }
+      @foreach (var comment in @Model.AlbumComments)
+      {
+      <div class="col-sm-12">
+        <small>
+          <b>@comment.AuthorUsername</b>&nbsp;
+          @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br>
+          @comment.Text
+          @if (@comment.AuthorUsername == Context.User.Identity.Name)
+          {
+          <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
+          <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+          }
+        </small>
+      </div>
+      }
       }
 
       <form action="add_comment" method="post">
@@ -96,8 +98,9 @@
 
       @foreach(var shot in @ViewBag.shots) {
       <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
-        <div class="card-body" 
-        style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;"></div>      
+        <div class="card-body"
+          style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+        </div>
         <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
       </div>
       }

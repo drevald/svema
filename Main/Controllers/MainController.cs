@@ -123,8 +123,25 @@ public class MainController : BaseController
     [Authorize]
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
-    {
+    {      
+        // Fetch the album list including empty albums
         var model = await BuildAlbumsListAsync(dto, onlyMine: true);
+
+        // var username = HttpContext.User.FindFirst("user")?.Value;
+        // var emptyAlbums = await dbContext.Albums
+        //     .Where(a => a.User.Username == username)
+        //     .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
+        //     .Select(a => new AlbumCardDTO
+        //     {
+        //         AlbumId = a.AlbumId,
+        //         Name = a.Name,
+        //         Size = 0  // Empty album size
+        //     })
+        //     .ToListAsync();
+
+        // // Concatenate empty albums to the existing album list
+        // model.Albums = model.Albums.Concat(emptyAlbums).ToList();
+
         return View(model);
     }
 

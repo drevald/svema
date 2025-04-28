@@ -83,13 +83,13 @@ public class MainController : BaseController
                 u.username = @username
                 OR EXISTS (
                     SELECT 1 FROM shared_users su
-                    WHERE su.guest_user_id = (SELECT UserId FROM users WHERE username = @username)
+                    WHERE su.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
                     AND su.host_user_id = a.user_id
                 )
                 OR EXISTS (
                     SELECT 1 FROM shared_albums sa
                     JOIN albums shared_a ON sa.shared_album_id = shared_a.id
-                    WHERE sa.guest_user_id = (SELECT UserId FROM users WHERE username = @username)
+                    WHERE sa.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
                     AND shared_a.id = a.id
                 )
             )");

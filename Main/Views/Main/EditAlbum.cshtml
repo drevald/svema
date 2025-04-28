@@ -105,18 +105,17 @@
     <div class="col p-5">
 
         <div class="row">
-            <div class="col-md-4 p-0 pb-5 text-start">
-                <a class="btn btn-primary px-3" href="javascript:flip()">Отразить</a>
-                <a class="btn btn-primary px-3" href="javascript:rotate()">Повернуть</a>
+            <div class="col-md-12 p-0 pb-5 text-end">
+                <a class="btn btn-primary btn-sm px-3" href="javascript:flip()">Отразить</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:rotate()">Повернуть</a>
+                <button type="submit" formaction="/select_album" class="btn btn-primary btn-sm px-3">Переместить</button>
+                <a class="btn btn-primary btn-sm px-3" href="upload_shots?id=@Model.AlbumId">Добавить</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:selectAll()">Выбрать все</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:deselectAll()">Снять выделение</a>
+                <input type="submit" class="btn btn-primary btn-sm px-3" value="Сохранить">
+                <a class="btn btn-secondary btn-sm ps-3" href="/">Отменить</a>
             </div>
-            <div class="col-md-8 p-0 pb-5 text-end">
-                <a class="btn btn-primary px-3" href="upload_shots?id=@Model.AlbumId">Добавить фото</a>
-                <a class="btn btn-primary px-3" href="javascript:selectAll()">Выбрать все</a>
-                <a class="btn btn-primary px-3" href="javascript:deselectAll()">Снять выделение</a>
-                <input type="submit" class="btn btn-primary px-3" value="Сохранить">
-                <a class="btn btn-secondary ps-3" href="/">Отменить</a>
-            </div>
-        </div>
+        </div>       
 
         <div class="d-flex flex-wrap overflow-auto">
             @for (var index = 0; index < @Model.Shots.Count(); index++) {

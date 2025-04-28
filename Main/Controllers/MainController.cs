@@ -759,5 +759,66 @@ public class MainController : BaseController
         return Redirect("profile?user_id=" + dto.Storage.UserId);
     }
 
-}
+    [HttpPost("select_album")]
+    public async Task<IActionResult> SelectAlbum(AlbumDTO dto)
+    {
+        var username = HttpContext.User.FindFirst("user")?.Value;
 
+        var shots = dto.Shots.Where(s => s.IsChecked).ToList();
+
+        var albums = await dbContext.Albums
+            .Where(a => a.User.Username == username)
+            .Join(dbContext.Shots,
+                album => album.PreviewId,
+                shot => shot.ShotId,
+                (album, shot) => new AlbumCardDTO
+                {
+                    AlbumId = album.AlbumId,
+                    Name = album.Name,
+                    PreviewId = album.PreviewId,
+                    PreviewFlip = shot.Flip,
+                    PreviewRotate = shot.Rotate
+                })
+            .ToListAsync();
+
+        var selectAlbumDTO = new SelectAlbumDTO
+        {
+            Shots = shots,
+            Albums = albums,
+            SourceAlbumId = dto.AlbumId
+        };
+
+        return View(selectAlbumDTO);
+    }
+
+    [HttpPost("move_shots")]
+    public async Task<IActionResult> MoveShots(SelectAlbumDTO dto)
+    {
+        var sourceAlbum = await dbContext.Albums
+            .Where(a => a.AlbumId == dto.SourceAlbumId)
+            .FirstAsync();
+
+        var shotsList = dto.Shots.Select(s => s.ShotId).ToList();
+
+        var shots = await dbContext.Shots
+            .Where(s => s.AlbumId == dto.SourceAlbumId && shotsList.Contains(s.ShotId))
+            .ToListAsync();
+
+        foreach (Shot shot in shots) {
+            shot.AlbumId = dto.TargetAlbumId;
+        }
+
+        if (shotsList.Contains(sourceAlbum.PreviewId)) {
+            var newPreviewId = await dbContext.Shots
+            .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
+            .Select(s => s.ShotId).FirstAsync();
+            sourceAlbum.PreviewId = newPreviewId;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return Redirect("edit_album?id=" + dto.SourceAlbumId);
+
+    }
+
+}

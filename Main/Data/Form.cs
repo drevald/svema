@@ -15,6 +15,7 @@ public class AlbumCardDTO {
     public bool PreviewFlip {get; set;}
     public int PreviewRotate {get; set;}
     public int Size {get; set;}
+    public bool IsSelected {get; set;}
 
 }
 
@@ -69,7 +70,6 @@ public class AlbumDTO {
     public double Latitude {get; set;}
     public int Zoom {get; set;}
     public String LocationName {get; set;}
-
 
 }
 
@@ -200,5 +200,13 @@ public class LocationDTO : DTO {
     public string Label {get; set;}
     public double Longitude {get; set;}
     public double Latitude {get; set;}
+
+}
+
+public class SelectAlbumDTO {
+    public int SourceAlbumId {get; set;}
+    public int TargetAlbumId {get; set;}
+    public List<AlbumCardDTO> Albums {get; set;}
+    public List<ShotPreviewDTO> Shots {get; set;}
 
 }

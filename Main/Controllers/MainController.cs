@@ -50,24 +50,73 @@ public class MainController : BaseController
 
 
     //To get clustered view of locations on map
-    public List<LocationDTO> GetClusteredShotsWithLabels(double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
+    public List<LocationDTO> GetClusteredShotsWithLabels(bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
     {
 
-        string sql = @"
+        // string sql = @"
+        // SELECT 
+        //     COUNT(*) AS count,
+        //     ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
+        //     ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
+        // FROM (
+        //     SELECT ST_SnapToGrid(
+        //              ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), @gridSize
+        //            ) AS tile_geom,
+        //            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) AS geom
+        //     FROM shots
+        //     WHERE longitude BETWEEN @longitudeMin AND @longitudeMax
+        //       AND latitude BETWEEN @latitudeMin AND @latitudeMax
+        // ) AS clustered
+        // GROUP BY tile_geom;";
+
+        var filters = new List<string>();
+        filters.Add("s.longitude BETWEEN @longitudeMin AND @longitudeMax");
+        filters.Add("s.latitude BETWEEN @latitudeMin AND @latitudeMax");
+
+        if (onlyMine)
+        {
+            filters.Add("u.username = @username");
+        }
+        else
+        {
+            filters.Add(@"(
+                u.username = @username
+                OR EXISTS (
+                    SELECT 1 FROM shared_users su
+                    WHERE su.guest_user_id = (SELECT UserId FROM users WHERE username = @username)
+                    AND su.host_user_id = a.user_id
+                )
+                OR EXISTS (
+                    SELECT 1 FROM shared_albums sa
+                    JOIN albums shared_a ON sa.shared_album_id = shared_a.id
+                    WHERE sa.guest_user_id = (SELECT UserId FROM users WHERE username = @username)
+                    AND shared_a.id = a.id
+                )
+            )");
+        }
+
+        // Insert combined WHERE filters
+        string whereClause = string.Join(" AND ", filters);
+
+        // Now inject the WHERE clause into your SQL
+        string sql = $@"
         SELECT 
             COUNT(*) AS count,
             ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
             ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
         FROM (
             SELECT ST_SnapToGrid(
-                     ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), @gridSize
-                   ) AS tile_geom,
-                   ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) AS geom
-            FROM shots
-            WHERE longitude BETWEEN @longitudeMin AND @longitudeMax
-              AND latitude BETWEEN @latitudeMin AND @latitudeMax
+                    ST_SetSRID(ST_MakePoint(s.longitude, s.latitude), 4326), @gridSize
+                ) AS tile_geom,
+                ST_SetSRID(ST_MakePoint(s.longitude, s.latitude), 4326) AS geom
+            FROM shots s
+            JOIN albums a ON s.album_id = a.id
+            JOIN users u ON a.""UserId"" = u.id
+            WHERE {whereClause}
         ) AS clustered
-        GROUP BY tile_geom;";
+        GROUP BY tile_geom;
+        ";
+
 
         // Create the list to store the results
         var locationList = new List<LocationDTO>();
@@ -90,6 +139,7 @@ public class MainController : BaseController
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
+                command.Parameters.Add(new NpgsqlParameter("@username", GetUsername()));
 
                 // Execute the query and process the results
                 using (var reader = command.ExecuteReader())
@@ -188,7 +238,7 @@ public class MainController : BaseController
             West = dto.West,
             East = dto.East,
             Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
-            Placemarks = GetClusteredShotsWithLabels(dto.West, dto.East, dto.South, dto.North)
+            Placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North)
         };
     }
 
@@ -221,7 +271,7 @@ public class MainController : BaseController
             query = query.Where(s => s.CameraModel == dto.Camera);
         }
 
-        var username = HttpContext.User.FindFirst("user")?.Value;
+        var username = GetUsername();
 
         if (onlyMine)
         {
@@ -376,7 +426,7 @@ public class MainController : BaseController
     public async Task<IActionResult> CreateAlbum(Album album)
     {
         Console.Write("STORING ALBUM (" + album.AlbumId + ")");
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
         album.User = user;
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
@@ -539,7 +589,7 @@ public class MainController : BaseController
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(UploadedFilesDTO dto)
     {
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
         ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user).FirstOrDefault(s => true);
         if (storage == null)
         {
@@ -666,7 +716,7 @@ public class MainController : BaseController
     public async Task<IActionResult> AddComment(string text, int id, int commentId)
     {
         var comment = new AlbumComment();
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
         if (commentId == 0)
         {
             comment.Author = user;
@@ -702,7 +752,7 @@ public class MainController : BaseController
     public async Task<IActionResult> AddShotComment(string text, int id, int commentId)
     {
         var comment = new ShotComment();
-        User user = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).First();
+        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
         if (commentId == 0)
         {
             comment.Author = user;
@@ -745,7 +795,7 @@ public class MainController : BaseController
     public async Task<IActionResult> Profile()
     {
         var dto = new ProfileDTO();
-        dto.User = dbContext.Users.Where(u => u.Username == HttpContext.User.Identity.Name).FirstOrDefault(e => true);
+        dto.User = dbContext.Users.Where(u => u.Username == GetUsername()).FirstOrDefault(e => true);
         dto.Storages = await dbContext.ShotStorages.Where(s => s.User == dto.User).ToListAsync<ShotStorage>();
         return View(dto);
     }
@@ -779,12 +829,12 @@ public class MainController : BaseController
     [HttpPost("select_album")]
     public async Task<IActionResult> SelectAlbum(AlbumDTO dto)
     {
-        var username = HttpContext.User.FindFirst("user")?.Value;
+        var username = GetUsername();
 
         var shots = dto.Shots.Where(s => s.IsChecked).ToList();
 
         var albums = await dbContext.Albums
-            .Where(a => a.User.Username == username)
+            .Where(a => a.User.Username == username && a.AlbumId != dto.AlbumId)
             .Join(dbContext.Shots,
                 album => album.PreviewId,
                 shot => shot.ShotId,
@@ -796,6 +846,7 @@ public class MainController : BaseController
                     PreviewFlip = shot.Flip,
                     PreviewRotate = shot.Rotate
                 })
+            .OrderBy(a => a.Name)
             .ToListAsync();
 
         var selectAlbumDTO = new SelectAlbumDTO
@@ -827,15 +878,20 @@ public class MainController : BaseController
 
         if (shotsList.Contains(sourceAlbum.PreviewId)) {
             var newPreviewId = await dbContext.Shots
-            .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
-            .Select(s => s.ShotId).FirstAsync();
-            sourceAlbum.PreviewId = newPreviewId;
+                .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
+                .Select(s => s.ShotId)
+                .FirstOrDefaultAsync(); // Use FirstOrDefaultAsync() to handle no match
+            sourceAlbum.PreviewId = newPreviewId != null ? newPreviewId : 0; // Assign 0 if null
         }
 
         await dbContext.SaveChangesAsync();
 
         return Redirect("edit_album?id=" + dto.SourceAlbumId);
 
+    }
+
+    private string GetUsername() {
+        return HttpContext.User.FindFirst("user")?.Value;
     }
 
 }

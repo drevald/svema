@@ -173,7 +173,7 @@ public class MainController : BaseController
     [Authorize]
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
-    {      
+    {
         // Fetch the album list including empty albums
         var model = await BuildAlbumsListAsync(dto, onlyMine: true);
 
@@ -835,17 +835,23 @@ public class MainController : BaseController
 
         var albums = await dbContext.Albums
             .Where(a => a.User.Username == username && a.AlbumId != dto.AlbumId)
-            .Join(dbContext.Shots,
+            .GroupJoin(
+                dbContext.Shots,
                 album => album.PreviewId,
                 shot => shot.ShotId,
-                (album, shot) => new AlbumCardDTO
+                (album, shots) => new { Album = album, Shots = shots }
+            )
+            .SelectMany(
+                x => x.Shots.DefaultIfEmpty(), // left join
+                (x, shot) => new AlbumCardDTO
                 {
-                    AlbumId = album.AlbumId,
-                    Name = album.Name,
-                    PreviewId = album.PreviewId,
-                    PreviewFlip = shot.Flip,
-                    PreviewRotate = shot.Rotate
-                })
+                    AlbumId = x.Album.AlbumId,
+                    Name = x.Album.Name,
+                    PreviewId = x.Album.PreviewId,
+                    PreviewFlip = shot != null ? shot.Flip : false, // default false
+                    PreviewRotate = shot != null ? shot.Rotate : 0  // default 0
+                }
+            )
             .OrderBy(a => a.Name)
             .ToListAsync();
 
@@ -872,11 +878,13 @@ public class MainController : BaseController
             .Where(s => s.AlbumId == dto.SourceAlbumId && shotsList.Contains(s.ShotId))
             .ToListAsync();
 
-        foreach (Shot shot in shots) {
+        foreach (Shot shot in shots)
+        {
             shot.AlbumId = dto.TargetAlbumId;
         }
 
-        if (shotsList.Contains(sourceAlbum.PreviewId)) {
+        if (shotsList.Contains(sourceAlbum.PreviewId))
+        {
             var newPreviewId = await dbContext.Shots
                 .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
                 .Select(s => s.ShotId)
@@ -890,7 +898,8 @@ public class MainController : BaseController
 
     }
 
-    private string GetUsername() {
+    private string GetUsername()
+    {
         return HttpContext.User.FindFirst("user")?.Value;
     }
 

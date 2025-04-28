@@ -84,7 +84,7 @@ public class MainController : BaseController
                 OR EXISTS (
                     SELECT 1 FROM shared_users su
                     WHERE su.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
-                    AND su.host_user_id = a.user_id
+                    AND su.host_user_id = a.""UserId""
                 )
                 OR EXISTS (
                     SELECT 1 FROM shared_albums sa

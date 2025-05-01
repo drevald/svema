@@ -33,6 +33,16 @@
         </div>
 
         <div class="col-sm-6">
+          <label class="form-label">Сортировка:</label>
+          <select asp-for="SortBy" asp-items="Model.SortByOptions" class="form-select" onchange="this.form.submit();"></select>
+        </div>
+
+        <div class="col-sm-6">
+          <label class="form-label">Направление:</label>
+          <select asp-for="SortDirection" asp-items="Model.SortDirectionOptions" class="form-select" onchange="this.form.submit();"></select>
+        </div>
+
+        <div class="col-sm-6">
           <label class="form-label">Год, от</label>
           <select asp-for="DateStart" class="form-select" id="DateStart"
             onchange="document.getElementById('DateEnd').selectedIndex = this.selectedIndex - 1;form.this.submit();"

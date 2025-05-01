@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Data;
 using System;
+using Common;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Http;
 
 namespace Form;
@@ -40,6 +42,10 @@ public class AlbumsListDTO {
     [Required]
     [Range(-180, 180)]
     public double West {get; set;}
+    public SortBy SortBy {get; set;}
+    public List<SelectListItem> SortByOptions { get; set; }
+    public SortDirection SortDirection {get; set;}
+    public List<SelectListItem> SortDirectionOptions { get; set; }
 
     public AlbumsListDTO() {
         Albums = new HashSet<AlbumCardDTO>();

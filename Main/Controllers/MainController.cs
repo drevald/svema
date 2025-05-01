@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
@@ -14,8 +15,6 @@ using Form;
 using Data;
 using Utils;
 using Npgsql;
-using System.Security.Cryptography;
-using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Common;
 
 namespace Controllers;
@@ -179,99 +178,112 @@ public class MainController : BaseController
         return View(model);
     }
 
-protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
-    AlbumsListDTO dto,
-    bool onlyMine,
-    SortBy sortBy = SortBy.EarliestDate,
-    SortDirection sortDirection = SortDirection.Ascending)
-{
-    var filteredShots = ApplyShotFilters(dto, onlyMine);
+    protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
+        AlbumsListDTO dto,
+        bool onlyMine)
+    {
+        var filteredShots = ApplyShotFilters(dto, onlyMine);
 
-    // Precompute per-album aggregates to support sorting
-    var shotGroups = await filteredShots
-        .GroupBy(s => s.AlbumId)
-        .Select(g => new
-        {
-            AlbumId = g.Key,
-            Size = g.Count(),
-            EarliestDate = g.Min(s => s.DateStart),
-            LeastLatitude = g.Min(s => s.Latitude),
-            LeastLongitude = g.Min(s => s.Longitude)
-        })
-        .ToListAsync();
-
-    var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
-
-    // Fetch album metadata (Name, Preview info)
-    var albumCards = await dbContext.Albums
-        .Where(a => albumIds.Contains(a.AlbumId))
-        .Select(a => new AlbumCardDTO
-        {
-            AlbumId = a.AlbumId,
-            Name = a.Name,
-            PreviewId = a.PreviewId,
-            PreviewFlip = dbContext.Shots
-                .Where(ps => ps.ShotId == a.PreviewId)
-                .Select(ps => ps.Flip)
-                .FirstOrDefault(),
-            PreviewRotate = dbContext.Shots
-                .Where(ps => ps.ShotId == a.PreviewId)
-                .Select(ps => ps.Rotate)
-                .FirstOrDefault()
-        })
-        .ToListAsync();
-
-    // Join metadata with grouping info for sorting
-    var enriched = albumCards
-        .Join(shotGroups,
-            card => card.AlbumId,
-            group => group.AlbumId,
-            (card, group) => new
+        // Precompute per-album aggregates to support sorting
+        var shotGroups = await filteredShots
+            .GroupBy(s => s.AlbumId)
+            .Select(g => new
             {
-                Card = card,
-                group.Size,
-                group.EarliestDate,
-                group.LeastLatitude,
-                group.LeastLongitude
-            });
+                AlbumId = g.Key,
+                Size = g.Count(),
+                EarliestDate = g.Min(s => s.DateStart),
+                LeastLatitude = g.Min(s => s.Latitude),
+                LeastLongitude = g.Min(s => s.Longitude)
+            })
+            .ToListAsync();
 
-    // Apply dynamic sort
-    var sorted = (sortBy, sortDirection) switch
-    {
-        (SortBy.EarliestDate, SortDirection.Ascending) => enriched.OrderBy(e => e.EarliestDate),
-        (SortBy.EarliestDate, SortDirection.Descending) => enriched.OrderByDescending(e => e.EarliestDate),
-        (SortBy.LeastLatitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLatitude),
-        (SortBy.LeastLatitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLatitude),
-        (SortBy.LeastLongitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLongitude),
-        (SortBy.LeastLongitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLongitude),
-        (SortBy.ShotCount, SortDirection.Ascending) => enriched.OrderBy(e => e.Size),
-        (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
-        _ => enriched.OrderBy(e => e.Card.Name)
-    };
+        var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
 
-    // Finalize album cards with updated size
-    var finalAlbumCards = sorted
-        .Select(e =>
+        // Fetch album metadata (Name, Preview info)
+        var albumCards = await dbContext.Albums
+            .Where(a => albumIds.Contains(a.AlbumId))
+            .Select(a => new AlbumCardDTO
+            {
+                AlbumId = a.AlbumId,
+                Name = a.Name,
+                PreviewId = a.PreviewId,
+                PreviewFlip = dbContext.Shots
+                    .Where(ps => ps.ShotId == a.PreviewId)
+                    .Select(ps => ps.Flip)
+                    .FirstOrDefault(),
+                PreviewRotate = dbContext.Shots
+                    .Where(ps => ps.ShotId == a.PreviewId)
+                    .Select(ps => ps.Rotate)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
+
+        // Join metadata with grouping info for sorting
+        var enriched = albumCards
+            .Join(shotGroups,
+                card => card.AlbumId,
+                group => group.AlbumId,
+                (card, group) => new
+                {
+                    Card = card,
+                    group.Size,
+                    group.EarliestDate,
+                    group.LeastLatitude,
+                    group.LeastLongitude
+                });
+
+        // Apply dynamic sort
+        var sorted = (dto.SortBy, dto.SortDirection) switch
         {
-            e.Card.Size = e.Size;
-            return e.Card;
-        })
-        .ToList();
+            (SortBy.EarliestDate, SortDirection.Ascending) => enriched.OrderBy(e => e.EarliestDate),
+            (SortBy.EarliestDate, SortDirection.Descending) => enriched.OrderByDescending(e => e.EarliestDate),
+            (SortBy.LeastLatitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLatitude),
+            (SortBy.LeastLatitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLatitude),
+            (SortBy.LeastLongitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLongitude),
+            (SortBy.LeastLongitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLongitude),
+            (SortBy.ShotCount, SortDirection.Ascending) => enriched.OrderBy(e => e.Size),
+            (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
+            _ => enriched.OrderBy(e => e.Card.Name)
+        };
 
-    return new AlbumsListDTO
+        // Finalize album cards with updated size
+        var finalAlbumCards = sorted
+            .Select(e =>
+            {
+                e.Card.Size = e.Size;
+                return e.Card;
+            })
+            .ToList();
+
+        return new AlbumsListDTO
+        {
+            Albums = finalAlbumCards,
+            Locations = await dbContext.Locations.ToListAsync(),
+            DateStart = dto.DateStart,
+            DateEnd = dto.DateEnd,
+            North = dto.North,
+            South = dto.South,
+            West = dto.West,
+            East = dto.East,
+            Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
+            Placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North),
+            SortByOptions = new List<SelectListItem>
     {
-        Albums = finalAlbumCards,
-        Locations = await dbContext.Locations.ToListAsync(),
-        DateStart = dto.DateStart,
-        DateEnd = dto.DateEnd,
-        North = dto.North,
-        South = dto.South,
-        West = dto.West,
-        East = dto.East,
-        Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
-        Placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North)
-    };
-}
+    new SelectListItem { Value = SortBy.EarliestDate.ToString(), Text = "По дате" },
+    new SelectListItem { Value = SortBy.Name.ToString(), Text = "По названию" },
+    new SelectListItem { Value = SortBy.LeastLatitude.ToString(), Text = "По долготе" },
+    new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
+    new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
+    },
+            SortDirectionOptions = new List<SelectListItem>
+    {
+    new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
+    new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }
+    }
+        };
+    }
+
+
 
 
     public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
@@ -960,21 +972,21 @@ protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
         return HttpContext.User.FindFirst("user")?.Value;
     }
 
-public IEnumerable<Album> SortAlbums(IEnumerable<Album> albums, SortBy sortBy, SortDirection direction)
-{
-    Func<Album, object> keySelector = sortBy switch
+    public IEnumerable<Album> SortAlbums(IEnumerable<Album> albums, SortBy sortBy, SortDirection direction)
     {
-        SortBy.EarliestDate => a => a.Shots.Min(s => s.DateStart),
-        SortBy.LeastLatitude => a => a.Shots.Min(s => s.Latitude),
-        SortBy.LeastLongitude => a => a.Shots.Min(s => s.Longitude),
-        SortBy.ShotCount => a => a.Shots.Count,
-        _ => a => a.Name
-    };
+        Func<Album, object> keySelector = sortBy switch
+        {
+            SortBy.EarliestDate => a => a.Shots.Min(s => s.DateStart),
+            SortBy.LeastLatitude => a => a.Shots.Min(s => s.Latitude),
+            SortBy.LeastLongitude => a => a.Shots.Min(s => s.Longitude),
+            SortBy.ShotCount => a => a.Shots.Count,
+            _ => a => a.Name
+        };
 
-    return direction == SortDirection.Ascending
-        ? albums.OrderBy(keySelector)
-        : albums.OrderByDescending(keySelector);
-}
+        return direction == SortDirection.Ascending
+            ? albums.OrderBy(keySelector)
+            : albums.OrderByDescending(keySelector);
+    }
 
 
 }

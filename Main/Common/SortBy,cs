@@ -1,0 +1,10 @@
+namespace Common;
+
+public enum SortBy
+{
+    Name,
+    EarliestDate,
+    LeastLatitude,
+    LeastLongitude,
+    ShotCount
+}

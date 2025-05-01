@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Common;
 
 namespace Data;
 
@@ -243,12 +244,5 @@ public class ShotStorage {
     [Column("root")]
     public string Root {get; set;}
     public ICollection<Shot> Shots {get; set;}
-}
-
-public enum Provider
-{
-    Local,
-    Yandex,
-    Google
 }
 

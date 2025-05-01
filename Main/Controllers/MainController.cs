@@ -182,8 +182,8 @@ public class MainController : BaseController
 protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
     AlbumsListDTO dto,
     bool onlyMine,
-    SortBy sortBy,
-    SortDirection sortDirection)
+    SortBy sortBy = SortBy.EarliestDate,
+    SortDirection sortDirection = SortDirection.Ascending)
 {
     var filteredShots = ApplyShotFilters(dto, onlyMine);
 
@@ -194,7 +194,7 @@ protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
         {
             AlbumId = g.Key,
             Size = g.Count(),
-            EarliestDate = g.Min(s => s.DateTaken),
+            EarliestDate = g.Min(s => s.DateStart),
             LeastLatitude = g.Min(s => s.Latitude),
             LeastLongitude = g.Min(s => s.Longitude)
         })
@@ -964,9 +964,9 @@ public IEnumerable<Album> SortAlbums(IEnumerable<Album> albums, SortBy sortBy, S
 {
     Func<Album, object> keySelector = sortBy switch
     {
-        SortBy.EarliestDate => a => a.Shots.Min(s => s.DateTaken ?? DateTime.MaxValue),
-        SortBy.LeastLatitude => a => a.Shots.Min(s => s.Latitude ?? double.MaxValue),
-        SortBy.LeastLongitude => a => a.Shots.Min(s => s.Longitude ?? double.MaxValue),
+        SortBy.EarliestDate => a => a.Shots.Min(s => s.DateStart),
+        SortBy.LeastLatitude => a => a.Shots.Min(s => s.Latitude),
+        SortBy.LeastLongitude => a => a.Shots.Min(s => s.Longitude),
         SortBy.ShotCount => a => a.Shots.Count,
         _ => a => a.Name
     };

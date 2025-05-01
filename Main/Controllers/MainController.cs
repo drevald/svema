@@ -555,15 +555,40 @@ public class MainController : BaseController
     }
 
     [HttpGet("shot")]
-    public IActionResult Shot(int id)
+    // public IActionResult Shot(int id)
+    // {
+    //     var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
+    //     if (shot == null || shot.FullScreen == null)
+    //     {
+    //         return NotFound(); // Return 404 if shot is not found or fullscreen is null
+    //     }
+    //     return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
+    // }
+    public async Task<IActionResult> Shot(int id, int? rotate, bool? flip)
     {
-        var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
-        if (shot == null || shot.FullScreen == null)
+        var result = await dbContext.Shots.FindAsync(id);
+
+        var stream = new MemoryStream();
+        stream.Write(result.FullScreen, 0, result.FullScreen.Length);
+        stream.Position = 0;
+
+        // Set the correct MIME type for JPEG
+        string mimeType = "image/jpeg";
+        if (result.FullScreen.Length > 0)
         {
-            return NotFound(); // Return 404 if shot is not found or fullscreen is null
+            // Check if the file extension is correct (or if flip/rotate is needed)
+            if (rotate.HasValue || flip.HasValue)
+            {
+                // Apply rotation or flip as needed (use your transformation function here)
+                var transformedStream = ImageUtils.GetTransformedImage(stream, rotate ?? 0, flip ?? false);
+                return new FileStreamResult(transformedStream, mimeType);  // Return the transformed image with proper MIME type
+            }
         }
-        return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
+
+        // Return the original stream if no transformation is needed
+        return new FileStreamResult(stream, mimeType);  // Ensure the MIME type is correctly set
     }
+
 
     [HttpGet("orig")]
     public IActionResult Orig(int id)

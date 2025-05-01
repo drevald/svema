@@ -147,6 +147,8 @@ public class ShotDTO {
     public double Latitude {get; set;}
     public int Zoom {get; set;}
     public String LocationName {get; set;}
+    public bool Flip {get; set;}
+    public int Rotate {get; set;}
 
     public ShotDTO() {
 
@@ -160,6 +162,8 @@ public class ShotDTO {
         DateEnd = shot.DateEnd;
         Preview = shot.Preview;
         ShotComments = shot.ShotComments;
+        Flip = shot.Flip;
+        Rotate = shot.Rotate;
     }
 
 }

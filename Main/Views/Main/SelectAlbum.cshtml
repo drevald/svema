@@ -1,0 +1,64 @@
+@model Form.SelectAlbumDTO
+@using System.Web
+@using Newtonsoft.Json
+@{Layout = "_Layout";}
+
+<form action="/move_shots" method="post">
+
+    <input type="hidden" asp-for="@Model.SourceAlbumId" />
+
+    <div class="row">
+        <div class="col-md-6 p-5 pb-0 text-start">
+            <h4 class="mb-3">Переместить снимки</h4>
+        </div>
+        <div class="col-md-6 p-5 pb-0 text-end">
+            <a class="btn btn-sm btn-secondary" href="edit_album?album_id=@Model.SourceAlbumId">Отменить</a>
+            <input type="submit" class="btn btn-primary btn-sm px-3" value="Переместить" id="submitBtn" disabled />
+        </div>
+    </div>
+
+    <div class="row">
+
+        <div class="col p-5">
+
+            <div class="d-flex flex-wrap overflow-auto">
+                @for (var index = 0; index < @Model.Shots.Count(); index++) { if(@Model.Shots[index].IsChecked) { <div
+                    class="card text-bg-secondary mb-5 me-5 shadow" style="width: 8rem; height: 8rem;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            @Model.Shots[index].Name
+                        </div>
+                    </div>
+                    <div class="card-body text-end" onClick="location.href='/edit_shot?id=@Model.Shots[index].ShotId'"
+                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId&flip=@Model.Shots[index].Flip&rotate=@Model.Shots[index].Rotate'); 
+                        background-repeat: no-repeat; background-size: cover;">
+                        <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
+                        <input type="hidden" asp-for="@Model.Shots[index].IsChecked" />
+                    </div>
+            </div>
+            }
+            }
+        </div>
+
+        <div class="col-md-12 p-0 text-start">
+            <h4 class="mb-3">В выбранный альбом</h4>
+        </div>
+
+        <div class="d-flex flex-wrap overflow-auto">
+            @for (var index = 0; index < @Model.Albums.Count(); index++) { <div
+                class="card text-bg-secondary mb-5 me-5 shadow" style="width: 8rem; height: 8rem;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>@Model.Albums[index].Name</div>
+                </div>
+                <div class="card-body" style="background-image: url('/preview?id=@Model.Albums[index].PreviewId&flip=@Model.Albums[index].PreviewFlip&rotate=@Model.Albums[index].PreviewRotate'); 
+                    background-repeat: no-repeat; background-size: cover;">
+                    <input type="radio" name="TargetAlbumId"
+                        style="position: absolute; bottom: 5px; right: 5px; width: 1.85rem; height: 1.85rem;"
+                        value="@Model.Albums[index].AlbumId" onclick="javascript:document.getElementById('submitBtn').disabled=false;" />
+                </div>
+        </div>
+        }
+    </div>
+
+    </div>
+</form>

@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Features;
 
 using Data;
 
-var logger = LoggerFactory.Create(config => {
+var logger = LoggerFactory.Create(config =>
+{
     config.AddConsole();
 }).CreateLogger("Program");
 
@@ -28,12 +28,13 @@ var dbConnection =
 "Host=" + uri.Host +
 ";Database=" + uri.AbsolutePath.Substring(1) +
 ";Username=" + username +
-";Password=" + password + 
+";Password=" + password +
 ";Port=" + uri.Port;
 
 dbConnection += ";Include Error Detail=True";
 
-builder.WebHost.ConfigureKestrel(opts => {
+builder.WebHost.ConfigureKestrel(opts =>
+{
     opts.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT")));
     opts.Limits.MaxRequestBodySize = 104857600;
 });
@@ -42,13 +43,18 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(dbConnection);
-    
+
 });
 builder.Services.AddAuthentication("CookieScheme")
-    .AddCookie("CookieScheme", options => {
+    .AddCookie("CookieScheme", options =>
+    {
         options.AccessDeniedPath = "/denied";
         options.LoginPath = "/login";
     });
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueCountLimit = 10000; // or more, depending on needs
+});
 
 var app = builder.Build();
 app.UseStaticFiles();
@@ -58,12 +64,15 @@ app.UseAuthorization();
 app.MapControllers();
 
 
-using(var scope = app.Services.CreateScope())
+using (var scope = app.Services.CreateScope())
 {
-    try {
+    try
+    {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         dbContext.Database.Migrate();
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
         Console.WriteLine(e.Message);
     }
 }

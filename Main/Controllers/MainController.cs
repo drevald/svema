@@ -27,48 +27,12 @@ public class MainController : BaseController
     }
     public List<string> GetCameraModels()
     {
-        // return dbContext.Shots
-        //     .AsNoTracking()
-        //     .Select(s => s.CameraModel)
-        //     .Where(model => model != null && model != "") // optional: filter out empty/null
-        //     .Distinct()
-        //     .OrderBy(m => m)
-        //     .ToList();
-
         return dbContext.Shots.Select(s => s.Name).ToList();
-
-
     }
-
-    // return dbContext.Shots
-    //     .Select(s => s.CameraModel)
-    //     .Where(model => model != null)
-    //     .Distinct()
-    //     .OrderBy(model => model) // Optional: to get sorted results
-    //     .ToList();
-    //}
-
 
     //To get clustered view of locations on map
     public List<LocationDTO> GetClusteredShotsWithLabels(bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
     {
-
-        // string sql = @"
-        // SELECT 
-        //     COUNT(*) AS count,
-        //     ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
-        //     ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
-        // FROM (
-        //     SELECT ST_SnapToGrid(
-        //              ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), @gridSize
-        //            ) AS tile_geom,
-        //            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) AS geom
-        //     FROM shots
-        //     WHERE longitude BETWEEN @longitudeMin AND @longitudeMax
-        //       AND latitude BETWEEN @latitudeMin AND @latitudeMax
-        // ) AS clustered
-        // GROUP BY tile_geom;";
-
         var filters = new List<string>();
         filters.Add("s.longitude BETWEEN @longitudeMin AND @longitudeMax");
         filters.Add("s.latitude BETWEEN @latitudeMin AND @latitudeMax");
@@ -116,7 +80,6 @@ public class MainController : BaseController
         ) AS clustered
         GROUP BY tile_geom;
         ";
-
 
         // Create the list to store the results
         var locationList = new List<LocationDTO>();

@@ -7,27 +7,79 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Data;
 using Form;
-using System.IO;
-using Microsoft.AspNetCore.Http;
-using System.Text;
-
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace Controllers;
 
 [Route("api")]
-public class RestController: BaseController {
+public class RestController : BaseController {
 
     public RestController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config) {
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [HttpPost("users/{userId}/shots/{shotId}/comments")]
+    public async Task AddComment(int userId, int shotId, [FromBody] AddCommentDto dto) {
+        var username = User.Identity?.Name;
+        var comment = new ShotComment
+        {
+            Text = dto.Caption,
+            ShotId = shotId,
+            AuthorId = userId,
+            Timestamp = DateTime.Now,
+            AuthorUsername = username
+        };
+
+        dbContext.ShotComments.Add(comment);
+        await dbContext.SaveChangesAsync();
+    }
+
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [HttpGet("shots/{userId}/uncommented")]
+    public IActionResult GetUncommentedShots(int userId, int offset = 0, int size = 20) {
+        // Get current authenticated user's username
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized();
+
+        var shots = dbContext.Shots
+            .Where(shot =>
+                // Shots owned by the user
+                shot.Album.User.UserId == userId && shot.Album.User.Username == username ||
+
+                // Shared via SharedUsers
+                dbContext.SharedUsers.Any(su =>
+                    su.GuestUser.Username == username &&
+                    su.HostUser.UserId == shot.Album.User.UserId) ||
+
+                // Shared via SharedAlbums
+                dbContext.SharedAlbums.Any(sa =>
+                    sa.GuestUser.Username == username &&
+                    sa.Album.AlbumId == shot.Album.AlbumId)
+            )
+            // Exclude shots already commented on by this user
+            .Where(shot =>
+                !shot.ShotComments.Any(c => c.Author.Username == username)
+            )
+            .OrderByDescending(s => s.ShotId) // Optional: for consistent pagination
+            .Skip(offset)
+            .Take(size)
+            .ToList();
+
+        return new JsonResult(shots);
+    }
+
     [HttpGet("albums")]
-    public JsonResult GetAlbums() {
+    public JsonResult GetAlbums()
+    {
         var albums = dbContext.Albums;
         return new JsonResult(albums);
     }
 
     [HttpGet("albums/{albumId}")]
-    public JsonResult GetAlbum(int albumId) {
+    public JsonResult GetAlbum(int albumId)
+    {
         var album = dbContext.Albums.Find(albumId);
         return new JsonResult(album);
     }
@@ -71,12 +123,14 @@ public class RestController: BaseController {
 
 
     [HttpPost("albums")]
-    public JsonResult PostAlbum([FromBody] AlbumDTO dto) {
-        
+    public JsonResult PostAlbum([FromBody] AlbumDTO dto)
+    {
+
         var user = dbContext.Users.Where(u => u.UserId == dto.UserId).FirstOrDefault();
-        
+
         // Check if user exists
-        if (user == null) {
+        if (user == null)
+        {
             return new JsonResult(new { message = "User not found" }) { StatusCode = 404 };
         }
 
@@ -84,14 +138,16 @@ public class RestController: BaseController {
         var existingAlbum = dbContext.Albums
                                     .Where(a => a.User.UserId == dto.UserId && a.Name == dto.Name)
                                     .FirstOrDefault();
-        
-        if (existingAlbum != null) {
+
+        if (existingAlbum != null)
+        {
             // If album exists, return the existing one
             return new JsonResult(existingAlbum);
         }
 
         // If album doesn't exist, create a new one
-        Album album = new Album {
+        Album album = new Album
+        {
             User = user,
             Name = dto.Name
         };
@@ -103,13 +159,15 @@ public class RestController: BaseController {
 
 
     [HttpGet("albums/{albumId}/shots")]
-    public JsonResult GetShots(int albumId) {
+    public JsonResult GetShots(int albumId)
+    {
         var shots = dbContext.Shots.Where(s => s.AlbumId == albumId);
         return new JsonResult(shots);
     }
 
     [HttpGet("shots/{id}")]
-    public JsonResult GetShot(int id) {
+    public JsonResult GetShot(int id)
+    {
         var shott = dbContext.Shots.Find(id);
         return new JsonResult(shott);
     }

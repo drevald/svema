@@ -179,6 +179,7 @@ public class ShotComment {
     public string AuthorUsername {get; set;}
     [Column("shot_id")]
     public int ShotId {get; set;}
+    [JsonIgnore]
     public Shot Shot {get; set;}
     [Column("time")]
     public DateTime Timestamp {get; set;}

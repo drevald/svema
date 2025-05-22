@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http.Features;
-
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Text;
 using Data;
 
 var logger = LoggerFactory.Create(config =>
@@ -45,12 +47,34 @@ builder.Services.AddDbContext<ApplicationDbContext>(opts =>
     opts.UseNpgsql(dbConnection);
 
 });
-builder.Services.AddAuthentication("CookieScheme")
-    .AddCookie("CookieScheme", options =>
+builder.Services.AddAuthentication(options =>
+{
+    // This will fall back to cookies unless explicitly overridden
+    options.DefaultScheme = "CookieScheme";
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddCookie("CookieScheme", options =>
+{
+    options.AccessDeniedPath = "/denied";
+    options.LoginPath = "/login";
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.AccessDeniedPath = "/denied";
-        options.LoginPath = "/login";
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = "yourdomain.com",
+        ValidAudience = "yourdomain.com",
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes("Blessed is he who, in the name of charity and good will shepherds the weak through the valley of darkness")
+        )
+    };
+});
+
 builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueCountLimit = 10000; // or more, depending on needs

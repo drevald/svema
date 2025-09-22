@@ -147,8 +147,12 @@
                 </ul>
               </div>
             </div>
-            <div class="card-body" onClick="location.href='/edit_album?id=@album.AlbumId'" 
-            style="background-image: url('/preview?id=@album.PreviewId&flip=@album.PreviewFlip&rotate=@album.PreviewRotate'); background-repeat: no-repeat; background-size: cover;"></div>
+            <div class="card-body" 
+                onClick="location.href='/edit_album?id=@album.AlbumId'"
+                style="@(album.PreviewId < 0 
+                            ? "background-color: lightgray;" 
+                            : $"background-image: url('/preview?id={album.PreviewId}&flip={album.PreviewFlip}&rotate={album.PreviewRotate}'); background-repeat: no-repeat; background-size: cover;")">
+            </div>
           </div>
           }
         </div>

@@ -218,6 +218,27 @@ public class MainController : BaseController
             })
             .ToList();
 
+        if (onlyMine)
+        { 
+            var emptyAlbums = await dbContext.Albums
+                .Where(a => a.User.Username == GetUsername())
+                .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
+                .ToListAsync();    
+
+            var emptyAlbumCards = emptyAlbums
+                .Select(a => new AlbumCardDTO
+                {
+                    AlbumId = a.AlbumId,
+                    Name = a.Name,
+                    PreviewId = -1,
+                    PreviewFlip = false,
+                    PreviewRotate = 0
+                })
+                .ToList();
+
+            finalAlbumCards.AddRange(emptyAlbumCards);            
+        }
+
         return new AlbumsListDTO
         {
             Albums = finalAlbumCards,
@@ -231,18 +252,18 @@ public class MainController : BaseController
             Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
             Placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North),
             SortByOptions = new List<SelectListItem>
-    {
-    new SelectListItem { Value = SortBy.EarliestDate.ToString(), Text = "По дате" },
-    new SelectListItem { Value = SortBy.Name.ToString(), Text = "По названию" },
-    new SelectListItem { Value = SortBy.LeastLatitude.ToString(), Text = "По долготе" },
-    new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
-    new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
-    },
-            SortDirectionOptions = new List<SelectListItem>
-    {
-    new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
-    new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }
-    }
+                {
+                new SelectListItem { Value = SortBy.EarliestDate.ToString(), Text = "По дате" },
+                new SelectListItem { Value = SortBy.Name.ToString(), Text = "По названию" },
+                new SelectListItem { Value = SortBy.LeastLatitude.ToString(), Text = "По долготе" },
+                new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
+                new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
+                },
+                        SortDirectionOptions = new List<SelectListItem>
+                {
+                new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
+                new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }
+                }
         };
     }
 

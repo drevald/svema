@@ -37,35 +37,59 @@ public class RestController : BaseController {
 
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpGet("shots/{userId}/uncommented")]
-    public IActionResult GetUncommentedShots(int userId, int offset = 0, int size = 20) {
+    public IActionResult GetUncommentedShots(int userId, int offset = 0, int size = 17) {
         // Get current authenticated user's username
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
             return Unauthorized();
 
-        var shots = dbContext.Shots
+        var query = dbContext.Shots
             .Where(shot =>
-                // Shots owned by the user
-                shot.Album.User.UserId == userId && shot.Album.User.Username == username ||
-
-                // Shared via SharedUsers
+                (shot.Album.User.UserId == userId && shot.Album.User.Username == username) ||
                 dbContext.SharedUsers.Any(su =>
                     su.GuestUser.Username == username &&
                     su.HostUser.UserId == shot.Album.User.UserId) ||
-
-                // Shared via SharedAlbums
                 dbContext.SharedAlbums.Any(sa =>
                     sa.GuestUser.Username == username &&
                     sa.Album.AlbumId == shot.Album.AlbumId)
             )
-            // Exclude shots already commented on by this user
             .Where(shot =>
                 !shot.ShotComments.Any(c => c.Author.Username == username)
-            )
+            );
+
+        int count = query.Count();
+
+        Console.Write(count);
+
+        var shots = query
             .OrderByDescending(s => s.ShotId) // Optional: for consistent pagination
             .Skip(offset)
             .Take(size)
             .ToList();
+
+        // var shots = dbContext.Shots
+        //     .Where(shot =>
+        //         // Shots owned by the user
+        //         shot.Album.User.UserId == userId && shot.Album.User.Username == username ||
+
+        //         // Shared via SharedUsers
+        //         dbContext.SharedUsers.Any(su =>
+        //             su.GuestUser.Username == username &&
+        //             su.HostUser.UserId == shot.Album.User.UserId) ||
+
+        //         // Shared via SharedAlbums
+        //         dbContext.SharedAlbums.Any(sa =>
+        //             sa.GuestUser.Username == username &&
+        //             sa.Album.AlbumId == shot.Album.AlbumId)
+        //     )
+        //     // Exclude shots already commented on by this user
+        //     .Where(shot =>
+        //         !shot.ShotComments.Any(c => c.Author.Username == username)
+        //     )
+        //     .OrderByDescending(s => s.ShotId) // Optional: for consistent pagination
+        //     .Skip(offset)
+        //     .Take(size)
+        //     .ToList();
 
         return new JsonResult(shots);
     }

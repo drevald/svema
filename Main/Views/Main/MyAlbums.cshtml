@@ -147,12 +147,17 @@
                 </ul>
               </div>
             </div>
-            <div class="card-body" 
+              @{
+                // Build the style string in C#
+                var style = album.PreviewId < 0
+                    ? "background-color: lightgray;"
+                    : $"background-image: url('/preview?id={album.PreviewId}&flip={album.PreviewFlip}&rotate={album.PreviewRotate}'); background-repeat: no-repeat; background-size: cover;";
+              }            
+              <div class="card-body text-end"
                 onClick="location.href='/edit_album?id=@album.AlbumId'"
-                style="@(album.PreviewId < 0 
-                            ? "background-color: lightgray;" 
-                            : $"background-image: url('/preview?id={album.PreviewId}&flip={album.PreviewFlip}&rotate={album.PreviewRotate}'); background-repeat: no-repeat; background-size: cover;")">
-            </div>
+                style="@style">
+              <input type="checkbox" style="width: 1.85rem;height: 1.85rem">
+            </div>              
           </div>
           }
         </div>

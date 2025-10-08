@@ -134,6 +134,14 @@ public class MainController : BaseController
     }
 
     [Authorize]
+    [HttpPost("my")]
+    public IActionResult UpdateMyAlbums(AlbumsListDTO dto)
+    {
+        // await some async operation
+        return Redirect("/my"); // works because async Task<IActionResult>
+    }
+
+    [Authorize]
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
     {
@@ -170,14 +178,16 @@ public class MainController : BaseController
                 AlbumId = a.AlbumId,
                 Name = a.Name,
                 PreviewId = a.PreviewId,
-                PreviewFlip = dbContext.Shots
-                    .Where(ps => ps.ShotId == a.PreviewId)
-                    .Select(ps => ps.Flip)
-                    .FirstOrDefault(),
-                PreviewRotate = dbContext.Shots
-                    .Where(ps => ps.ShotId == a.PreviewId)
-                    .Select(ps => ps.Rotate)
-                    .FirstOrDefault()
+                // PreviewFlip = dbContext.Shots
+                //     .Where(ps => ps.ShotId == a.PreviewId)
+                //     .Select(ps => ps.Flip)
+                //     .FirstOrDefault(),
+                // PreviewRotate = dbContext.Shots
+                //     .Where(ps => ps.ShotId == a.PreviewId)
+                //     .Select(ps => ps.Rotate)
+                //     .FirstOrDefault()
+                PreviewFlip = false,
+                PreviewRotate = 0
             })
             .ToListAsync();
 

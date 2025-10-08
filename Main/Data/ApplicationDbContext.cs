@@ -196,7 +196,8 @@ public class AlbumComment {
     public int AuthorId {get; set;}
     [Column("author_username")]
     public string AuthorUsername {get; set;}
-    public Album Album {get; set;}
+    [JsonIgnore]
+    public Album Album { get; set; }
     [Column("album_id")]
     public int AlbumId {get; set;}
     [Column("time")]

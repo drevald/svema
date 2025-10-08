@@ -89,7 +89,7 @@
 
         <div class="col-sm-12">
           <label class="form-label">Место</label>
-          <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)"
+          <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 1)"
             required>
             <option></option>
             @foreach(var location in @Model.Locations) {
@@ -169,8 +169,19 @@
             @album.Name (@album.Size)
           </div>
         </div>
-        <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'"
-          style="background-image: url('/preview?id=@album.PreviewId&flip=@album.PreviewFlip&rotate=@album.PreviewRotate'); background-repeat: no-repeat; background-size: cover;">
+        @{
+            string backgroundStyle;
+            if (album.PreviewId > 0) {
+              backgroundStyle = $@"
+              background-image: url('/preview?id={album.PreviewId}&flip={album.PreviewFlip}&rotate={album.PreviewRotate}');
+              background-repeat: no-repeat;
+              background-size: cover;
+              ";
+            } else {
+                backgroundStyle = "background-color: gray;";
+            }
+        }     
+        <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" style="@backgroundStyle">
         </div>
       </div>
       }

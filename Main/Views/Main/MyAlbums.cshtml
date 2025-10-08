@@ -3,13 +3,14 @@
 @using Newtonsoft.Json
 @{Layout = "_Layout";}
 
-
 <script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  var initFunc = function () { init_locations(jsModel);};
+  var initFunc = function () { init_locations(jsModel); };
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
+
+  <form method="post">
 
     <div class="row">
       <div class="col-md-2 p-5" style="width:500px">
@@ -62,7 +63,7 @@
 
                 <div class="col-sm-12">
                     <label for="lastName" class="form-label">Место</label>
-                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex)" required>
+                    <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex, jsLocations, 1)" required>
                         <option></option>
                         @foreach(var location in @Model.Locations) {
                             <option value="@location.Id">@location.Name</option>
@@ -132,34 +133,62 @@
 
         </form>
       </div>
+
       <div class="col p-5">
-        <div class="d-flex flex-wrap overflow-auto h-100">
-          @foreach(var album in Model.Albums) {
-          <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                @album.Name (@album.Size)
-              </div>
-              <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="/delete_album?id=@album.AlbumId">Удалить</a></li>
-                </ul>
-              </div>
-            </div>
-              @{
-                // Build the style string in C#
-                var style = album.PreviewId < 0
-                    ? "background-color: lightgray;"
-                    : $"background-image: url('/preview?id={album.PreviewId}&flip={album.PreviewFlip}&rotate={album.PreviewRotate}'); background-repeat: no-repeat; background-size: cover;";
-              }            
-              <div class="card-body text-end"
-                onClick="location.href='/edit_album?id=@album.AlbumId'"
-                style="@style">
-              <input type="checkbox" style="width: 1.85rem;height: 1.85rem">
-            </div>              
+
+
+        <div class="row">
+          <div class="col-md-12 p-0 pb-5 text-end">
+              <input type="submit" class="btn btn-primary btn-sm px-3" value="Сохранить">
+              <a class="btn btn-secondary btn-sm ps-3" href="/">Отменить</a>
           </div>
+      </div>           
+        <div class="d-flex flex-wrap overflow-auto h-100">
+          @for (var index = 0; index < Model.Albums.Count(); index++)
+          {
+              <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                      <div>
+                          @Model.Albums[index].Name (@Model.Albums[index].Size)
+                      </div>
+                      <div class="dropdown">
+                          <button class="btn btn-secondary dropdown-toggle" type="button"
+                                  data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
+                          <ul class="dropdown-menu">
+                              <li>
+                                  <a class="dropdown-item"
+                                     href="/delete_album?id=@Model.Albums[index].AlbumId">Удалить</a>
+                              </li>
+                          </ul>
+                      </div>
+                  </div>
+          
+                  @{
+                      // Build the style string in C#
+                      var style = Model.Albums[index].PreviewId <= 0
+                          ? "background-color: lightgray;"
+                          : $"background-image: url('/preview?id={Model.Albums[index].PreviewId}&flip={Model.Albums[index].PreviewFlip}&rotate={Model.Albums[index].PreviewRotate}'); " +
+                            "background-repeat: no-repeat; background-size: cover;";
+                  }
+          
+                  <div class="card-body text-end"
+                       onClick="location.href='/edit_album?id=@Model.Albums[index].AlbumId'"
+                       style="@style">
+          
+                      <!-- Model-bound checkbox -->
+                      <input asp-for="Albums[@index].IsChecked"
+                             type="checkbox"
+                             style="width: 1.85rem; height: 1.85rem"
+                             onclick="event.stopPropagation()" />
+          
+                      <!-- Hidden input to preserve AlbumId -->
+                      <input type="hidden" asp-for="Albums[@index].AlbumId" />
+                  </div>
+              </div>
           }
+          
         </div>
       </div>
     </div>
+  
+  </form>

@@ -68,7 +68,7 @@
 
                 <div class="col-sm-12">
                     <label class="form-label">Место</label>
-                    <select asp-for="LocationId" class="form-select" id="state"  onchange="javascript:show(this.selectedIndex, jsLocations)">
+                    <select asp-for="LocationId" class="form-select" id="state"  onchange="javascript:show(this.selectedIndex, jsLocations, 2)">
                         <option></option>
                         <option value=-1>Unknown</option>
                         @foreach(var location in @Model.Locations) {

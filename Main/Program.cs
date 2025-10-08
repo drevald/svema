@@ -12,14 +12,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Data;
 
-var logger = LoggerFactory.Create(config =>
-{
-    config.AddConsole();
-}).CreateLogger("Program");
-
 DotEnv.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddFile("Logs/svema-.txt", minimumLevel: LogLevel.Debug);
+
 builder.Configuration.AddEnvironmentVariables();
 var config = builder.Configuration;
 
@@ -49,14 +49,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 });
 builder.Services.AddAuthentication(options =>
 {
-    // This will fall back to cookies unless explicitly overridden
     options.DefaultScheme = "CookieScheme";
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = "CookieScheme"; // 👈 force cookie challenge
 })
 .AddCookie("CookieScheme", options =>
 {
-    options.AccessDeniedPath = "/denied";
     options.LoginPath = "/login";
+    options.AccessDeniedPath = "/denied";
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
@@ -79,6 +78,7 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueCountLimit = 10000; // or more, depending on needs
 });
+
 
 var app = builder.Build();
 app.UseStaticFiles();

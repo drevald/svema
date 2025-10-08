@@ -14,7 +14,6 @@ public class AddCommentDto {
 }
 public class AlbumCardDTO
 {
-
     public int AlbumId { get; set; }
     public String Name { get; set; }
     public int PreviewId { get; set; }
@@ -22,7 +21,7 @@ public class AlbumCardDTO
     public int PreviewRotate { get; set; }
     public int Size { get; set; }
     public bool IsSelected { get; set; }
-
+    public bool IsChecked {get; set;}
 }
 
 public class AlbumsListDTO {
@@ -31,7 +30,7 @@ public class AlbumsListDTO {
     public int LocationId {get; set;}
     public string Camera {get; set;}
     public ICollection<Location> Locations {get; set;}
-    public ICollection<AlbumCardDTO> Albums {get; set;}
+    public List<AlbumCardDTO> Albums {get; set;}
     public ICollection<LocationDTO> Placemarks {get; set;}
     public ICollection<string> Cameras {get; set;}
     [Required]
@@ -50,9 +49,10 @@ public class AlbumsListDTO {
     public List<SelectListItem> SortByOptions { get; set; }
     public SortDirection SortDirection {get; set;}
     public List<SelectListItem> SortDirectionOptions { get; set; }
-
-    public AlbumsListDTO() {
-        Albums = new HashSet<AlbumCardDTO>();
+    public Boolean EditLocation { get; set; }
+    public AlbumsListDTO()
+    {
+        Albums = new List<AlbumCardDTO>();
         North = 90;
         South = -90;
         West = -180;

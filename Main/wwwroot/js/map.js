@@ -1,20 +1,26 @@
-var myGeoObject;
-var circle;
+// Global variables to hold the main marker and circle
+var myGeoObject; // Draggable marker on the map
+var circle;      // Circle to show location precision
 
+// Wait until Yandex Maps API is ready, then call initFunc
 ymaps.ready(initFunc);
 
-
+/**
+ * Initialize a map with multiple placemarks and bounds
+ * @param jsShot - object containing map bounds and placemarks
+ */
 function init_locations(jsShot) {
 
+  // Get bounding coordinates from model
   const north = jsModel.North;
   const south = jsModel.South;
   const east = jsModel.East;
   const west = jsModel.West;
 
-  // Construct bounds: [[southWestLat, southWestLng], [northEastLat, northEastLng]]
+  // Construct map bounds: [[southWestLat, southWestLng], [northEastLat, northEastLng]]
   const bounds = [[south, west], [north, east]];
 
-  // Init map with bounds
+  // Initialize map with bounds
   myMap = new ymaps.Map("map", {
     bounds: bounds
   }, {
@@ -22,22 +28,25 @@ function init_locations(jsShot) {
     zoomMargin: [10]
   });
 
+  // Event: When map bounds change (user pans or zooms)
   myMap.events.add('boundschange', function (e) {
     var bounds = myMap.getBounds();
-    var south = bounds[0][0]; // North latitude
-    var north = bounds[1][0]; // South latitude
-    var west = bounds[0][1];  // East longitude
-    var east = bounds[1][1];  // West longitude
+    var south = bounds[0][0]; // South latitude
+    var north = bounds[1][0]; // North latitude
+    var west = bounds[0][1];  // West longitude
+    var east = bounds[1][1];  // East longitude
 
+    // Update form fields
     document.querySelector('#North').value = north;
     document.querySelector('#South').value = south;
     document.querySelector('#East').value = east;
     document.querySelector('#West').value = west;
 
-    // Submit the form
+    // Submit the form to refresh results based on new bounds
     document.forms[0].submit();
   });
 
+  // Add placemarks from the model
   for (let i = 0; i < jsModel.Placemarks.length; i++) {
     let placemark = new ymaps.GeoObject({
       geometry: {
@@ -45,83 +54,98 @@ function init_locations(jsShot) {
         coordinates: [jsModel.Placemarks[i].Latitude, jsModel.Placemarks[i].Longitude]
       },
       properties: {
-        iconContent: jsModel.Placemarks[i].Label
+        iconContent: jsModel.Placemarks[i].Label // Label shown on the map
       }
     }, {
       preset: 'islands#invertedGreenClusterIcons',
-      draggable: false
-    }
-    );
+      draggable: false // Placemark is fixed, not draggable
+    });
 
-    // Add a click handler
+    // Event: Clicking on a placemark
     placemark.events.add('click', function (e) {
       let coords = e.get('target').geometry.getCoordinates();
+
+      // Set a small bounding box around clicked placemark
       document.querySelector('#North').value = coords[0] + 0.01;
       document.querySelector('#South').value = coords[0] - 0.01;
       document.querySelector('#East').value = coords[1] + 0.01;
       document.querySelector('#West').value = coords[1] - 0.01;
+
+      // Submit the form
       document.forms[0].submit();
     });
+
+    // Add placemark to the map
     myMap.geoObjects.add(placemark);
   }
-
-
 }
 
-
+/**
+ * Initialize a map with a single draggable marker
+ * @param jsShot - object with initial marker coordinates and zoom
+ */
 function init(jsShot) {
 
-  // Initialize the map
+  // Initialize map centered at given coordinates
   myMap = new ymaps.Map("map", {
     center: [jsShot.Latitude, jsShot.Longitude],
     zoom: jsShot.Zoom,
-    controls: []
+    controls: [] // No default controls
   });
 
-  // Create the GeoObject with initial coordinates
+  // Create a draggable marker at initial coordinates
   myGeoObject = new ymaps.GeoObject(
     { geometry: { type: "Point", coordinates: [jsShot.Latitude, jsShot.Longitude] } },
     { preset: 'islands#blackStretchyIcon', draggable: true }
   );
 
-  // Add the GeoObject to the map
+  // Add marker to the map
   myMap.geoObjects.add(myGeoObject);
 
+  // Event: Clicking on the map moves the marker
   myMap.events.add('click', function (e) {
     var coords = e.get('coords');
-    myGeoObject.geometry.setCoordinates(coords);
-    myGeoObject.properties.set('iconContent', '');
-    document.all['LocationId'].selectedIndex = 0;
+    myGeoObject.geometry.setCoordinates(coords); // Move marker
+    myGeoObject.properties.set('iconContent', ''); // Clear label
+    document.all['LocationId'].selectedIndex = 0;  // Reset dropdown
     document.all['Latitude'].value = coords[0];
     document.all['Longitude'].value = coords[1];
+    document.all['Zoom'].value = myMap.getZoom();  // Update zoom
+  });
+
+  // Event: Update zoom field when scrolling
+  myGeoObject.events.add(['wheel'], function (e) {
     document.all['Zoom'].value = myMap.getZoom();
   });
 
-  myGeoObject.events.add(['wheel'],
-    function (e) {
-      document.all['Zoom'].value = myMap.getZoom();
-    });
-
+  // Ensure marker is added to map
   myMap.geoObjects.add(myGeoObject);
-
 }
 
+/**
+ * Initialize a map for editing an existing location with a precision circle
+ * @param jsModel - object with marker coordinates, zoom, name, and location precision
+ */
 function init_edit(jsModel) {
+  // Initialize map at given location
   myMap = new ymaps.Map("map", {
     center: [jsModel.Latitude, jsModel.Longitude],
     zoom: jsModel.Zoom,
     controls: []
-  }),
+  });
 
-    myGeoObject = new ymaps.GeoObject(
-      { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
-      { preset: 'islands#blackStretchyIcon', draggable: true }
-    )
+  // Create draggable marker
+  myGeoObject = new ymaps.GeoObject(
+    { geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] }, properties: { iconContent: jsModel.Name } },
+    { preset: 'islands#blackStretchyIcon', draggable: true }
+  );
 
+  // Create a circle around the marker to show precision
   circle = new ymaps.Circle([[jsModel.Latitude, jsModel.Longitude], jsModel.LocationPrecisionMeters], {}, {
     geodesic: true
   });
 
+  // Event: Clicking on map moves marker and circle
   myMap.events.add('click', function (e) {
     var coords = e.get('coords');
     myGeoObject.geometry.setCoordinates(coords);
@@ -130,34 +154,40 @@ function init_edit(jsModel) {
     document.all['Longitude'].value = coords[1];
   });
 
+  // Event: Update zoom field on scroll
   myMap.events.add('wheel', function (e) {
-    var coords = e.get('coords');
     document.all['Zoom'].value = myMap.getZoom();
   });
 
-  myGeoObject.events.add(['mapchange', 'dragend'],
-    function (e) {
-      coords = myGeoObject.geometry.getCoordinates();
-      circle.geometry.setCoordinates(coords);
-      document.all['Latitude'].value = coords[0];
-      document.all['Longitude'].value = coords[1];
-      document.all['Zoom'].value = myMap.getZoom();
-    }
-  );
+  // Event: Update circle and fields when marker is dragged
+  myGeoObject.events.add(['mapchange', 'dragend'], function (e) {
+    coords = myGeoObject.geometry.getCoordinates();
+    circle.geometry.setCoordinates(coords);
+    document.all['Latitude'].value = coords[0];
+    document.all['Longitude'].value = coords[1];
+    document.all['Zoom'].value = myMap.getZoom();
+  });
 
+  // Add marker to the map
   myMap.geoObjects.add(myGeoObject);
-
 }
 
-function show(i, jsModel) {
+/**
+ * Show a specific location from a list of saved locations
+ * @param i - index of location
+ * @param jsModel - array of location objects
+ * @param shift - offset for indexing
+ */
+function show(i, jsModel, shift) {
 
-  var shift = 2;
-
+  // If first location, reset map center and remove all objects
   if (i == 0) {
     myMap.setCenter([jsModel[i - shift].Latitude, jsModel[i - shift].Longitude]);
     myMap.setZoom(jsModel[i - shift].Zoom);
     myMap.geoObjects.removeAll();
   }
+
+  // If marker doesn't exist, create it
   if (myGeoObject == null) {
     myGeoObject = new ymaps.GeoObject(
       { geometry: { type: "Point", coordinates: [jsModel[i - shift].Latitude, jsModel[i - shift].Longitude] }, properties: { iconContent: jsModel[i - shift].Name } },
@@ -165,12 +195,26 @@ function show(i, jsModel) {
     );
     myMap.geoObjects.add(myGeoObject);
   }
+
+  // Update marker coordinates and label
   myGeoObject.geometry.setCoordinates([jsModel[i - shift].Latitude, jsModel[i - shift].Longitude]);
   myGeoObject.properties.set('iconContent', jsModel[i - shift].Name);
+
+  // Center map on marker and set zoom
   myMap.setCenter([jsModel[i - shift].Latitude, jsModel[i - shift].Longitude]);
   myMap.setZoom(jsModel[i - shift].Zoom);
+
+  // Update form fields
   document.all['Latitude'].value = jsModel[i - shift].Latitude;
   document.all['Longitude'].value = jsModel[i - shift].Longitude;
   document.all['Zoom'].value = jsModel[i - shift].Zoom;
-}
 
+  // Update bounding box ±0.01 degrees around marker
+  document.querySelector('#North').value = jsModel[i - shift].Latitude + 0.01;
+  document.querySelector('#South').value = jsModel[i - shift].Latitude - 0.01;
+  document.querySelector('#East').value = jsModel[i - shift].Longitude + 0.01;
+  document.querySelector('#West').value = jsModel[i - shift].Longitude - 0.01;
+
+  // Submit the form
+  document.forms[0].submit();
+}

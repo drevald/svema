@@ -145,20 +145,21 @@ public class MainController : BaseController
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
     {
-
         foreach (var a in dto.Albums)
         {
-            Console.WriteLine(a.AlbumId + "!!!!!!!!!!!!!!!!!!" + a.Name);
-            var shotsToChange = await dbContext.Shots
-                .Where(s => s.AlbumId == a.AlbumId)
-                .ToListAsync();
+            if (a.IsChecked)
+            {
+                Console.WriteLine(a.AlbumId + "!!!!!!!!!!!!!!!!!!" + a.Name);
+                var shotsToChange = await dbContext.Shots
+                    .Where(s => s.AlbumId == a.AlbumId)
+                    .ToListAsync();
 
-            // foreach (var s in shotsToChange)
-            // {
-            //     Console.WriteLine(s.Name);
-            // }
+                foreach (var s in shotsToChange)
+                {
+                    Console.WriteLine("?????" + s.Name);
+                }                
+            }
         }
-
         var model = await BuildAlbumsListAsync(dto, onlyMine: true);
         return View(model);
     }
@@ -243,11 +244,11 @@ public class MainController : BaseController
             .ToList();
 
         if (onlyMine)
-        { 
+        {
             var emptyAlbums = await dbContext.Albums
                 .Where(a => a.User.Username == GetUsername())
                 .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
-                .ToListAsync();    
+                .ToListAsync();
 
             var emptyAlbumCards = emptyAlbums
                 .Select(a => new AlbumCardDTO
@@ -260,7 +261,7 @@ public class MainController : BaseController
                 })
                 .ToList();
 
-            finalAlbumCards.AddRange(emptyAlbumCards);            
+            finalAlbumCards.AddRange(emptyAlbumCards);
         }
 
         return new AlbumsListDTO
@@ -283,7 +284,7 @@ public class MainController : BaseController
                 new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
                 new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
                 },
-                        SortDirectionOptions = new List<SelectListItem>
+            SortDirectionOptions = new List<SelectListItem>
                 {
                 new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
                 new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }

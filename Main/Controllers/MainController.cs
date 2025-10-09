@@ -145,6 +145,20 @@ public class MainController : BaseController
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
     {
+
+        foreach (var a in dto.Albums)
+        {
+            Console.WriteLine(a.AlbumId + "!!!!!!!!!!!!!!!!!!" + a.Name);
+            var shotsToChange = await dbContext.Shots
+                .Where(s => s.AlbumId == a.AlbumId)
+                .ToListAsync();
+
+            // foreach (var s in shotsToChange)
+            // {
+            //     Console.WriteLine(s.Name);
+            // }
+        }
+
         var model = await BuildAlbumsListAsync(dto, onlyMine: true);
         return View(model);
     }
@@ -952,7 +966,7 @@ public class MainController : BaseController
                 .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
                 .Select(s => s.ShotId)
                 .FirstOrDefaultAsync(); // Use FirstOrDefaultAsync() to handle no match
-            sourceAlbum.PreviewId = newPreviewId != null ? newPreviewId : 0; // Assign 0 if null
+            sourceAlbum.PreviewId = newPreviewId != -1 ? newPreviewId : 0; // Assign 0 if null
         }
 
         await dbContext.SaveChangesAsync();

@@ -29,7 +29,7 @@ public class RestAccessController : Controller
 
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDTO dto)
+    public IActionResult Login([FromBody] LoginDTO dto)
     {
         var user = dbContext.Users.FirstOrDefault(u => u.Username == dto.Username && u.PasswordHash == dto.Password);
         if (user == null)

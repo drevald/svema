@@ -16,15 +16,16 @@ using Data;
 using Utils;
 using Npgsql;
 using Common;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Controllers;
 
 public class MainController : BaseController
 {
-
     public MainController(ApplicationDbContext dbContext, IConfiguration config) : base(dbContext, config)
     {
     }
+
     public List<string> GetCameraModels()
     {
         return dbContext.Shots.Select(s => s.Name).ToList();
@@ -59,10 +60,8 @@ public class MainController : BaseController
             )");
         }
 
-        // Insert combined WHERE filters
         string whereClause = string.Join(" AND ", filters);
 
-        // Now inject the WHERE clause into your SQL
         string sql = $@"
         SELECT 
             COUNT(*) AS count,
@@ -81,41 +80,34 @@ public class MainController : BaseController
         GROUP BY tile_geom;
         ";
 
-        // Create the list to store the results
         var locationList = new List<LocationDTO>();
 
-        // Open the database connection
         using (var connection = dbContext.Database.GetDbConnection())
         {
-
             connection.Open();
 
-            // Create the SQL command
             using (var command = connection.CreateCommand())
             {
-
                 command.CommandText = sql;
 
-                // Add parameters to the command
+                var username = GetUsername() ?? string.Empty;
+
                 command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 10));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
-                command.Parameters.Add(new NpgsqlParameter("@username", GetUsername()));
+                command.Parameters.Add(new NpgsqlParameter("@username", username));
 
-                // Execute the query and process the results
                 using (var reader = command.ExecuteReader())
                 {
-
                     while (reader.Read())
                     {
-
                         var location = new LocationDTO
                         {
-                            Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(), // Assuming Label is count as string
-                            Longitude = reader.GetDouble(reader.GetOrdinal("lon")), // Longitude of the centroid
-                            Latitude = reader.GetDouble(reader.GetOrdinal("lat")) // Latitude of the centroid
+                            Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(),
+                            Longitude = reader.GetDouble(reader.GetOrdinal("lon")),
+                            Latitude = reader.GetDouble(reader.GetOrdinal("lat"))
                         };
                         locationList.Add(location);
                     }
@@ -129,48 +121,105 @@ public class MainController : BaseController
     [HttpGet("")]
     public async Task<IActionResult> Albums(AlbumsListDTO dto)
     {
+        dto ??= new AlbumsListDTO();
         var model = await BuildAlbumsListAsync(dto, onlyMine: false);
         return View(model);
     }
 
     [Authorize]
-    [HttpPost("my")]
-    public IActionResult UpdateMyAlbums(AlbumsListDTO dto)
+    [HttpPost("")]
+    public async Task<IActionResult> ReloadAlbums(AlbumsListDTO dto)
     {
-        // await some async operation
-        return Redirect("/my"); // works because async Task<IActionResult>
+        dto ??= new AlbumsListDTO();
+        var model = await BuildAlbumsListAsync(dto, onlyMine: false);
+        return View("Albums", model);
     }
 
     [Authorize]
     [HttpGet("my")]
     public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
     {
-        foreach (var a in dto.Albums)
-        {
-            if (a.IsChecked)
-            {
-                Console.WriteLine(a.AlbumId + "!!!!!!!!!!!!!!!!!!" + a.Name);
-                var shotsToChange = await dbContext.Shots
-                    .Where(s => s.AlbumId == a.AlbumId)
-                    .ToListAsync();
-
-                foreach (var s in shotsToChange)
-                {
-                    Console.WriteLine("?????" + s.Name);
-                }                
-            }
-        }
+        dto ??= new AlbumsListDTO();
         var model = await BuildAlbumsListAsync(dto, onlyMine: true);
         return View(model);
     }
 
-    protected async Task<AlbumsListDTO> BuildAlbumsListAsync(
-        AlbumsListDTO dto,
-        bool onlyMine)
+    [Authorize]
+    [HttpPost("my")]
+    #nullable enable
+    public async Task<IActionResult> UpdateMyAlbums(AlbumsListDTO dto, string? delete, string? save)
     {
+        if (dto == null || dto.Albums == null)
+        {
+            return RedirectToAction("MyAlbums");
+        }
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS >>>>>> ");
+        foreach (var a in dto.Albums)
+        {
+            if (a == null) continue;
+
+            if (a.IsChecked)
+            {
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOTS FOR ALBUM " + a.AlbumId);
+                var shotsToChange = dbContext.Shots
+                    .Where(s => s.AlbumId == a.AlbumId)
+                    .Select(s => s.ShotId)
+                    .ToList();
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOTS FOR  ALBUM " + a.AlbumId);
+                if (save != null)
+                {
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE " + a.AlbumId);
+                    if (!string.IsNullOrEmpty(dto.LocationName))
+                    {
+                        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} ADD LOCATION");
+                        dbContext.Locations.Add(new Location
+                        {
+                            Latitude = dto.Latitude,
+                            Longitude = dto.Longitude,
+                            Name = dto.LocationName,
+                            Zoom = dto.Zoom
+                        });
+                    }
+
+                    if (dto.EditLocation && shotsToChange.Any())
+                    {
+                        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SAVE SHOTS");
+                        int chunkSize = 1000;
+                        var shotIds = shotsToChange.ToArray();
+                        for (int i = 0; i < shotIds.Length; i += chunkSize)
+                        {
+                            var chunk = shotIds.Skip(i).Take(chunkSize).ToArray();
+                            var idParams = string.Join(",", chunk);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START UPDATE " + idParams);
+                            dbContext.Database.ExecuteSqlRaw(
+                                $"UPDATE Shots SET Latitude = {{0}}, Longitude = {{1}}, Zoom = {{2}} WHERE Id IN ({idParams})",
+                                dto.Latitude, dto.Longitude, dto.Zoom
+                            );
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END UPDATE");
+                        }
+                    }
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE CHANGES");
+                    dbContext.SaveChanges();
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END SAVE CHANGES");
+                }
+
+                if (delete != null)
+                {
+                    await DeleteAlbum(a.AlbumId);
+                }
+            }
+        }
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS <<<<<<<<<<<<< ");
+        var model = await BuildAlbumsListAsync(dto, onlyMine: true);
+        return View("MyAlbums", model);
+    }
+
+    protected async Task<AlbumsListDTO> BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
+    {
+        dto ??= new AlbumsListDTO();
+
         var filteredShots = ApplyShotFilters(dto, onlyMine);
 
-        // Precompute per-album aggregates to support sorting
         var shotGroups = await filteredShots
             .GroupBy(s => s.AlbumId)
             .Select(g => new
@@ -185,7 +234,6 @@ public class MainController : BaseController
 
         var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
 
-        // Fetch album metadata (Name, Preview info)
         var albumCards = await dbContext.Albums
             .Where(a => albumIds.Contains(a.AlbumId))
             .Select(a => new AlbumCardDTO
@@ -193,20 +241,11 @@ public class MainController : BaseController
                 AlbumId = a.AlbumId,
                 Name = a.Name,
                 PreviewId = a.PreviewId,
-                // PreviewFlip = dbContext.Shots
-                //     .Where(ps => ps.ShotId == a.PreviewId)
-                //     .Select(ps => ps.Flip)
-                //     .FirstOrDefault(),
-                // PreviewRotate = dbContext.Shots
-                //     .Where(ps => ps.ShotId == a.PreviewId)
-                //     .Select(ps => ps.Rotate)
-                //     .FirstOrDefault()
                 PreviewFlip = false,
                 PreviewRotate = 0
             })
             .ToListAsync();
 
-        // Join metadata with grouping info for sorting
         var enriched = albumCards
             .Join(shotGroups,
                 card => card.AlbumId,
@@ -220,8 +259,9 @@ public class MainController : BaseController
                     group.LeastLongitude
                 });
 
-        // Apply dynamic sort
-        var sorted = (dto.SortBy, dto.SortDirection) switch
+        var sortTuple = (dto.SortBy, dto.SortDirection);
+
+        var sorted = sortTuple switch
         {
             (SortBy.EarliestDate, SortDirection.Ascending) => enriched.OrderBy(e => e.EarliestDate),
             (SortBy.EarliestDate, SortDirection.Descending) => enriched.OrderByDescending(e => e.EarliestDate),
@@ -234,7 +274,6 @@ public class MainController : BaseController
             _ => enriched.OrderBy(e => e.Card.Name)
         };
 
-        // Finalize album cards with updated size
         var finalAlbumCards = sorted
             .Select(e =>
             {
@@ -245,8 +284,9 @@ public class MainController : BaseController
 
         if (onlyMine)
         {
+            var username = GetUsername() ?? string.Empty;
             var emptyAlbums = await dbContext.Albums
-                .Where(a => a.User.Username == GetUsername())
+                .Where(a => a.User != null && a.User.Username == username)
                 .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
                 .ToListAsync();
 
@@ -264,52 +304,60 @@ public class MainController : BaseController
             finalAlbumCards.AddRange(emptyAlbumCards);
         }
 
+        var cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList();
+        var locations = await dbContext.Locations.ToListAsync();
+        var placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North);
+
         return new AlbumsListDTO
         {
             Albums = finalAlbumCards,
-            Locations = await dbContext.Locations.ToListAsync(),
+            Locations = locations,
             DateStart = dto.DateStart,
             DateEnd = dto.DateEnd,
             North = dto.North,
             South = dto.South,
             West = dto.West,
             East = dto.East,
-            Cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList(),
-            Placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North),
+            EditLocation = dto.EditLocation,
+            Cameras = cameras,
+            Placemarks = placemarks,
             SortByOptions = new List<SelectListItem>
                 {
-                new SelectListItem { Value = SortBy.EarliestDate.ToString(), Text = "По дате" },
-                new SelectListItem { Value = SortBy.Name.ToString(), Text = "По названию" },
-                new SelectListItem { Value = SortBy.LeastLatitude.ToString(), Text = "По долготе" },
-                new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
-                new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
+                    new SelectListItem { Value = SortBy.EarliestDate.ToString(), Text = "По дате" },
+                    new SelectListItem { Value = SortBy.Name.ToString(), Text = "По названию" },
+                    new SelectListItem { Value = SortBy.LeastLatitude.ToString(), Text = "По долготе" },
+                    new SelectListItem { Value = SortBy.LeastLongitude.ToString(), Text = "По широте" },
+                    new SelectListItem { Value = SortBy.ShotCount.ToString(), Text = "По размеру" }
                 },
             SortDirectionOptions = new List<SelectListItem>
                 {
-                new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
-                new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }
+                    new SelectListItem { Value = SortDirection.Descending.ToString(), Text = "По убыванию" },
+                    new SelectListItem { Value = SortDirection.Ascending.ToString(), Text = "По возрастанию" }
                 }
         };
     }
 
-
-
-
     public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
     {
+        if (dto == null) return dbContext.Shots.AsQueryable();
+
         var provider = CultureInfo.InvariantCulture;
         var query = dbContext.Shots.AsQueryable();
 
         if (!string.IsNullOrEmpty(dto.DateStart))
         {
-            var start = DateTime.ParseExact(dto.DateStart, "yyyy", provider);
-            query = query.Where(s => s.DateStart >= start);
+            if (DateTime.TryParseExact(dto.DateStart, "yyyy", provider, DateTimeStyles.None, out var start))
+            {
+                query = query.Where(s => s.DateStart >= start);
+            }
         }
 
         if (!string.IsNullOrEmpty(dto.DateEnd))
         {
-            var end = DateTime.ParseExact(dto.DateEnd, "yyyy", provider);
-            query = query.Where(s => s.DateEnd <= end);
+            if (DateTime.TryParseExact(dto.DateEnd, "yyyy", provider, DateTimeStyles.None, out var end))
+            {
+                query = query.Where(s => s.DateEnd <= end);
+            }
         }
 
         query = query.Where(s =>
@@ -324,27 +372,26 @@ public class MainController : BaseController
             query = query.Where(s => s.CameraModel == dto.Camera);
         }
 
-        var username = GetUsername();
+        var username = GetUsername() ?? string.Empty;
 
         if (onlyMine)
         {
-            query = query.Where(s => s.Album.User.Username == username);
+            query = query.Where(s => s.Album != null && s.Album.User != null && s.Album.User.Username == username);
         }
         else
         {
             query = query.Where(shot =>
-                    shot.Album.User.Username == username
+                    (shot.Album != null && shot.Album.User != null && shot.Album.User.Username == username)
                     || dbContext.SharedUsers.Any(su =>
-                        su.GuestUser.Username == username &&
-                        su.HostUser.UserId == shot.Album.User.UserId)
+                        su.GuestUser != null && su.GuestUser.Username == username &&
+                        su.HostUser != null && su.HostUser.UserId == (shot.Album != null && shot.Album.User != null ? shot.Album.User.UserId : -1))
                     || dbContext.SharedAlbums.Any(sa =>
-                        sa.GuestUser.Username == username &&
-                        sa.Album.AlbumId == shot.Album.AlbumId));
+                        sa.GuestUser != null && sa.GuestUser.Username == username &&
+                        sa.Album != null && sa.Album.AlbumId == (shot.Album != null ? shot.Album.AlbumId : -1)));
         }
 
         return query;
     }
-
 
     ///////////////////   ALBUM  /////////////////////////////////////////
 
@@ -352,9 +399,12 @@ public class MainController : BaseController
     public async Task<IActionResult> EditAlbum(int id)
     {
         AlbumDTO dto = new AlbumDTO();
-        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId == id).FirstAsync();
+        var album = await dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefaultAsync(a => a.AlbumId == id);
+        if (album == null)
+        {
+            return RedirectToAction("Albums");
+        }
 
-        //var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).ToListAsync();
         dto.Shots = await dbContext.Shots
             .Where(s => s.AlbumId == id)
             .OrderBy(s => s.ShotId)
@@ -370,11 +420,10 @@ public class MainController : BaseController
 
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
-        dto.AlbumComments = album.AlbumComments;
+        dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
         dto.Locations = await dbContext.Locations.ToListAsync();
 
         return View(dto);
-
     }
 
     [HttpPost("edit_album")]
@@ -401,7 +450,7 @@ public class MainController : BaseController
 
         storedAlbum.Name = dto.Name;
 
-        var shotIds = dto.Shots.Select(s => s.ShotId).ToList();
+        var shotIds = dto.Shots.Select(s => s?.ShotId ?? -1).Where(id => id != -1).ToList();
         if (!shotIds.Any())
         {
             Console.WriteLine($"No shots to update for album {dto.AlbumId}");
@@ -415,8 +464,7 @@ public class MainController : BaseController
 
         foreach (var s in dto.Shots)
         {
-            if (s == null)
-                continue;
+            if (s == null) continue;
 
             if (!shotsDict.TryGetValue(s.ShotId, out var shot))
             {
@@ -468,7 +516,6 @@ public class MainController : BaseController
         return Redirect("/my");
     }
 
-
     [HttpGet("add_album")]
     public IActionResult AddAlbum()
     {
@@ -478,8 +525,14 @@ public class MainController : BaseController
     [HttpPost("add_album")]
     public async Task<IActionResult> CreateAlbum(Album album)
     {
+        if (album == null) return BadRequest();
+
         Console.Write("STORING ALBUM (" + album.AlbumId + ")");
-        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
+        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
+        if (user == null)
+        {
+            return Unauthorized();
+        }
         album.User = user;
         dbContext.Add(album);
         await dbContext.SaveChangesAsync();
@@ -492,6 +545,7 @@ public class MainController : BaseController
         var album = await dbContext.Albums.FindAsync(id);
         if (album == null)
             return NotFound();
+
         var shotInfos = dbContext.Shots
             .Where(s => s.AlbumId == id)
             .Select(s => new
@@ -513,18 +567,36 @@ public class MainController : BaseController
         return Redirect("/my");
     }
 
-
     [HttpGet("view_album")]
     public async Task<IActionResult> ViewAlbum(int id)
     {
-        var album = await dbContext.Albums.Include(a => a.AlbumComments).Where(a => a.AlbumId == id).FirstAsync();
-        var shots = await dbContext.Shots.Where(s => s.Album.AlbumId == id).OrderBy(s => s.ShotId).ToListAsync();
-        var locations = new HashSet<Location>();
-        ViewBag.locations = locations;
-        ViewBag.album = album;
-        ViewBag.shots = shots;
-        ViewBag.albumId = id;
-        return View(album);
+        AlbumDTO dto = new AlbumDTO();
+        var album = await dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefaultAsync(a => a.AlbumId == id);
+        if (album == null)
+        {
+            return RedirectToAction("Albums");
+        }
+
+        dto.Shots = await dbContext.Shots
+            .Where(s => s.AlbumId == id)
+            .OrderBy(s => s.ShotId)
+            .Select(s => new ShotPreviewDTO
+            {
+                ShotId = s.ShotId,
+                Name = s.Name,
+                SourceUri = s.SourceUri,
+                Flip = s.Flip,
+                Rotate = s.Rotate
+            })
+            .ToListAsync();
+
+        dto.AlbumId = album.AlbumId;
+        dto.Name = album.Name;
+        dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
+        dto.Locations = await dbContext.Locations.ToListAsync();
+        dto.Placemarks = GetClusteredShotsWithLabels(false, dto.West, dto.East, dto.South, dto.North);
+
+        return View(dto);
     }
 
     ///////////////////////////////////      SHOTS     ////////////////////////////////////
@@ -533,39 +605,46 @@ public class MainController : BaseController
     public async Task<IActionResult> EditShot(int id)
     {
         var shot = await dbContext.Shots.FindAsync(id);
+        if (shot == null) return RedirectToAction("Albums");
+
         var album = await dbContext.Albums.FindAsync(shot.AlbumId);
-        ShotDTO dto = new ShotDTO(shot);
-        var locations = await dbContext.Locations.ToListAsync();
-        dto.Locations = locations;
-        dto.Longitude = shot.Longitude;
+        var dto = new ShotDTO(shot! ?? new Shot());
+        dto.Locations = await dbContext.Locations.ToListAsync();
+        dto.Longitude = shot!.Longitude;
         dto.Latitude = shot.Latitude;
         dto.Zoom = shot.Zoom;
-        dto.IsCover = shot.ShotId == album.PreviewId;
+        dto.IsCover = album != null && shot.ShotId == album.PreviewId;
         return View(dto);
     }
 
     [HttpPost("edit_shot")]
     public async Task<IActionResult> StoreShot(ShotDTO dto)
     {
-        Shot shot = await dbContext.Shots.FindAsync(dto.ShotId);
-        Album album = await dbContext.Albums.FindAsync(shot.AlbumId);
+        if (dto == null) return BadRequest();
+
+        var shot = await dbContext.Shots.FindAsync(dto.ShotId);
+        if (shot == null) return NotFound();
+
+        var album = await dbContext.Albums.FindAsync(shot.AlbumId);
         shot.Name = dto.Name;
         shot.DateStart = dto.DateStart;
         shot.DateEnd = dto.DateEnd;
         shot.Longitude = dto.Longitude;
         shot.Latitude = dto.Latitude;
         shot.Zoom = dto.Zoom;
-        if (dto.IsCover)
+        if (dto.IsCover && album != null)
         {
             album.PreviewId = dto.ShotId;
         }
-        if (dto.LocationName != null && dto.Longitude != 0 && dto.Latitude != 0)
+        if (!string.IsNullOrEmpty(dto.LocationName) && dto.Longitude != 0 && dto.Latitude != 0)
         {
-            Location location = new Location();
-            location.Latitude = dto.Latitude;
-            location.Longitude = dto.Longitude;
-            location.Zoom = dto.Zoom;
-            location.Name = dto.LocationName;
+            Location location = new Location
+            {
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Zoom = dto.Zoom,
+                Name = dto.LocationName
+            };
             dbContext.Add(location);
         }
         await dbContext.SaveChangesAsync();
@@ -583,65 +662,49 @@ public class MainController : BaseController
     public async Task<IActionResult> Preview(int id, int? rotate, bool? flip)
     {
         Console.WriteLine("PREVIEW `" + id);
-        var result = await dbContext.Shots.FindAsync(id);
-        Console.WriteLine("PREVIEW result is " + result);
 
-        var stream = new MemoryStream();
-        stream.Write(result.Preview, 0, result.Preview.Length);
-        stream.Position = 0;
+        var shot = await dbContext.Shots
+            .Where(s => s.ShotId == id)
+            .Select(s => new { s.Preview })
+            .FirstOrDefaultAsync();
 
-        // Set the correct MIME type for JPEG
+        if (shot?.Preview == null || shot.Preview.Length == 0)
+            return NotFound();
+
+        await using var stream = new MemoryStream(shot.Preview);
+
         string mimeType = "image/jpeg";
-        if (result.Preview.Length > 0)
+        if (rotate.HasValue || flip.HasValue)
         {
-            // Check if the file extension is correct (or if flip/rotate is needed)
-            if (rotate.HasValue || flip.HasValue)
-            {
-                // Apply rotation or flip as needed (use your transformation function here)
-                var transformedStream = ImageUtils.GetTransformedImage(stream, rotate ?? 0, flip ?? false);
-                return new FileStreamResult(transformedStream, mimeType);  // Return the transformed image with proper MIME type
-            }
+            var transformedStream = ImageUtils.GetTransformedImage(stream, rotate ?? 0, flip ?? false);
+            return new FileStreamResult(transformedStream, mimeType);
         }
 
-        // Return the original stream if no transformation is needed
-        return new FileStreamResult(stream, mimeType);  // Ensure the MIME type is correctly set
+        return new FileStreamResult(stream, mimeType);
     }
 
     [HttpGet("shot")]
-    // public IActionResult Shot(int id)
-    // {
-    //     var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
-    //     if (shot == null || shot.FullScreen == null)
-    //     {
-    //         return NotFound(); // Return 404 if shot is not found or fullscreen is null
-    //     }
-    //     return File(shot.FullScreen, shot.ContentType); // Return the byte array with the correct content type
-    // }
     public async Task<IActionResult> Shot(int id, int? rotate, bool? flip)
     {
         var result = await dbContext.Shots.FindAsync(id);
+        if (result == null || result.FullScreen == null || result.FullScreen.Length == 0)
+        {
+            return NotFound();
+        }
 
-        var stream = new MemoryStream();
+        using var stream = new MemoryStream();
         stream.Write(result.FullScreen, 0, result.FullScreen.Length);
         stream.Position = 0;
 
-        // Set the correct MIME type for JPEG
         string mimeType = "image/jpeg";
-        if (result.FullScreen.Length > 0)
+        if (rotate.HasValue || flip.HasValue)
         {
-            // Check if the file extension is correct (or if flip/rotate is needed)
-            if (rotate.HasValue || flip.HasValue)
-            {
-                // Apply rotation or flip as needed (use your transformation function here)
-                var transformedStream = ImageUtils.GetTransformedImage(stream, rotate ?? 0, flip ?? false);
-                return new FileStreamResult(transformedStream, mimeType);  // Return the transformed image with proper MIME type
-            }
+            var transformedStream = ImageUtils.GetTransformedImage(stream, rotate ?? 0, flip ?? false);
+            return new FileStreamResult(transformedStream, mimeType);
         }
 
-        // Return the original stream if no transformation is needed
-        return new FileStreamResult(stream, mimeType);  // Ensure the MIME type is correctly set
+        return new FileStreamResult(stream, mimeType);
     }
-
 
     [HttpGet("orig")]
     public IActionResult Orig(int id)
@@ -652,7 +715,7 @@ public class MainController : BaseController
             return NotFound();
         }
         Stream stream = Storage.GetFile(shot);
-        return File(stream, shot.ContentType);
+        return File(stream, shot.ContentType ?? "application/octet-stream");
     }
 
     [HttpGet("upload_shots")]
@@ -667,20 +730,41 @@ public class MainController : BaseController
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(UploadedFilesDTO dto)
     {
-        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
-        ShotStorage storage = dbContext.ShotStorages.Where(s => s.User == user).FirstOrDefault(s => true);
+        if (dto == null)
+        {
+            return BadRequest();
+        }
+
+        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
+        if (user == null)
+        {
+            dto.ErrorMessage = "User not found";
+            return View(dto);
+        }
+
+        var storage = dbContext.ShotStorages.FirstOrDefault(s => s.User != null && s.User.UserId == user.UserId);
         if (storage == null)
         {
             dto.ErrorMessage = "No file storage available";
             return View(dto);
         }
+
         await dbContext.SaveChangesAsync();
-        Album album = await dbContext.Albums.FindAsync(dto.AlbumId);
-        long size = dto.Files.Sum(f => f.Length);
-        var filePaths = new List<string>();
-        dto.FileErrors = new Dictionary<string, string>();
-        foreach (var formFile in dto.Files)
+
+        var album = await dbContext.Albums.FindAsync(dto.AlbumId);
+        if (album == null)
         {
+            dto.ErrorMessage = "Album not found";
+            return View(dto);
+        }
+
+        var files = dto.Files ?? new List<IFormFile>();
+        long size = files.Sum(f => f.Length);
+        dto.FileErrors = new Dictionary<string, string>();
+
+        foreach (var formFile in files)
+        {
+            if (formFile == null) continue;
             if (formFile.Length > 0)
             {
                 using var fileStream = formFile.OpenReadStream();
@@ -695,7 +779,6 @@ public class MainController : BaseController
                 {
                     Console.Write(e.Message);
                 }
-
             }
         }
         return View(dto);
@@ -706,9 +789,12 @@ public class MainController : BaseController
     [HttpGet("delete_location")]
     public async Task<IActionResult> DeleteLocation(int locationId)
     {
-        Location location = await dbContext.Locations.FindAsync(locationId);
-        dbContext.Remove(location);
-        await dbContext.SaveChangesAsync();
+        var location = await dbContext.Locations.FindAsync(locationId);
+        if (location != null)
+        {
+            dbContext.Remove(location);
+            await dbContext.SaveChangesAsync();
+        }
         return Redirect("locations");
     }
 
@@ -718,20 +804,21 @@ public class MainController : BaseController
         Location location = new Location();
         dbContext.Locations.Add(location);
         await dbContext.SaveChangesAsync();
-        //return EditLocation(location.Id);
         return Redirect("edit_location?LocationId=" + location.Id);
     }
 
     [HttpGet("edit_location")]
     public async Task<IActionResult> EditLocation(int locationId)
     {
-        Location location = await dbContext.Locations.FindAsync(locationId);
+        var location = await dbContext.Locations.FindAsync(locationId);
+        if (location == null) return RedirectToAction("Locations");
         return View(location);
     }
 
     [HttpPost("edit_location")]
     public async Task<IActionResult> SaveLocation(Location location)
     {
+        if (location == null) return BadRequest();
         dbContext.Update(location);
         await dbContext.SaveChangesAsync();
         return Redirect("locations");
@@ -744,13 +831,17 @@ public class MainController : BaseController
             .Include(s => s.ShotComments)
             .Include(s => s.Album)
             .FirstOrDefaultAsync(s => s.ShotId == id);
+
+        if (shot == null) return NotFound();
         return View(shot);
     }
 
     [HttpGet("delete_shot")]
     public async Task<IActionResult> DeleteShot(int id)
     {
-        Shot shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).First();
+        var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
+        if (shot == null) return NotFound();
+
         var albumId = shot.AlbumId;
         Storage.DeleteFile(shot);
         dbContext.Remove(shot);
@@ -762,52 +853,55 @@ public class MainController : BaseController
     public async Task<IActionResult> ViewNextShot(int id)
     {
         var shot = await dbContext.Shots.FindAsync(id);
-        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).ToList<Shot>();
+        if (shot == null) return Redirect("/view_shot?id=" + id);
+
+        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
         int index = shots.FindIndex(a => a.ShotId == id);
-        try
+        if (index >= 0 && index + 1 < shots.Count)
         {
             return Redirect("/view_shot?id=" + shots[index + 1].ShotId);
         }
-        catch (Exception)
-        {
-            return Redirect("/view_shot?id=" + id);
-        }
+        return Redirect("/view_shot?id=" + id);
     }
 
     [HttpGet("view_prev_shot")]
     public async Task<IActionResult> ViewPrevShot(int id)
     {
         var shot = await dbContext.Shots.FindAsync(id);
-        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).ToList<Shot>();
+        if (shot == null) return Redirect("/view_shot?id=" + id);
+
+        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
         int index = shots.FindIndex(a => a.ShotId == id);
-        try
+        if (index > 0)
         {
             return Redirect("/view_shot?id=" + shots[index - 1].ShotId);
         }
-        catch (Exception)
-        {
-            return Redirect("/view_shot?id=" + id);
-        }
+        return Redirect("/view_shot?id=" + id);
     }
 
     [HttpPost("add_comment")]
     public async Task<IActionResult> AddComment(string text, int id, int commentId)
     {
-        var comment = new AlbumComment();
-        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
+        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
+        if (user == null) return Unauthorized();
+
         if (commentId == 0)
         {
-            comment.Author = user;
-            comment.AuthorId = user.UserId;
-            comment.AuthorUsername = user.Username;
-            comment.Text = text;
-            comment.AlbumId = id;
-            comment.Timestamp = DateTime.Now;
+            var comment = new AlbumComment
+            {
+                Author = user,
+                AuthorId = user.UserId,
+                AuthorUsername = user.Username,
+                Text = text,
+                AlbumId = id,
+                Timestamp = DateTime.Now
+            };
             dbContext.AlbumComments.Add(comment);
         }
         else
         {
-            comment = await dbContext.AlbumComments.FindAsync(commentId);
+            var comment = await dbContext.AlbumComments.FindAsync(commentId);
+            if (comment == null) return NotFound();
             comment.Text = text;
             comment.AlbumId = id;
             comment.Timestamp = DateTime.Now;
@@ -821,29 +915,37 @@ public class MainController : BaseController
     public async Task<IActionResult> DeleteComment(int commentId, int id)
     {
         var comment = await dbContext.AlbumComments.FindAsync(commentId);
-        dbContext.AlbumComments.Remove(comment);
-        await dbContext.SaveChangesAsync();
+        if (comment != null)
+        {
+            dbContext.AlbumComments.Remove(comment);
+            await dbContext.SaveChangesAsync();
+        }
         return Redirect("view_album?id=" + id);
     }
 
     [HttpPost("add_shot_comment")]
     public async Task<IActionResult> AddShotComment(string text, int id, int commentId)
     {
-        var comment = new ShotComment();
-        User user = dbContext.Users.Where(u => u.Username == GetUsername()).First();
+        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
+        if (user == null) return Unauthorized();
+
         if (commentId == 0)
         {
-            comment.Author = user;
-            comment.AuthorId = user.UserId;
-            comment.AuthorUsername = user.Username;
-            comment.Text = text;
-            comment.ShotId = id;
-            comment.Timestamp = DateTime.Now;
+            var comment = new ShotComment
+            {
+                Author = user,
+                AuthorId = user.UserId,
+                AuthorUsername = user.Username,
+                Text = text,
+                ShotId = id,
+                Timestamp = DateTime.Now
+            };
             dbContext.ShotComments.Add(comment);
         }
         else
         {
-            comment = await dbContext.ShotComments.FindAsync(commentId);
+            var comment = await dbContext.ShotComments.FindAsync(commentId);
+            if (comment == null) return NotFound();
             comment.Text = text;
             comment.ShotId = id;
             comment.Timestamp = DateTime.Now;
@@ -857,8 +959,11 @@ public class MainController : BaseController
     public async Task<IActionResult> DeleteShotComment(int commentId, int id)
     {
         var comment = await dbContext.ShotComments.FindAsync(commentId);
-        dbContext.ShotComments.Remove(comment);
-        await dbContext.SaveChangesAsync();
+        if (comment != null)
+        {
+            dbContext.ShotComments.Remove(comment);
+            await dbContext.SaveChangesAsync();
+        }
         return Redirect("view_shot?id=" + id);
     }
 
@@ -873,8 +978,11 @@ public class MainController : BaseController
     public async Task<IActionResult> Profile()
     {
         var dto = new ProfileDTO();
-        dto.User = dbContext.Users.Where(u => u.Username == GetUsername()).FirstOrDefault(e => true);
-        dto.Storages = await dbContext.ShotStorages.Where(s => s.User == dto.User).ToListAsync<ShotStorage>();
+        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
+        dto.User = user;
+        dto.Storages = user != null
+            ? await dbContext.ShotStorages.Where(s => s.User != null && s.User.UserId == user.UserId).ToListAsync()
+            : new List<ShotStorage>();
         return View(dto);
     }
 
@@ -884,14 +992,16 @@ public class MainController : BaseController
         var dto = new StorageDTO();
         if (storageId != 0)
         {
-            dto.Storage = dbContext.ShotStorages.Where(s => s.Id == storageId).First();
+            dto.Storage = dbContext.ShotStorages.Where(s => s.Id == storageId).FirstOrDefault() ?? new ShotStorage();
         }
         else
         {
-            dto.Storage = new ShotStorage();
-            dto.Storage.Root = "/storage";
-            dto.Storage.Provider = Provider.Local;
-            dto.Storage.UserId = userId;
+            dto.Storage = new ShotStorage
+            {
+                Root = "/storage",
+                Provider = Provider.Local,
+                UserId = userId
+            };
         }
         return View(dto);
     }
@@ -899,6 +1009,7 @@ public class MainController : BaseController
     [HttpPost("edit_local_storage")]
     public async Task<IActionResult> SaveLocalStorage(StorageDTO dto)
     {
+        if (dto == null || dto.Storage == null) return BadRequest();
         dbContext.AddOrUpdateEntity(dto.Storage);
         await dbContext.SaveChangesAsync();
         return Redirect("profile?user_id=" + dto.Storage.UserId);
@@ -907,12 +1018,17 @@ public class MainController : BaseController
     [HttpPost("select_album")]
     public async Task<IActionResult> SelectAlbum(AlbumDTO dto)
     {
-        var username = GetUsername();
+        if (dto == null)
+        {
+            return RedirectToAction("Albums");
+        }
 
-        var shots = dto.Shots.Where(s => s.IsChecked).ToList();
+        var username = GetUsername() ?? string.Empty;
+
+        var shots = (dto.Shots ?? new List<ShotPreviewDTO>()).Where(s => s != null && s.IsChecked).ToList();
 
         var albums = await dbContext.Albums
-            .Where(a => a.User.Username == username && a.AlbumId != dto.AlbumId)
+            .Where(a => a.User != null && a.User.Username == username && a.AlbumId != dto.AlbumId)
             .GroupJoin(
                 dbContext.Shots,
                 album => album.PreviewId,
@@ -920,14 +1036,14 @@ public class MainController : BaseController
                 (album, shots) => new { Album = album, Shots = shots }
             )
             .SelectMany(
-                x => x.Shots.DefaultIfEmpty(), // left join
+                x => x.Shots.DefaultIfEmpty(),
                 (x, shot) => new AlbumCardDTO
                 {
                     AlbumId = x.Album.AlbumId,
                     Name = x.Album.Name,
                     PreviewId = x.Album.PreviewId,
-                    PreviewFlip = shot != null ? shot.Flip : false, // default false
-                    PreviewRotate = shot != null ? shot.Rotate : 0  // default 0
+                    PreviewFlip = shot != null ? shot.Flip : false,
+                    PreviewRotate = shot != null ? shot.Rotate : 0
                 }
             )
             .OrderBy(a => a.Name)
@@ -946,56 +1062,80 @@ public class MainController : BaseController
     [HttpPost("move_shots")]
     public async Task<IActionResult> MoveShots(SelectAlbumDTO dto)
     {
-        var sourceAlbum = await dbContext.Albums
-            .Where(a => a.AlbumId == dto.SourceAlbumId)
-            .FirstAsync();
+        if (dto == null) return RedirectToAction("Albums");
 
-        var shotsList = dto.Shots.Select(s => s.ShotId).ToList();
+        var sourceAlbum = await dbContext.Albums
+            .FirstOrDefaultAsync(a => a.AlbumId == dto.SourceAlbumId);
+        if (sourceAlbum == null) return RedirectToAction("Albums");
+
+        var shotsList = (dto.Shots ?? new List<ShotPreviewDTO>())
+            .Select(s => s.ShotId)
+            .ToList();
 
         var shots = await dbContext.Shots
             .Where(s => s.AlbumId == dto.SourceAlbumId && shotsList.Contains(s.ShotId))
             .ToListAsync();
 
-        foreach (Shot shot in shots)
-        {
+        // Move shots
+        foreach (var shot in shots)
             shot.AlbumId = dto.TargetAlbumId;
-        }
 
+        // Update preview of source album if its current preview was moved
         if (shotsList.Contains(sourceAlbum.PreviewId))
         {
             var newPreviewId = await dbContext.Shots
                 .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
                 .Select(s => s.ShotId)
-                .FirstOrDefaultAsync(); // Use FirstOrDefaultAsync() to handle no match
-            sourceAlbum.PreviewId = newPreviewId != -1 ? newPreviewId : 0; // Assign 0 if null
+                .FirstOrDefaultAsync();
+
+            // If nothing left — set to 0
+            sourceAlbum.PreviewId = newPreviewId != 0 ? newPreviewId : 0;
+        }
+
+        // Ensure target album has a preview
+        var targetAlbum = await dbContext.Albums
+            .FirstOrDefaultAsync(a => a.AlbumId == dto.TargetAlbumId);
+
+        if (targetAlbum != null && targetAlbum.PreviewId == 0)
+        {
+            var firstShot = await dbContext.Shots
+                .Where(s => s.AlbumId == dto.TargetAlbumId)
+                .OrderBy(s => s.ShotId)
+                .Select(s => s.ShotId)
+                .FirstOrDefaultAsync();
+
+            if (firstShot != 0)
+                targetAlbum.PreviewId = firstShot;
         }
 
         await dbContext.SaveChangesAsync();
 
         return Redirect("edit_album?id=" + dto.SourceAlbumId);
-
     }
+
+
 
     private string GetUsername()
     {
-        return HttpContext.User.FindFirst("user")?.Value;
+        return HttpContext?.User?.FindFirst("user")?.Value ?? string.Empty;
     }
 
     public IEnumerable<Album> SortAlbums(IEnumerable<Album> albums, SortBy sortBy, SortDirection direction)
     {
+        if (albums == null) return Enumerable.Empty<Album>();
+
         Func<Album, object> keySelector = sortBy switch
         {
-            SortBy.EarliestDate => a => a.Shots.Min(s => s.DateStart),
-            SortBy.LeastLatitude => a => a.Shots.Min(s => s.Latitude),
-            SortBy.LeastLongitude => a => a.Shots.Min(s => s.Longitude),
-            SortBy.ShotCount => a => a.Shots.Count,
-            _ => a => a.Name
+            SortBy.EarliestDate => a => a.Shots != null && a.Shots.Any() ? a.Shots.Min(s => s.DateStart) : DateTime.MinValue,
+            SortBy.LeastLatitude => a => a.Shots != null && a.Shots.Any() ? a.Shots.Min(s => s.Latitude) : 0.0,
+            SortBy.LeastLongitude => a => a.Shots != null && a.Shots.Any() ? a.Shots.Min(s => s.Longitude) : 0.0,
+            SortBy.ShotCount => a => a.Shots != null ? a.Shots.Count : 0,
+            _ => a => a.Name ?? string.Empty
         };
 
         return direction == SortDirection.Ascending
             ? albums.OrderBy(keySelector)
             : albums.OrderByDescending(keySelector);
     }
-
-
 }
+

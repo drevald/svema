@@ -21,23 +21,23 @@
 
         <div class="col p-5">
 
-            <div class="d-flex flex-wrap overflow-auto">
-                @for (var index = 0; index < @Model.Shots.Count(); index++) { if(@Model.Shots[index].IsChecked) { <div
-                    class="card text-bg-secondary mb-5 me-5 shadow" style="width: 8rem; height: 8rem;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            @Model.Shots[index].Name
-                        </div>
-                    </div>
-                    <div class="card-body text-end" onClick="location.href='/edit_shot?id=@Model.Shots[index].ShotId'"
-                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId&flip=@Model.Shots[index].Flip&rotate=@Model.Shots[index].Rotate'); 
-                        background-repeat: no-repeat; background-size: cover;">
-                        <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
-                        <input type="hidden" asp-for="@Model.Shots[index].IsChecked" />
-                    </div>
+        <div class="d-flex flex-wrap overflow-auto">
+        @for (int index = 0; index < Model.Shots.Count; index++)
+        {
+            var shot = Model.Shots[index];
+            <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 8rem; height: 8rem;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>@shot.Name</div>
+                </div>
+                <div class="card-body text-end"
+                    onClick="location.href='/edit_shot?id=@shot.ShotId'"
+                    style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); 
+                            background-repeat: no-repeat; background-size: cover;">
+                    <input type="hidden" name="Shots[@index].ShotId" value="@shot.ShotId" />
+                    <input type="hidden" name="Shots[@index].IsChecked" value="@shot.IsChecked" />
+                </div>
             </div>
-            }
-            }
+        }
         </div>
 
         <div class="col-md-12 p-0 text-start">

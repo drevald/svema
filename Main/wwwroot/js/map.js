@@ -72,11 +72,16 @@ function init_locations(jsShot) {
       document.querySelector('#West').value = coords[1] - 0.01;
 
       // Submit the form
-      document.forms[0].submit();
+      // document.forms[0].submit();
     });
 
     // Add placemark to the map
     myMap.geoObjects.add(placemark);
+
+    if(jsModel.EditLocation) {
+      enableEditing();
+    }
+
   }
 }
 
@@ -172,6 +177,86 @@ function init_edit(jsModel) {
   myMap.geoObjects.add(myGeoObject);
 }
 
+// Global variable for the green placemark
+var greenPlacemark = null;
+
+/**
+ * Enables map editing and puts a movable green placemark at map center.
+ * Reuses existing placemark if already created.
+ */
+function enableEditing() {
+    if (!myMap) return;
+
+    // Enable basic map behaviors
+    myMap.behaviors.enable('drag');
+    myMap.behaviors.enable('scrollZoom');
+
+    // Get current map center
+    const center = myMap.getCenter();
+
+    if (greenPlacemark) {
+        // Reuse existing placemark, just move it to the new center
+        greenPlacemark.geometry.setCoordinates(center);
+    } else {
+        // Create a new green draggable placemark at the center
+        greenPlacemark = new ymaps.GeoObject(
+            {
+                geometry: { type: "Point", coordinates: center },
+                properties: { iconContent: '' }
+            },
+            {
+                preset: 'islands#greenDotIcon',
+                draggable: true
+            }
+        );
+
+        // Add it to the map
+        myMap.geoObjects.add(greenPlacemark);
+
+        // Optional: handle drag end to update form or log
+        greenPlacemark.events.add('dragend', function (e) {
+            const coords = greenPlacemark.geometry.getCoordinates();
+            console.log('Green placemark moved to:', coords);
+            if (document.all['Latitude']) document.all['Latitude'].value = coords[0];
+            if (document.all['Longitude']) document.all['Longitude'].value = coords[1];
+            if (document.all['Zoom']) document.all['Zoom'].value = myMap.getZoom();
+        });
+    }
+}
+
+function toggleEditing(checkbox) {
+    if (checkbox.checked) {
+        enableEditing();
+    } else {
+        disableEditing();
+    }
+}
+
+/**
+ * Disables map editing:
+ * - Removes the green placemark
+ * - Clears its properties
+ * - Optionally disables map editing behaviors
+ */
+function disableEditing() {
+    if (!myMap || !greenPlacemark) return;
+
+    // Remove the green placemark from the map
+    myMap.geoObjects.remove(greenPlacemark);
+
+    // Clear all properties and geometry
+    greenPlacemark.properties.set({});
+    greenPlacemark.geometry.setCoordinates([]);
+
+    // Nullify reference
+    greenPlacemark = null;
+
+    // Optionally disable map editing behaviors
+    myMap.behaviors.disable('drag');
+    myMap.behaviors.disable('scrollZoom');
+}
+
+
 /**
  * Show a specific location from a list of saved locations
  * @param i - index of location
@@ -216,5 +301,5 @@ function show(i, jsModel, shift) {
   document.querySelector('#West').value = jsModel[i - shift].Longitude - 0.01;
 
   // Submit the form
-  document.forms[0].submit();
+  //document.forms[0].submit();
 }

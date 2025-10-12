@@ -20,19 +20,20 @@
 <script src="~/js/map.js" asp-append-version="true"> </script>
 
 <div class="row">
-    <form class="needs-validation" method="get" novalidate style="display:contents">
-  <div class="col-md-2 p-5" style="width:500px">
-
-
+  <form class="needs-validation" method="post" novalidate style="display:contents">
+    <div class="col-md-2 p-5" style="width:500px">
       <input type="hidden" asp-for="North" />
       <input type="hidden" asp-for="South" />
       <input type="hidden" asp-for="East" />
       <input type="hidden" asp-for="West" />
       <div class="row g-3">
 
-        <div class="col-sm-12">
-          <h4 class="mb-3">Фильтр</h4>
-        </div>
+      <div class="col-sm-6">
+        <h4 class="mb-3">Фильтр</h4>
+      </div>
+      <div class="col-sm-6 text-end">
+        <a class="btn btn-primary" href="add_album">Добавить альбом</a>
+      </div>
 
         <div class="col-sm-6">
           <label class="form-label">Сортировка:</label>
@@ -101,22 +102,41 @@
         </div>
 
         <div class="col-12">
+          <input asp-for="EditLocation"
+                             type="checkbox"
+                             onclick="toggleEditing(this);" />
+          <label class="form-label">Изменить локацию</label>
+        </div>
+
+        <input asp-for="Zoom" class="form-control" type="hidden" value="" />
+
+        <div class="col-sm-6">
+            <label class="form-label">Долгота</label>
+            <input asp-for="Longitude" class="form-control"/>
+        </div> 
+
+        <div class="col-sm-6">
+            <label class="form-label">Широта</label>
+            <input asp-for="Latitude" class="form-control" />
+        </div> 
+
+        <div class="col-12">
           <label class="form-label">Карта</label>
           <div id="map" style="height:240px"></div>
         </div>
+
+        <div class="col-sm-12">
+          <label class="form-label">Название места</label>
+          <input asp-for="LocationName" class="form-control"/>
+        </div>         
 
         <div class="col-sm-6 text-start">
           <input type="submit" class="btn btn-primary" value="Обновить">
         </div>
 
       </div>
-
   </div>
-
-
-
   <div class="col p-5">
-
     <div class="row">
       <div class="col-md-12 p-0 pb-5 text-end">
         <input type="submit" name="delete" class="btn btn-primary btn-sm px-3" value="Удалить">
@@ -124,13 +144,18 @@
           <a class="btn btn-secondary btn-sm ps-3" href="/">Отменить</a>
         </div>
     </div>
-    <div class="d-flex flex-wrap overflow-auto h-100">
+    <!-- <div class="d-flex flex-wrap overflow-auto h-100"> -->
+    <div class="d-flex flex-wrap overflow-auto" style="overflow-x:hidden;">
           @for (var index = 0; index < Model.Albums.Count(); index++)
           {
               <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
                   <div class="card-header d-flex justify-content-between align-items-center">
-                      <div>
-                          @Model.Albums[index].Name (@Model.Albums[index].Size)
+                      <div title="@Model.Albums[index].Name">
+                          @(
+                              Model.Albums[index].Name?.Length > 20 
+                                  ? Model.Albums[index].Name.Substring(0, 20) + "…" 
+                                  : Model.Albums[index].Name
+                          )  (@Model.Albums[index].Size)
                       </div>
                       <div class="dropdown">
                           <button class="btn btn-secondary dropdown-toggle" type="button"
@@ -169,6 +194,6 @@
           }
           
         </div>
-  </div>
-      </form>  
+    </div>
+  </form>  
 </div>

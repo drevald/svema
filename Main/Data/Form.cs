@@ -9,7 +9,32 @@ using Microsoft.AspNetCore.Http;
 
 namespace Form;
 
-public class AddCommentDto {
+
+public class AlbumViewDTO
+{
+    public int AlbumId { get; set; }
+    public string Name { get; set; }
+
+    // Locations for the map
+    public List<LocationDTO> Locations { get; set; } = new();
+
+    // Shots / photos in the album
+    public List<ShotDTO> Shots { get; set; } = new();
+
+    // Comments for the album
+    public List<CommentDTO> AlbumComments { get; set; } = new();
+}
+
+public class CommentDTO
+{
+    public int Id { get; set; }
+    public string AuthorUsername { get; set; }
+    public DateTime Timestamp { get; set; }
+    public string Text { get; set; }
+}
+
+public class AddCommentDto
+{
     public string Caption { get; set; }
 }
 public class AlbumCardDTO
@@ -50,6 +75,10 @@ public class AlbumsListDTO {
     public SortDirection SortDirection {get; set;}
     public List<SelectListItem> SortDirectionOptions { get; set; }
     public Boolean EditLocation { get; set; }
+    public double Longitude {get; set;}
+    public double Latitude {get; set;}
+    public int Zoom {get; set;}
+    public String LocationName { get; set; }
     public AlbumsListDTO()
     {
         Albums = new List<AlbumCardDTO>();
@@ -74,12 +103,33 @@ public class AlbumDTO {
     [DisplayFormat(DataFormatString = "{0:dd-MM-yyyy}")]
     public DateTime DateEnd {get; set;}    
     public ICollection<AlbumComment> AlbumComments {get; set;}
-    public ICollection<Location> Locations {get; set;}
+    public ICollection<Location> Locations { get; set; }
+    public ICollection<LocationDTO> Placemarks {get; set;}
     public List<ShotPreviewDTO> Shots {get; set;}
     public double Longitude {get; set;}
     public double Latitude {get; set;}
     public int Zoom {get; set;}
-    public String LocationName {get; set;}
+    public String LocationName { get; set; }
+    [Required]
+    [Range(-90, 90)]
+    public double North {get; set;}
+    [Required]
+    [Range(-90, 90)]
+    public double South {get; set;}
+    [Required]
+    [Range(-180, 180)]
+    public double East {get; set;}
+    [Required]
+    [Range(-180, 180)]
+    public double West {get; set;}    
+    
+    public AlbumDTO()
+    {
+        North = 90;
+        South = -90;
+        West = -180;
+        East = 180;
+    }    
 
 }
 

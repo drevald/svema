@@ -119,28 +119,28 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("")]
-    public async Task<IActionResult> Albums(AlbumsListDTO dto)
+    public IActionResult Albums(AlbumsListDTO dto)
     {
         dto ??= new AlbumsListDTO();
-        var model = await BuildAlbumsListAsync(dto, onlyMine: false);
+        var model = BuildAlbumsListAsync(dto, onlyMine: false);
         return View(model);
     }
 
     [Authorize]
     [HttpPost("")]
-    public async Task<IActionResult> ReloadAlbums(AlbumsListDTO dto)
+    public IActionResult ReloadAlbums(AlbumsListDTO dto)
     {
         dto ??= new AlbumsListDTO();
-        var model = await BuildAlbumsListAsync(dto, onlyMine: false);
+        var model = BuildAlbumsListAsync(dto, onlyMine: false);
         return View("Albums", model);
     }
 
     [Authorize]
     [HttpGet("my")]
-    public async Task<IActionResult> MyAlbums(AlbumsListDTO dto)
+    public IActionResult MyAlbums(AlbumsListDTO dto)
     {
         dto ??= new AlbumsListDTO();
-        var model = await BuildAlbumsListAsync(dto, onlyMine: true);
+        var model = BuildAlbumsListAsync(dto, onlyMine: true);
         return View(model);
     }
 
@@ -210,17 +210,17 @@ public class MainController : BaseController
             }
         }
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS <<<<<<<<<<<<< ");
-        var model = await BuildAlbumsListAsync(dto, onlyMine: true);
+        var model = BuildAlbumsListAsync(dto, onlyMine: true);
         return View("MyAlbums", model);
     }
 
-    protected async Task<AlbumsListDTO> BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
+    protected AlbumsListDTO BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)
     {
         dto ??= new AlbumsListDTO();
 
         var filteredShots = ApplyShotFilters(dto, onlyMine);
 
-        var shotGroups = await filteredShots
+        var shotGroups = filteredShots
             .GroupBy(s => s.AlbumId)
             .Select(g => new
             {
@@ -230,11 +230,11 @@ public class MainController : BaseController
                 LeastLatitude = g.Min(s => s.Latitude),
                 LeastLongitude = g.Min(s => s.Longitude)
             })
-            .ToListAsync();
+            .ToList();
 
         var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
 
-        var albumCards = await dbContext.Albums
+        var albumCards = dbContext.Albums
             .Where(a => albumIds.Contains(a.AlbumId))
             .Select(a => new AlbumCardDTO
             {
@@ -244,7 +244,7 @@ public class MainController : BaseController
                 PreviewFlip = false,
                 PreviewRotate = 0
             })
-            .ToListAsync();
+            .ToList();
 
         var enriched = albumCards
             .Join(shotGroups,
@@ -285,10 +285,10 @@ public class MainController : BaseController
         if (onlyMine)
         {
             var username = GetUsername() ?? string.Empty;
-            var emptyAlbums = await dbContext.Albums
+            var emptyAlbums = dbContext.Albums
                 .Where(a => a.User != null && a.User.Username == username)
                 .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
-                .ToListAsync();
+                .ToList();
 
             var emptyAlbumCards = emptyAlbums
                 .Select(a => new AlbumCardDTO
@@ -305,7 +305,7 @@ public class MainController : BaseController
         }
 
         var cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList();
-        var locations = await dbContext.Locations.ToListAsync();
+        var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         var placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North);
 
         return new AlbumsListDTO

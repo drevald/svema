@@ -42,6 +42,10 @@ builder.WebHost.ConfigureKestrel(opts =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddControllers(options =>
+{
+    options.MaxModelBindingCollectionSize = 5000; // default 1024
+});
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(dbConnection);

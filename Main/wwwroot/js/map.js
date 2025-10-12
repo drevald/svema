@@ -43,7 +43,7 @@ function init_locations(jsShot) {
     document.querySelector('#West').value = west;
 
     // Submit the form to refresh results based on new bounds
-    document.forms[0].submit();
+    // document.forms[0].submit();
   });
 
   // Add placemarks from the model

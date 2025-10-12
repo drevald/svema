@@ -16,7 +16,6 @@ using Data;
 using Utils;
 using Npgsql;
 using Common;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Controllers;
 
@@ -154,6 +153,19 @@ public class MainController : BaseController
             return RedirectToAction("MyAlbums");
         }
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS >>>>>> ");
+
+        if (!string.IsNullOrEmpty(dto.LocationName) && save != null)
+        {
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} ADD LOCATION");
+            dbContext.Locations.Add(new Location
+            {
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Name = dto.LocationName,
+                Zoom = dto.Zoom
+            });
+        }
+
         foreach (var a in dto.Albums)
         {
             if (a == null) continue;
@@ -168,19 +180,7 @@ public class MainController : BaseController
                 Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOTS FOR  ALBUM " + a.AlbumId);
                 if (save != null)
                 {
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE " + a.AlbumId);
-                    if (!string.IsNullOrEmpty(dto.LocationName))
-                    {
-                        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} ADD LOCATION");
-                        dbContext.Locations.Add(new Location
-                        {
-                            Latitude = dto.Latitude,
-                            Longitude = dto.Longitude,
-                            Name = dto.LocationName,
-                            Zoom = dto.Zoom
-                        });
-                    }
-
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE " + a.AlbumId);                    
                     if (dto.EditLocation && shotsToChange.Any())
                     {
                         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SAVE SHOTS");
@@ -1060,21 +1060,21 @@ public class MainController : BaseController
     }
 
     [HttpPost("move_shots")]
-    public async Task<IActionResult> MoveShots(SelectAlbumDTO dto)
+    public IActionResult MoveShots(SelectAlbumDTO dto)
     {
         if (dto == null) return RedirectToAction("Albums");
 
-        var sourceAlbum = await dbContext.Albums
-            .FirstOrDefaultAsync(a => a.AlbumId == dto.SourceAlbumId);
+        var sourceAlbum = dbContext.Albums
+            .FirstOrDefault(a => a.AlbumId == dto.SourceAlbumId);
         if (sourceAlbum == null) return RedirectToAction("Albums");
 
         var shotsList = (dto.Shots ?? new List<ShotPreviewDTO>())
             .Select(s => s.ShotId)
             .ToList();
 
-        var shots = await dbContext.Shots
+        var shots = dbContext.Shots
             .Where(s => s.AlbumId == dto.SourceAlbumId && shotsList.Contains(s.ShotId))
-            .ToListAsync();
+            .ToList();
 
         // Move shots
         foreach (var shot in shots)
@@ -1083,32 +1083,25 @@ public class MainController : BaseController
         // Update preview of source album if its current preview was moved
         if (shotsList.Contains(sourceAlbum.PreviewId))
         {
-            var newPreviewId = await dbContext.Shots
+            var newPreviewId = dbContext.Shots
                 .Where(s => s.AlbumId == dto.SourceAlbumId && !shotsList.Contains(s.ShotId))
                 .Select(s => s.ShotId)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
             // If nothing left — set to 0
             sourceAlbum.PreviewId = newPreviewId != 0 ? newPreviewId : 0;
         }
 
         // Ensure target album has a preview
-        var targetAlbum = await dbContext.Albums
-            .FirstOrDefaultAsync(a => a.AlbumId == dto.TargetAlbumId);
+        var targetAlbum = dbContext.Albums
+            .FirstOrDefault(a => a.AlbumId == dto.TargetAlbumId);
 
         if (targetAlbum != null && targetAlbum.PreviewId == 0)
         {
-            var firstShot = await dbContext.Shots
-                .Where(s => s.AlbumId == dto.TargetAlbumId)
-                .OrderBy(s => s.ShotId)
-                .Select(s => s.ShotId)
-                .FirstOrDefaultAsync();
-
-            if (firstShot != 0)
-                targetAlbum.PreviewId = firstShot;
+            targetAlbum.PreviewId = shotsList[0];
         }
 
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
 
         return Redirect("edit_album?id=" + dto.SourceAlbumId);
     }

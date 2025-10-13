@@ -2,10 +2,11 @@ using System;
 using System.IO;
 using Data;
 using Common;
+using System.Threading.Tasks;
 
 public class Storage {
 
-    public static void StoreShot(Shot shot, byte[] data) {
+    public static async Task StoreShot(Shot shot, byte[] data) {
         Console.WriteLine("!!!!STORE_SHOT to " + shot.SourceUri);
         try {
             if (shot.Storage == null) {
@@ -26,7 +27,7 @@ public class Storage {
         }
     }
 
-    public static Stream GetFile(Shot shot) {
+    public static async Task<Stream> GetFile(Shot shot) {
         try {
             if (shot.Storage == null) {
                 Console.Write("Storage not defined for " + shot);
@@ -47,27 +48,31 @@ public class Storage {
         }
     }
 
-    public static void DeleteFile(Shot shot) {
+    public static async Task DeleteFile(Shot shot) {
         try {
             if (shot.Storage == null) {
                 Console.Write("Storage not defined for " + shot);
                 return;
             } else if (shot.Storage.Provider == Provider.Local) {
                 try {
-                    System.IO.File.Delete(shot.Storage.Root + shot.SourceUri);
+                    await Task.Run(() => System.IO.File.Delete(shot.Storage.Root + shot.SourceUri));
                 } catch (Exception e) {
                     Console.Write("Error " + e);
                 }
             } else {
                 YandexDisk yandexDisk = new YandexDisk();
                 yandexDisk.DeleteFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken);             
+                await Task.Run(() => yandexDisk.DeleteFileByPath(
+                    shot.Storage.Root + shot.SourceUri,
+                    shot.Storage.AuthToken
+                ));                
             }    
         } catch (Exception e) {
             Console.Write("Error " + e);
         }
     }
 
-    public static void DeleteFile(ShotStorage storage, string uri) {
+public static async Task DeleteFileAsync(ShotStorage storage, string uri) {
         try {
             if (storage == null) {
                 Console.Write("Storage not defined for shot");
@@ -80,7 +85,7 @@ public class Storage {
                 }
             } else {
                 YandexDisk yandexDisk = new YandexDisk();
-                yandexDisk.DeleteFileByPath(storage.Root + uri, storage.AuthToken);             
+                yandexDisk.DeleteFileByPath(storage.Root + uri, storage.AuthToken);
             }    
         } catch (Exception e) {
             Console.Write("Error " + e);

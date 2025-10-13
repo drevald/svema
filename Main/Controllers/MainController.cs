@@ -396,16 +396,16 @@ public class MainController : BaseController
     ///////////////////   ALBUM  /////////////////////////////////////////
 
     [HttpGet("edit_album")]
-    public async Task<IActionResult> EditAlbum(int id)
+    public IActionResult EditAlbum(int id)
     {
         AlbumDTO dto = new AlbumDTO();
-        var album = await dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefaultAsync(a => a.AlbumId == id);
+        var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
         if (album == null)
         {
             return RedirectToAction("Albums");
         }
 
-        dto.Shots = await dbContext.Shots
+        dto.Shots = dbContext.Shots
             .Where(s => s.AlbumId == id)
             .OrderBy(s => s.ShotId)
             .Select(s => new ShotPreviewDTO
@@ -416,7 +416,7 @@ public class MainController : BaseController
                 Flip = s.Flip,
                 Rotate = s.Rotate
             })
-            .ToListAsync();
+            .ToList();
 
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
@@ -435,7 +435,7 @@ public class MainController : BaseController
             return BadRequest();
         }
 
-        var storedAlbum = await dbContext.Albums.FindAsync(dto.AlbumId);
+        var storedAlbum = dbContext.Albums.Find(dto.AlbumId);
         if (storedAlbum == null)
         {
             Console.WriteLine($"Album with id {dto.AlbumId} not found");
@@ -456,9 +456,9 @@ public class MainController : BaseController
             Console.WriteLine($"No shots to update for album {dto.AlbumId}");
         }
 
-        var shots = await dbContext.Shots
+        var shots = dbContext.Shots
             .Where(s => shotIds.Contains(s.ShotId))
-            .ToListAsync();
+            .ToList();
 
         var shotsDict = shots.ToDictionary(s => s.ShotId);
 
@@ -523,7 +523,7 @@ public class MainController : BaseController
     }
 
     [HttpPost("add_album")]
-    public async Task<IActionResult> CreateAlbum(Album album)
+    public IActionResult CreateAlbum(Album album)
     {
         if (album == null) return BadRequest();
 
@@ -535,14 +535,14 @@ public class MainController : BaseController
         }
         album.User = user;
         dbContext.Add(album);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChangesAsync();
         return Redirect("/");
     }
 
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id)
     {
-        var album = await dbContext.Albums.FindAsync(id);
+        var album = dbContext.Albums.Find(id);
         if (album == null)
             return NotFound();
 
@@ -557,27 +557,27 @@ public class MainController : BaseController
 
         foreach (var shot in shotInfos)
         {
-            Storage.DeleteFile(shot.Storage, shot.SourceUri);
+            await Storage.DeleteFileAsync(shot.Storage, shot.SourceUri);
         }
 
         dbContext.Shots.RemoveRange(dbContext.Shots.Where(s => s.AlbumId == id));
         dbContext.Albums.Remove(album);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
 
         return Redirect("/my");
     }
 
     [HttpGet("view_album")]
-    public async Task<IActionResult> ViewAlbum(int id)
+    public IActionResult ViewAlbum(int id)
     {
         AlbumDTO dto = new AlbumDTO();
-        var album = await dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefaultAsync(a => a.AlbumId == id);
+        var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
         if (album == null)
         {
             return RedirectToAction("Albums");
         }
 
-        dto.Shots = await dbContext.Shots
+        dto.Shots = dbContext.Shots
             .Where(s => s.AlbumId == id)
             .OrderBy(s => s.ShotId)
             .Select(s => new ShotPreviewDTO
@@ -588,7 +588,7 @@ public class MainController : BaseController
                 Flip = s.Flip,
                 Rotate = s.Rotate
             })
-            .ToListAsync();
+            .ToList();
 
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
@@ -618,14 +618,14 @@ public class MainController : BaseController
     }
 
     [HttpPost("edit_shot")]
-    public async Task<IActionResult> StoreShot(ShotDTO dto)
+    public IActionResult StoreShot(ShotDTO dto)
     {
         if (dto == null) return BadRequest();
 
-        var shot = await dbContext.Shots.FindAsync(dto.ShotId);
+        var shot = dbContext.Shots.Find(dto.ShotId);
         if (shot == null) return NotFound();
 
-        var album = await dbContext.Albums.FindAsync(shot.AlbumId);
+        var album = dbContext.Albums.Find(shot.AlbumId);
         shot.Name = dto.Name;
         shot.DateStart = dto.DateStart;
         shot.DateEnd = dto.DateEnd;
@@ -647,14 +647,14 @@ public class MainController : BaseController
             };
             dbContext.Add(location);
         }
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("edit_album?id=" + shot.AlbumId);
     }
 
     [HttpGet("shots")]
-    public async Task<IActionResult> GetShots()
+    public IActionResult GetShots()
     {
-        var result = await dbContext.Shots.ToListAsync();
+        var result = dbContext.Shots.ToList();
         return View();
     }
 
@@ -707,14 +707,14 @@ public class MainController : BaseController
     }
 
     [HttpGet("orig")]
-    public IActionResult Orig(int id)
+    public async Task<IActionResult> Orig(int id)
     {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
         if (shot == null || shot.FullScreen == null)
         {
             return NotFound();
         }
-        Stream stream = Storage.GetFile(shot);
+        Stream stream = await Storage.GetFile(shot);
         return File(stream, shot.ContentType ?? "application/octet-stream");
     }
 
@@ -787,57 +787,57 @@ public class MainController : BaseController
     /////////////////////       LOCATIONS        //////////////////////////////////////////////////////////
 
     [HttpGet("delete_location")]
-    public async Task<IActionResult> DeleteLocation(int locationId)
+    public IActionResult DeleteLocation(int locationId)
     {
-        var location = await dbContext.Locations.FindAsync(locationId);
+        var location = dbContext.Locations.Find(locationId);
         if (location != null)
         {
             dbContext.Remove(location);
-            await dbContext.SaveChangesAsync();
+            dbContext.SaveChanges();
         }
         return Redirect("locations");
     }
 
     [HttpGet("add_location")]
-    public async Task<IActionResult> AddLocation(int locationId)
+    public IActionResult AddLocation(int locationId)
     {
         Location location = new Location();
         dbContext.Locations.Add(location);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("edit_location?LocationId=" + location.Id);
     }
 
     [HttpGet("edit_location")]
-    public async Task<IActionResult> EditLocation(int locationId)
+    public IActionResult EditLocation(int locationId)
     {
-        var location = await dbContext.Locations.FindAsync(locationId);
+        var location = dbContext.Locations.Find(locationId);
         if (location == null) return RedirectToAction("Locations");
         return View(location);
     }
 
     [HttpPost("edit_location")]
-    public async Task<IActionResult> SaveLocation(Location location)
+    public IActionResult SaveLocation(Location location)
     {
         if (location == null) return BadRequest();
         dbContext.Update(location);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("locations");
     }
 
     [HttpGet("view_shot")]
-    public async Task<IActionResult> ViewShot(int id)
+    public IActionResult ViewShot(int id)
     {
-        var shot = await dbContext.Shots
+        var shot = dbContext.Shots
             .Include(s => s.ShotComments)
             .Include(s => s.Album)
-            .FirstOrDefaultAsync(s => s.ShotId == id);
+            .FirstOrDefault(s => s.ShotId == id);
 
         if (shot == null) return NotFound();
         return View(shot);
     }
 
     [HttpGet("delete_shot")]
-    public async Task<IActionResult> DeleteShot(int id)
+    public IActionResult DeleteShot(int id)
     {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
         if (shot == null) return NotFound();
@@ -845,14 +845,14 @@ public class MainController : BaseController
         var albumId = shot.AlbumId;
         Storage.DeleteFile(shot);
         dbContext.Remove(shot);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("/edit_album?id=" + albumId);
     }
 
     [HttpGet("view_next_shot")]
-    public async Task<IActionResult> ViewNextShot(int id)
+    public IActionResult ViewNextShot(int id)
     {
-        var shot = await dbContext.Shots.FindAsync(id);
+        var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
 
         var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
@@ -865,9 +865,9 @@ public class MainController : BaseController
     }
 
     [HttpGet("view_prev_shot")]
-    public async Task<IActionResult> ViewPrevShot(int id)
+    public IActionResult ViewPrevShot(int id)
     {
-        var shot = await dbContext.Shots.FindAsync(id);
+        var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
 
         var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
@@ -880,7 +880,7 @@ public class MainController : BaseController
     }
 
     [HttpPost("add_comment")]
-    public async Task<IActionResult> AddComment(string text, int id, int commentId)
+    public IActionResult AddComment(string text, int id, int commentId)
     {
         var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
         if (user == null) return Unauthorized();
@@ -900,31 +900,31 @@ public class MainController : BaseController
         }
         else
         {
-            var comment = await dbContext.AlbumComments.FindAsync(commentId);
+            var comment = dbContext.AlbumComments.Find(commentId);
             if (comment == null) return NotFound();
             comment.Text = text;
             comment.AlbumId = id;
             comment.Timestamp = DateTime.Now;
             dbContext.AlbumComments.Update(comment);
         }
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("view_album?id=" + id);
     }
 
     [HttpGet("delete_comment")]
-    public async Task<IActionResult> DeleteComment(int commentId, int id)
+    public IActionResult DeleteComment(int commentId, int id)
     {
-        var comment = await dbContext.AlbumComments.FindAsync(commentId);
+        var comment = dbContext.AlbumComments.Find(commentId);
         if (comment != null)
         {
             dbContext.AlbumComments.Remove(comment);
-            await dbContext.SaveChangesAsync();
+            dbContext.SaveChanges();
         }
         return Redirect("view_album?id=" + id);
     }
 
     [HttpPost("add_shot_comment")]
-    public async Task<IActionResult> AddShotComment(string text, int id, int commentId)
+    public IActionResult AddShotComment(string text, int id, int commentId)
     {
         var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
         if (user == null) return Unauthorized();
@@ -944,25 +944,25 @@ public class MainController : BaseController
         }
         else
         {
-            var comment = await dbContext.ShotComments.FindAsync(commentId);
+            var comment = dbContext.ShotComments.Find(commentId);
             if (comment == null) return NotFound();
             comment.Text = text;
             comment.ShotId = id;
             comment.Timestamp = DateTime.Now;
             dbContext.ShotComments.Update(comment);
         }
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("view_shot?id=" + id);
     }
 
     [HttpGet("delete_shot_comment")]
-    public async Task<IActionResult> DeleteShotComment(int commentId, int id)
+    public IActionResult DeleteShotComment(int commentId, int id)
     {
-        var comment = await dbContext.ShotComments.FindAsync(commentId);
+        var comment = dbContext.ShotComments.Find(commentId);
         if (comment != null)
         {
             dbContext.ShotComments.Remove(comment);
-            await dbContext.SaveChangesAsync();
+            dbContext.SaveChanges();
         }
         return Redirect("view_shot?id=" + id);
     }
@@ -1011,7 +1011,7 @@ public class MainController : BaseController
     {
         if (dto == null || dto.Storage == null) return BadRequest();
         dbContext.AddOrUpdateEntity(dto.Storage);
-        dbContext.SaveChanges();
+        dbContext.SaveChangesAsync();
         return Redirect("profile?user_id=" + dto.Storage.UserId);
     }
 

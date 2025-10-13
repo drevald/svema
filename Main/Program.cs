@@ -17,6 +17,17 @@ DotEnv.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
+
+// add console with custom formatter
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.SingleLine = true;
+    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
+    options.UseUtcTimestamp = false;
+    options.IncludeScopes = false;
+});
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
 builder.Logging.AddConsole();
 builder.Logging.AddFile("Logs/svema-.txt", minimumLevel: LogLevel.Debug);
 
@@ -83,14 +94,12 @@ builder.Services.Configure<FormOptions>(options =>
     options.ValueCountLimit = 10000; // or more, depending on needs
 });
 
-
 var app = builder.Build();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 
 using (var scope = app.Services.CreateScope())
 {

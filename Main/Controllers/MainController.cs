@@ -421,7 +421,7 @@ public class MainController : BaseController
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
-        dto.Locations = await dbContext.Locations.ToListAsync();
+        dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
 
         return View(dto);
     }
@@ -593,7 +593,7 @@ public class MainController : BaseController
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
-        dto.Locations = await dbContext.Locations.ToListAsync();
+        dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         dto.Placemarks = GetClusteredShotsWithLabels(false, dto.West, dto.East, dto.South, dto.North);
 
         return View(dto);
@@ -602,14 +602,14 @@ public class MainController : BaseController
     ///////////////////////////////////      SHOTS     ////////////////////////////////////
 
     [HttpGet("edit_shot")]
-    public async Task<IActionResult> EditShot(int id)
+    public IActionResult EditShot(int id)
     {
-        var shot = await dbContext.Shots.FindAsync(id);
+        var shot = dbContext.Shots.Find(id);
         if (shot == null) return RedirectToAction("Albums");
 
-        var album = await dbContext.Albums.FindAsync(shot.AlbumId);
+        var album = dbContext.Albums.Find(shot.AlbumId);
         var dto = new ShotDTO(shot! ?? new Shot());
-        dto.Locations = await dbContext.Locations.ToListAsync();
+        dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         dto.Longitude = shot!.Longitude;
         dto.Latitude = shot.Latitude;
         dto.Zoom = shot.Zoom;
@@ -968,20 +968,20 @@ public class MainController : BaseController
     }
 
     [HttpGet("locations")]
-    public async Task<IActionResult> Locations()
+    public IActionResult Locations()
     {
-        var locations = await dbContext.Locations.ToListAsync<Location>();
+        var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         return View(locations);
     }
 
     [HttpGet("profile")]
-    public async Task<IActionResult> Profile()
+    public IActionResult Profile()
     {
         var dto = new ProfileDTO();
         var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
         dto.User = user;
         dto.Storages = user != null
-            ? await dbContext.ShotStorages.Where(s => s.User != null && s.User.UserId == user.UserId).ToListAsync()
+            ? dbContext.ShotStorages.Where(s => s.User != null && s.User.UserId == user.UserId).ToList()
             : new List<ShotStorage>();
         return View(dto);
     }
@@ -1007,11 +1007,11 @@ public class MainController : BaseController
     }
 
     [HttpPost("edit_local_storage")]
-    public async Task<IActionResult> SaveLocalStorage(StorageDTO dto)
+    public IActionResult SaveLocalStorage(StorageDTO dto)
     {
         if (dto == null || dto.Storage == null) return BadRequest();
         dbContext.AddOrUpdateEntity(dto.Storage);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("profile?user_id=" + dto.Storage.UserId);
     }
 

@@ -11,6 +11,7 @@ using SixLabors.ImageSharp.Processing;
 using Data;
 using Microsoft.AspNetCore.Mvc.Diagnostics;
 using Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Controllers;
 

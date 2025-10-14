@@ -190,6 +190,9 @@ public class MainController : BaseController
                         {
                             var chunk = shotIds.Skip(i).Take(chunkSize).ToArray();
                             var idParams = string.Join(",", chunk);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET LAT = " + dto.Latitude);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET LON = " + dto.Longitude);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET ZOOM = " + dto.Zoom);
                             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START UPDATE " + idParams);
                             dbContext.Database.ExecuteSqlRaw(
                                 $"UPDATE Shots SET Latitude = {{0}}, Longitude = {{1}}, Zoom = {{2}} WHERE Id IN ({idParams})",
@@ -263,6 +266,7 @@ public class MainController : BaseController
 
         var sorted = sortTuple switch
         {
+            (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
             (SortBy.EarliestDate, SortDirection.Ascending) => enriched.OrderBy(e => e.EarliestDate),
             (SortBy.EarliestDate, SortDirection.Descending) => enriched.OrderByDescending(e => e.EarliestDate),
             (SortBy.LeastLatitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLatitude),
@@ -270,8 +274,7 @@ public class MainController : BaseController
             (SortBy.LeastLongitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLongitude),
             (SortBy.LeastLongitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLongitude),
             (SortBy.ShotCount, SortDirection.Ascending) => enriched.OrderBy(e => e.Size),
-            (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
-            _ => enriched.OrderBy(e => e.Card.Name)
+            _ => enriched.OrderByDescending(e => e.Size)
         };
 
         var finalAlbumCards = sorted
@@ -827,23 +830,24 @@ public class MainController : BaseController
     [HttpGet("view_shot")]
     public IActionResult ViewShot(int id)
     {
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOT " + id);
         var shot = dbContext.Shots
             .Include(s => s.ShotComments)
             .Include(s => s.Album)
             .FirstOrDefault(s => s.ShotId == id);
-
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOT " + id);
         if (shot == null) return NotFound();
         return View(shot);
     }
 
     [HttpGet("delete_shot")]
-    public IActionResult DeleteShot(int id)
+    public async Task<IActionResult> DeleteShot(int id)
     {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
         if (shot == null) return NotFound();
 
         var albumId = shot.AlbumId;
-        Storage.DeleteFile(shot);
+        await Storage.DeleteFile(shot);
         dbContext.Remove(shot);
         dbContext.SaveChanges();
         return Redirect("/edit_album?id=" + albumId);

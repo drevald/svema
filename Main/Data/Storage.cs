@@ -17,37 +17,52 @@ public class Storage {
                 String folder = Path.GetDirectoryName(path);
                 Directory.CreateDirectory(folder);        
                 Console.WriteLine("!!!storing locally to " + path);
-                System.IO.File.WriteAllBytes(path, data);                
+                await Task.Run(() => System.IO.File.WriteAllBytes(path, data));
             } else {
                 YandexDisk yandexDisk = new YandexDisk();
-                yandexDisk.PutFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken, new MemoryStream(data));
+                await Task.Run(() => yandexDisk.PutFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken, new MemoryStream(data)));
             }
         } catch (Exception e) {
             Console.Write("Error " + e);
         }
     }
 
-    public static async Task<Stream> GetFile(Shot shot) {
-        try {
-            if (shot.Storage == null) {
+    public static async Task<Stream> GetFile(Shot shot)
+    {
+        try
+        {
+            if (shot.Storage == null)
+            {
                 Console.Write("Storage not defined for " + shot);
                 return null;
-            } else if (shot.Storage.Provider == Provider.Local) {
+            }
+
+            if (shot.Storage.Provider == Provider.Local)
+            {
                 var stream = System.IO.File.OpenRead(shot.Storage.Root + shot.SourceUri);
                 stream.Position = 0;
                 return stream;
-            } else {
+            }
+            else
+            {
                 YandexDisk yandexDisk = new YandexDisk();
-                var stream = yandexDisk.GetFileByPath(shot.Storage.Root + shot.SourceUri, shot.Storage.AuthToken);             
+                var stream = await Task.Run(() =>
+                    yandexDisk.GetFileByPath(
+                        shot.Storage.Root + shot.SourceUri,
+                        shot.Storage.AuthToken
+                    )
+                );
+
                 stream.Position = 0;
                 return stream;
-            }               
-        } catch (Exception e) {
+            }
+        }
+        catch (Exception e)
+        {
             Console.Write("Error " + e);
             return null;
         }
     }
-
     public static async Task DeleteFile(Shot shot) {
         try {
             if (shot.Storage == null) {
@@ -72,22 +87,34 @@ public class Storage {
         }
     }
 
-public static async Task DeleteFileAsync(ShotStorage storage, string uri) {
-        try {
-            if (storage == null) {
+    public static async Task DeleteFileAsync(ShotStorage storage, string uri)
+    {
+        try
+        {
+            if (storage == null)
+            {
                 Console.Write("Storage not defined for shot");
                 return;
-            } else if (storage.Provider == Provider.Local) {
-                try {
-                    System.IO.File.Delete(storage.Root + uri);
-                } catch (Exception e) {
+            }
+            else if (storage.Provider == Provider.Local)
+            {
+                try
+                {
+                    await Task.Run(() => System.IO.File.Delete(storage.Root + uri));
+                }
+                catch (Exception e)
+                {
                     Console.Write("Error " + e);
                 }
-            } else {
+            }
+            else
+            {
                 YandexDisk yandexDisk = new YandexDisk();
-                yandexDisk.DeleteFileByPath(storage.Root + uri, storage.AuthToken);
-            }    
-        } catch (Exception e) {
+                await Task.Run(() => yandexDisk.DeleteFileByPath(storage.Root + uri, storage.AuthToken));
+            }
+        }
+        catch (Exception e)
+        {
             Console.Write("Error " + e);
         }
     }

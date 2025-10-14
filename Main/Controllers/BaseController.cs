@@ -65,9 +65,9 @@ public class BaseController : Controller
 
             originalStream.Position = 0;
             shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
-            await AddShotToDatabase(shot, album);
+            AddShotToDatabase(shot, album);
 
-            Storage.StoreShot(shot, originalStream.ToArray());
+            await Storage.StoreShot(shot, originalStream.ToArray());
 
             fileErrors.Add(name, "File successfully added");
         }
@@ -140,19 +140,19 @@ public class BaseController : Controller
         return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
     }
 
-    private async Task AddShotToDatabase(Shot shot, Album album) {
+    private void AddShotToDatabase(Shot shot, Album album) {
         dbContext.Shots.Add(shot);
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         if (album.PreviewId == 0) {
             album.PreviewId = shot.ShotId;
             dbContext.Albums.Update(album);
         }
         shot.SourceUri = $"user_{album.User.UserId}/album_{album.AlbumId}/shot_{shot.ShotId}";
-        await dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
     }
 
-    private void StoreShotInStorage(Shot shot, Album album, MemoryStream stream) {
-        Storage.StoreShot(shot, stream.ToArray());
+    private async Task StoreShotInStorage(Shot shot, Album album, MemoryStream stream) {
+        await Storage.StoreShot(shot, stream.ToArray());
     }
 
     private void HandleDbUpdateException(DbUpdateException e, Shot shot, Dictionary<string, string> fileErrors, string name)

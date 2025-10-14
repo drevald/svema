@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Data;
+using Microsoft.AspNetCore.HttpOverrides;
 
 DotEnv.Load();
 
@@ -95,6 +96,18 @@ builder.Services.Configure<FormOptions>(options =>
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();

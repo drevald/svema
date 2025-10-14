@@ -25,16 +25,36 @@
   }
 
   function showAll() {
-    myMap.geoObjects.removeAll();
-    for (i=0; i<jsModel.length; i++) {
-      myMap.geoObjects.add(
-        new ymaps.GeoObject(
-          {geometry: { type: "Point", coordinates: [jsModel[i].Latitude, jsModel[i].Longitude]}, properties: { iconContent: jsModel[i].Name }}, 
-          {preset: 'islands#blackStretchyIcon', draggable: false}
-        )
-      )
-    }
+  myMap.geoObjects.removeAll();
+
+  if (jsModel.length === 0) return;
+
+  var bounds = [];
+
+  for (let i = 0; i < jsModel.length; i++) {
+    const point = [jsModel[i].Latitude, jsModel[i].Longitude];
+    bounds.push(point);
+
+    const placemark = new ymaps.Placemark(point, {
+      iconContent: jsModel[i].Name
+    }, {
+      preset: 'islands#blackStretchyIcon',
+      draggable: false
+    });
+
+    myMap.geoObjects.add(placemark);
   }
+
+  // Fit all points with padding (margin)
+  const mapBounds = ymaps.geoQuery(myMap.geoObjects).getBounds();
+  if (mapBounds) {
+    myMap.setBounds(mapBounds, {
+      checkZoomRange: true,
+      zoomMargin: 50 // pixels padding around
+    });
+  }
+}
+
 
   function show(i) {
     if (i == 0) {
@@ -66,15 +86,16 @@
 </div>
 
 <div class="row">
-  <div class="col-md-2 p-5" style="width:500px">
+  <div class="col-md-2 p-5" style="width:50%; position: sticky; top: 0; height: 100vh; overflow: auto; background: white; z-index: 10;">
     <h4 class="mb-3">Места</h4>
-    <div id="map" style="height:240px"></div>
+    <div id="map" style="height: 80vh;"></div>
   </div>
+
   <div class="col p-5"> 
     <table class="table table-condensed">
       <thead>
         <tr>
-          <th class="small" style="width:50%">Название</th>
+          <th class="small">Название</th>
           <th class="small">Долгота</th>
           <th class="small">Широта</th>
           <th class="small">Точность</th>
@@ -82,24 +103,22 @@
         </tr>
       </thead>
       @{
-        var index = 1;
-    }
-    
-    @foreach (var location in Model)
-    {
-        <tr>
-            <td>@location.Name</td>
-            <td>@location.Longitude</td>
-            <td>@location.Latitude</td>
-            <td>
-                <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
-                <a class="btn btn-sm btn-info" href="javascript:show(@index);">Показать</a>
-                <a class="btn btn-sm btn-primary" href="edit_location?LocationId=@location.Id">Редактировать</a>
-            </td>
-        </tr>
-    
-        index++;
-    }    
+          var index = 1;
+      }
+      @foreach (var location in Model)
+      {
+          <tr>
+              <td>@location.Name</td>
+              <td>@location.Longitude</td>
+              <td>@location.Latitude</td>
+              <td>
+                  <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
+                  <a class="btn btn-sm btn-info" href="javascript:show(@index);">Показать</a>
+                  <a class="btn btn-sm btn-primary" href="edit_location?LocationId=@location.Id">Редактировать</a>
+              </td>
+          </tr>
+          index++;
+      }
     </table>
   </div>
 </div>

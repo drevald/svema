@@ -152,11 +152,11 @@ public class MainController : BaseController
         {
             return RedirectToAction("MyAlbums");
         }
-        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS >>>>>> ");
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} UPDATE_MY_ALBUMS [T{Environment.CurrentManagedThreadId}] START >>>>>> ");
 
         if (!string.IsNullOrEmpty(dto.LocationName) && save != null)
         {
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} ADD LOCATION");
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} UPDATE_MY_ALBUMS [T{Environment.CurrentManagedThreadId}] ADD LOCATION");
             dbContext.Locations.Add(new Location
             {
                 Latitude = dto.Latitude,
@@ -172,38 +172,38 @@ public class MainController : BaseController
 
             if (a.IsChecked)
             {
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOTS FOR ALBUM " + a.AlbumId);
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} UPDATE_MY_ALBUMS [T{Environment.CurrentManagedThreadId}] START GETTING SHOTS FOR ALBUM " + a.AlbumId);
                 var shotsToChange = dbContext.Shots
                     .Where(s => s.AlbumId == a.AlbumId)
                     .Select(s => s.ShotId)
                     .ToList();
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOTS FOR  ALBUM " + a.AlbumId);
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS END GETTING SHOTS FOR ALBUM " + a.AlbumId);
                 if (save != null)
                 {
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE " + a.AlbumId);                    
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS START SAVE " + a.AlbumId);                    
                     if (dto.EditLocation && shotsToChange.Any())
                     {
-                        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SAVE SHOTS");
+                        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS SAVE SHOTS");
                         int chunkSize = 1000;
                         var shotIds = shotsToChange.ToArray();
                         for (int i = 0; i < shotIds.Length; i += chunkSize)
                         {
                             var chunk = shotIds.Skip(i).Take(chunkSize).ToArray();
                             var idParams = string.Join(",", chunk);
-                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET LAT = " + dto.Latitude);
-                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET LON = " + dto.Longitude);
-                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} SET ZOOM = " + dto.Zoom);
-                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START UPDATE " + idParams);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS SET LAT = " + dto.Latitude);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS SET LON = " + dto.Longitude);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS SET ZOOM = " + dto.Zoom);
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS START UPDATE " + idParams);
                             dbContext.Database.ExecuteSqlRaw(
                                 $"UPDATE Shots SET Latitude = {{0}}, Longitude = {{1}}, Zoom = {{2}} WHERE Id IN ({idParams})",
                                 dto.Latitude, dto.Longitude, dto.Zoom
                             );
-                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END UPDATE");
+                            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS END UPDATE");
                         }
                     }
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START SAVE CHANGES");
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS START SAVE CHANGES");
                     dbContext.SaveChanges();
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END SAVE CHANGES");
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS END SAVE CHANGES");
                 }
 
                 if (delete != null)
@@ -212,9 +212,28 @@ public class MainController : BaseController
                 }
             }
         }
-        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START ALBUMS <<<<<<<<<<<<< ");
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS END ALBUMS <<<<<<<<<<<<< ");
         var model = BuildAlbumsListAsync(dto, onlyMine: true);
-        return View("MyAlbums", model);
+        // return View("MyAlbums", model);
+
+        return RedirectToAction("MyAlbums", new
+        {
+            dto.SortBy,
+            dto.SortDirection,
+            dto.DateStart,
+            dto.DateEnd,
+            dto.Camera,
+            dto.LocationId,
+            dto.Latitude,
+            dto.Longitude,
+            dto.Zoom,
+            dto.EditLocation,
+            dto.North,
+            dto.South,
+            dto.East,
+            dto.West
+        });
+
     }
 
     protected AlbumsListDTO BuildAlbumsListAsync(AlbumsListDTO dto, bool onlyMine)

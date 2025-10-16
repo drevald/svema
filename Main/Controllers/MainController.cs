@@ -1130,12 +1130,6 @@ public class MainController : BaseController
     }
 
 
-
-    private string GetUsername()
-    {
-        return HttpContext?.User?.FindFirst("user")?.Value ?? string.Empty;
-    }
-
     public IEnumerable<Album> SortAlbums(IEnumerable<Album> albums, SortBy sortBy, SortDirection direction)
     {
         if (albums == null) return Enumerable.Empty<Album>();

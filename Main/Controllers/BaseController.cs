@@ -9,9 +9,8 @@ using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using Data;
-using Microsoft.AspNetCore.Mvc.Diagnostics;
 using Utils;
-using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace Controllers;
 
@@ -39,7 +38,7 @@ public class BaseController : Controller
             using var fullStream = new MemoryStream(data);
             using var previewImage = Image.Load(previewStream);
             using var fullImage = Image.Load(fullStream);
-            
+
             PhotoMetadata photoMetadata = ImageUtils.GetMetadata(data);
 
             // Preview
@@ -55,11 +54,12 @@ public class BaseController : Controller
             shot.Album = album;
             shot.Storage = storage;
             shot.CameraManufacturer = photoMetadata.CameraManufacturer;
-            shot.CameraModel =  photoMetadata.CameraModel;
-            
-            if (photoMetadata.Latitude != null && photoMetadata.Longitude != null) {
-                shot.Latitude = (float) photoMetadata.Latitude;
-                shot.Longitude = (float) photoMetadata.Longitude;
+            shot.CameraModel = photoMetadata.CameraModel;
+
+            if (photoMetadata.Latitude != null && photoMetadata.Longitude != null)
+            {
+                shot.Latitude = (float)photoMetadata.Latitude;
+                shot.Longitude = (float)photoMetadata.Longitude;
                 shot.Zoom = 15;
             }
 
@@ -102,7 +102,8 @@ public class BaseController : Controller
         }
     }
 
-    private byte[] GetImagePreview(Image image) {
+    private byte[] GetImagePreview(Image image)
+    {
         using var outputStream = new MemoryStream();
         ProcessImage(image);
         ImageExtensions.SaveAsJpeg(image, outputStream);
@@ -140,10 +141,12 @@ public class BaseController : Controller
         return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
     }
 
-    private void AddShotToDatabase(Shot shot, Album album) {
+    private void AddShotToDatabase(Shot shot, Album album)
+    {
         dbContext.Shots.Add(shot);
         dbContext.SaveChanges();
-        if (album.PreviewId == 0) {
+        if (album.PreviewId == 0)
+        {
             album.PreviewId = shot.ShotId;
             dbContext.Albums.Update(album);
         }
@@ -151,7 +154,8 @@ public class BaseController : Controller
         dbContext.SaveChanges();
     }
 
-    private async Task StoreShotInStorage(Shot shot, Album album, MemoryStream stream) {
+    private async Task StoreShotInStorage(Shot shot, Album album, MemoryStream stream)
+    {
         await Storage.StoreShot(shot, stream.ToArray());
     }
 
@@ -168,5 +172,19 @@ public class BaseController : Controller
         fileErrors.Add(name, e.Message);
     }
 
+    protected string GetUsername()
+    {
+        return HttpContext?.User?.FindFirst("user")?.Value ?? string.Empty;
+    }
+
+    protected int? GetUserId()
+    {
+        var idValue = HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (int.TryParse(idValue, out var id))
+            return id;
+
+        return null; // or 0 if you prefer
+    }
 
 }

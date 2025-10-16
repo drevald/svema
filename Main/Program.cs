@@ -60,8 +60,7 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
-    opts.UseNpgsql(dbConnection);
-
+    opts.UseNpgsql(dbConnection,npgsqlOptions => npgsqlOptions.CommandTimeout(60));
 });
 builder.Services.AddAuthentication(options =>
 {

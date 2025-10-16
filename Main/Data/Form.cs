@@ -90,46 +90,63 @@ public class AlbumsListDTO {
 
 }
 
-public class AlbumDTO {
-    public int AlbumId {get; set;}
-    public int UserId {get; set;}
-    public string Name {get; set;}
-    public int Year {get; set;}
-    public int LocationId {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
+
+public class SharedLinkDTO
+{
+    public SharedLink SharedLink { get; set; }
+
+    public SharedLinkDTO()
+    {
+
+    }
+
+    public SharedLinkDTO(SharedLink sharedLink)
+    {
+        SharedLink = sharedLink;
+    }
+}
+
+public class AlbumDTO
+{
+    public int AlbumId { get; set; }
+    public int UserId { get; set; }
+    public string Name { get; set; }
+    public int Year { get; set; }
+    public int LocationId { get; set; }
+    [BindProperty, DataType(DataType.Date)]
     [DisplayFormat(DataFormatString = "{0:dd-MM-yyyy}")]
-    public DateTime DateStart {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
+    public DateTime DateStart { get; set; }
+    [BindProperty, DataType(DataType.Date)]
     [DisplayFormat(DataFormatString = "{0:dd-MM-yyyy}")]
-    public DateTime DateEnd {get; set;}    
-    public ICollection<AlbumComment> AlbumComments {get; set;}
+    public DateTime DateEnd { get; set; }
+    public ICollection<AlbumComment> AlbumComments { get; set; }
     public ICollection<Location> Locations { get; set; }
-    public ICollection<LocationDTO> Placemarks {get; set;}
-    public List<ShotPreviewDTO> Shots {get; set;}
-    public double Longitude {get; set;}
-    public double Latitude {get; set;}
-    public int Zoom {get; set;}
+    public ICollection<LocationDTO> Placemarks { get; set; }
+    public List<ShotPreviewDTO> Shots { get; set; }
+    public double Longitude { get; set; }
+    public double Latitude { get; set; }
+    public int Zoom { get; set; }
     public String LocationName { get; set; }
     [Required]
     [Range(-90, 90)]
-    public double North {get; set;}
+    public double North { get; set; }
     [Required]
     [Range(-90, 90)]
-    public double South {get; set;}
+    public double South { get; set; }
     [Required]
     [Range(-180, 180)]
-    public double East {get; set;}
+    public double East { get; set; }
     [Required]
     [Range(-180, 180)]
-    public double West {get; set;}    
-    
+    public double West { get; set; }
+
     public AlbumDTO()
     {
         North = 90;
         South = -90;
         West = -180;
         East = 180;
-    }    
+    }
 
 }
 

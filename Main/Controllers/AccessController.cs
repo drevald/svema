@@ -84,10 +84,10 @@ public class AccessController : Controller
             };
 
             // ✅ Build principal and sign in
-            var identity = new ClaimsIdentity(claims, "Cookies");
+            var identity = new ClaimsIdentity(claims, "CookieScheme");
             var principal = new ClaimsPrincipal(identity);
 
-            await HttpContext.SignInAsync("Cookies", principal); // specify scheme explicitly
+            await HttpContext.SignInAsync("CookieScheme", principal); // specify scheme explicitly
 
             return Redirect("/");
         }
@@ -102,7 +102,7 @@ public class AccessController : Controller
     [HttpGet("logout")]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync("Cookies");
+        await HttpContext.SignOutAsync("CookieScheme");
         return Redirect("/");
     }
 }

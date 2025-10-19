@@ -174,7 +174,8 @@ public class BaseController : Controller
 
     protected string GetUsername()
     {
-        return HttpContext?.User?.FindFirst("user")?.Value ?? string.Empty;
+        return HttpContext.User?.FindFirst(ClaimTypes.Name)?.Value;
+        //return HttpContext?.User?.FindFirst("user")?.Value ?? string.Empty;
     }
 
     protected int? GetUserId()

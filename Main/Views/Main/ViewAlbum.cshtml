@@ -72,9 +72,9 @@
       @foreach(var shot in @Model.Shots) {
       <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
         <div class="card-body"
-          style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+          style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate&token=cbq8F8HkHV9nSzNzVnxf5Q'); background-repeat: no-repeat; background-size: cover;">
         </div>
-        <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
+        <a href="/view_shot?id=@shot.ShotId&token=cbq8F8HkHV9nSzNzVnxf5Q" class="stretched-link"></a>
       </div>
       }
 

@@ -11,7 +11,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Data;
+using Middleware;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Authentication;
 
 DotEnv.Load();
 
@@ -62,16 +64,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(dbConnection,npgsqlOptions => npgsqlOptions.CommandTimeout(60));
 });
+
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = "CookieScheme";
-    options.DefaultChallengeScheme = "CookieScheme"; // 👈 force cookie challenge
+    options.DefaultChallengeScheme = "CookieScheme";
 })
 .AddCookie("CookieScheme", options =>
 {
     options.LoginPath = "/login";
-    options.AccessDeniedPath = "/denied";
 })
+.AddScheme<AuthenticationSchemeOptions, SharedLinkAuthHandler>("SharedLinkScheme", null)
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -102,11 +106,23 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 app.UseStaticFiles();
 app.UseRouting();
+app.UseExceptionHandler("/Error");
+app.UseStatusCodePagesWithReExecute("/Error/{0}");
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Query.ContainsKey("token"))
+    {
+        var result = await context.AuthenticateAsync("SharedLinkScheme");
+        if (result.Succeeded && result.Principal != null)
+        {
+            context.User = result.Principal;
+        }
+    }
+    await next();
+});
 app.UseAuthorization();
 app.MapControllers();
-
-
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();

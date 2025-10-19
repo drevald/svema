@@ -417,11 +417,19 @@ public class MainController : BaseController
 
     ///////////////////   ALBUM  /////////////////////////////////////////
 
+    [Authorize]
     [HttpGet("edit_album")]
     public IActionResult EditAlbum(int id)
     {
         AlbumDTO dto = new AlbumDTO();
-        var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
+
+        var currentUserId = GetUserId();
+
+        var album = dbContext.Albums
+            .Include(a => a.AlbumComments)
+            .FirstOrDefault(a => a.AlbumId == id && a.User.UserId == currentUserId);
+
+
         if (album == null)
         {
             return RedirectToAction("Albums");
@@ -448,6 +456,7 @@ public class MainController : BaseController
         return View(dto);
     }
 
+    [Authorize]
     [HttpPost("edit_album")]
     public async Task<IActionResult> StoreAlbum(AlbumDTO dto)
     {
@@ -538,12 +547,14 @@ public class MainController : BaseController
         return Redirect("/my");
     }
 
+    [Authorize]
     [HttpGet("add_album")]
     public IActionResult AddAlbum()
     {
         return View();
     }
 
+    [Authorize]
     [HttpPost("add_album")]
     public IActionResult CreateAlbum(Album album)
     {
@@ -557,10 +568,11 @@ public class MainController : BaseController
         }
         album.User = user;
         dbContext.Add(album);
-        dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("/");
     }
 
+    [Authorize]
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id)
     {
@@ -589,11 +601,47 @@ public class MainController : BaseController
         return Redirect("/my");
     }
 
+    [Authorize]
     [HttpGet("view_album")]
     public IActionResult ViewAlbum(int id)
     {
         AlbumDTO dto = new AlbumDTO();
-        var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
+
+        var currentUserId = GetUserId();
+
+        // var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
+        
+        var album = dbContext.Albums
+            .Include(a => a.AlbumComments)
+            .FirstOrDefault(a =>
+                a.AlbumId == id &&
+                (
+                    // 1️⃣ Owned by current user
+                    a.User.UserId == currentUserId ||
+
+                    // 2️⃣ Shared directly to this user
+                    dbContext.SharedAlbums.Any(sa =>
+                        sa.AlbumId == a.AlbumId &&
+                        sa.GuestUserId == currentUserId
+                    ) ||
+
+                    // 3️⃣ Shared via host-user relationship (shared user)
+                    dbContext.SharedUsers.Any(su =>
+                        su.HostUserId == a.User.UserId &&
+                        su.GuestUserId == currentUserId
+                    ) ||
+
+                    // 4️⃣ Public shared link (still active)
+                    dbContext.SharedLinks.Any(sl =>
+                        sl.ResourceType == "album" &&
+                        sl.ResourceId == a.AlbumId &&
+                        !sl.Revoked &&
+                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
+                    )
+                )
+            );
+
+
         if (album == null)
         {
             return RedirectToAction("Albums");
@@ -623,10 +671,18 @@ public class MainController : BaseController
 
     ///////////////////////////////////      SHOTS     ////////////////////////////////////
 
+    [Authorize]
     [HttpGet("edit_shot")]
     public IActionResult EditShot(int id)
     {
-        var shot = dbContext.Shots.Find(id);
+
+        var currentUserId = GetUserId();
+
+        var shot = dbContext.Shots
+            .Include(s => s.Album)           // include navigation if you need Album info
+            .ThenInclude(a => a.User)        // optional: if you need the user too
+            .FirstOrDefault(s => s.ShotId == id && s.Album.User.UserId == currentUserId);
+            
         if (shot == null) return RedirectToAction("Albums");
 
         var album = dbContext.Albums.Find(shot.AlbumId);
@@ -639,6 +695,7 @@ public class MainController : BaseController
         return View(dto);
     }
 
+    [Authorize]
     [HttpPost("edit_shot")]
     public IActionResult StoreShot(ShotDTO dto)
     {
@@ -673,6 +730,7 @@ public class MainController : BaseController
         return Redirect("edit_album?id=" + shot.AlbumId);
     }
 
+    [Authorize]
     [HttpGet("shots")]
     public IActionResult GetShots()
     {
@@ -680,6 +738,7 @@ public class MainController : BaseController
         return View();
     }
 
+    [Authorize]
     [HttpGet("preview")]
     public async Task<IActionResult> Preview(int id, int? rotate, bool? flip)
     {
@@ -705,6 +764,7 @@ public class MainController : BaseController
         return new FileStreamResult(stream, mimeType);
     }
 
+    [Authorize]
     [HttpGet("shot")]
     public async Task<IActionResult> Shot(int id, int? rotate, bool? flip)
     {
@@ -728,6 +788,7 @@ public class MainController : BaseController
         return new FileStreamResult(stream, mimeType);
     }
 
+    [Authorize]
     [HttpGet("orig")]
     public async Task<IActionResult> Orig(int id)
     {
@@ -740,6 +801,7 @@ public class MainController : BaseController
         return File(stream, shot.ContentType ?? "application/octet-stream");
     }
 
+    [Authorize]
     [HttpGet("upload_shots")]
     public IActionResult UploadFile(int id)
     {
@@ -748,6 +810,7 @@ public class MainController : BaseController
         return View(dto);
     }
 
+    [Authorize]
     [RequestSizeLimit(1000_000_000)]
     [HttpPost("upload_shots")]
     public async Task<IActionResult> StoreFile(UploadedFilesDTO dto)
@@ -756,6 +819,10 @@ public class MainController : BaseController
         {
             return BadRequest();
         }
+
+        var files = dto.Files ?? new List<IFormFile>();
+        long size = files.Sum(f => f.Length);
+        dto.FileErrors = new Dictionary<string, string>();
 
         var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
         if (user == null)
@@ -779,10 +846,6 @@ public class MainController : BaseController
             dto.ErrorMessage = "Album not found";
             return View(dto);
         }
-
-        var files = dto.Files ?? new List<IFormFile>();
-        long size = files.Sum(f => f.Length);
-        dto.FileErrors = new Dictionary<string, string>();
 
         foreach (var formFile in files)
         {
@@ -808,6 +871,7 @@ public class MainController : BaseController
 
     /////////////////////       LOCATIONS        //////////////////////////////////////////////////////////
 
+    [Authorize]
     [HttpGet("delete_location")]
     public IActionResult DeleteLocation(int locationId)
     {
@@ -820,6 +884,7 @@ public class MainController : BaseController
         return Redirect("locations");
     }
 
+    [Authorize]
     [HttpGet("add_location")]
     public IActionResult AddLocation(int locationId)
     {
@@ -829,6 +894,7 @@ public class MainController : BaseController
         return Redirect("edit_location?LocationId=" + location.Id);
     }
 
+    [Authorize]
     [HttpGet("edit_location")]
     public IActionResult EditLocation(int locationId)
     {
@@ -837,6 +903,7 @@ public class MainController : BaseController
         return View(location);
     }
 
+    [Authorize]
     [HttpPost("edit_location")]
     public IActionResult SaveLocation(Location location)
     {
@@ -846,19 +913,58 @@ public class MainController : BaseController
         return Redirect("locations");
     }
 
+    [Authorize]
     [HttpGet("view_shot")]
     public IActionResult ViewShot(int id)
     {
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOT " + id);
+        // var shot = dbContext.Shots
+        //     .Include(s => s.ShotComments)
+        //     .Include(s => s.Album)
+        //     .FirstOrDefault(s => s.ShotId == id);
+
+        var currentUserId = GetUserId();
+
         var shot = dbContext.Shots
             .Include(s => s.ShotComments)
             .Include(s => s.Album)
-            .FirstOrDefault(s => s.ShotId == id);
+                .ThenInclude(a => a.User)
+            .FirstOrDefault(s =>
+                s.ShotId == id &&
+                (
+                    // 1️⃣ Shot is owned by current user
+                    s.Album.User.UserId == currentUserId ||
+
+                    // 2️⃣ Album is shared directly to this user
+                    dbContext.SharedAlbums.Any(sa =>
+                        sa.AlbumId == s.Album.AlbumId &&
+                        sa.GuestUserId == currentUserId
+                    ) ||
+
+                    // 3️⃣ Album belongs to a host user who shared their library
+                    dbContext.SharedUsers.Any(su =>
+                        su.HostUserId == s.Album.User.UserId &&
+                        su.GuestUserId == currentUserId
+                    ) ||
+
+                    // 4️⃣ Shot (or album) is shared via public link
+                    dbContext.SharedLinks.Any(sl =>
+                        (
+                            (sl.ResourceType == "shot" && sl.ResourceId == s.ShotId) ||
+                            (sl.ResourceType == "album" && sl.ResourceId == s.Album.AlbumId)
+                        ) &&
+                        !sl.Revoked &&
+                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
+                    )
+                )
+            );
+
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOT " + id);
         if (shot == null) return NotFound();
         return View(shot);
     }
 
+    [Authorize]
     [HttpGet("delete_shot")]
     public async Task<IActionResult> DeleteShot(int id)
     {
@@ -872,6 +978,7 @@ public class MainController : BaseController
         return Redirect("/edit_album?id=" + albumId);
     }
 
+    [Authorize]
     [HttpGet("view_next_shot")]
     public IActionResult ViewNextShot(int id)
     {
@@ -887,6 +994,7 @@ public class MainController : BaseController
         return Redirect("/view_shot?id=" + id);
     }
 
+    [Authorize]
     [HttpGet("view_prev_shot")]
     public IActionResult ViewPrevShot(int id)
     {
@@ -902,6 +1010,7 @@ public class MainController : BaseController
         return Redirect("/view_shot?id=" + id);
     }
 
+    [Authorize]
     [HttpPost("add_comment")]
     public IActionResult AddComment(string text, int id, int commentId)
     {
@@ -934,6 +1043,7 @@ public class MainController : BaseController
         return Redirect("view_album?id=" + id);
     }
 
+    [Authorize]
     [HttpGet("delete_comment")]
     public IActionResult DeleteComment(int commentId, int id)
     {
@@ -946,6 +1056,7 @@ public class MainController : BaseController
         return Redirect("view_album?id=" + id);
     }
 
+    [Authorize]
     [HttpPost("add_shot_comment")]
     public IActionResult AddShotComment(string text, int id, int commentId)
     {
@@ -978,6 +1089,7 @@ public class MainController : BaseController
         return Redirect("view_shot?id=" + id);
     }
 
+    [Authorize]
     [HttpGet("delete_shot_comment")]
     public IActionResult DeleteShotComment(int commentId, int id)
     {
@@ -990,6 +1102,7 @@ public class MainController : BaseController
         return Redirect("view_shot?id=" + id);
     }
 
+    [Authorize]
     [HttpGet("locations")]
     public IActionResult Locations()
     {
@@ -997,6 +1110,7 @@ public class MainController : BaseController
         return View(locations);
     }
 
+    [Authorize]
     [HttpGet("profile")]
     public IActionResult Profile()
     {
@@ -1009,6 +1123,7 @@ public class MainController : BaseController
         return View(dto);
     }
 
+    [Authorize]
     [HttpGet("edit_local_storage")]
     public IActionResult EditLocalStorage(int userId, int storageId)
     {
@@ -1029,15 +1144,17 @@ public class MainController : BaseController
         return View(dto);
     }
 
+    [Authorize]
     [HttpPost("edit_local_storage")]
     public IActionResult SaveLocalStorage(StorageDTO dto)
     {
         if (dto == null || dto.Storage == null) return BadRequest();
         dbContext.AddOrUpdateEntity(dto.Storage);
-        dbContext.SaveChangesAsync();
+        dbContext.SaveChanges();
         return Redirect("profile?user_id=" + dto.Storage.UserId);
     }
 
+    [Authorize]
     [HttpPost("select_album")]
     public async Task<IActionResult> SelectAlbum(AlbumDTO dto)
     {
@@ -1082,6 +1199,7 @@ public class MainController : BaseController
         return View(selectAlbumDTO);
     }
 
+    [Authorize]
     [HttpPost("move_shots")]
     public IActionResult MoveShots(SelectAlbumDTO dto)
     {

@@ -94,6 +94,8 @@ public class AlbumsListDTO {
 public class SharedLinkDTO
 {
     public SharedLink SharedLink { get; set; }
+    public string BaseUrl { get; set; }
+    public string LinkWithToken { get; set; }
 
     public SharedLinkDTO()
     {

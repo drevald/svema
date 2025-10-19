@@ -285,7 +285,6 @@ public class MainController : BaseController
 
         var sorted = sortTuple switch
         {
-            (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
             (SortBy.EarliestDate, SortDirection.Ascending) => enriched.OrderBy(e => e.EarliestDate),
             (SortBy.EarliestDate, SortDirection.Descending) => enriched.OrderByDescending(e => e.EarliestDate),
             (SortBy.LeastLatitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLatitude),
@@ -293,7 +292,8 @@ public class MainController : BaseController
             (SortBy.LeastLongitude, SortDirection.Ascending) => enriched.OrderBy(e => e.LeastLongitude),
             (SortBy.LeastLongitude, SortDirection.Descending) => enriched.OrderByDescending(e => e.LeastLongitude),
             (SortBy.ShotCount, SortDirection.Ascending) => enriched.OrderBy(e => e.Size),
-            _ => enriched.OrderByDescending(e => e.Size)
+            (SortBy.ShotCount, SortDirection.Descending) => enriched.OrderByDescending(e => e.Size),
+            _ => enriched.OrderBy(e => e.EarliestDate)
         };
 
         var finalAlbumCards = sorted
@@ -636,6 +636,8 @@ public class MainController : BaseController
                         sl.ResourceType == "album" &&
                         sl.ResourceId == a.AlbumId &&
                         !sl.Revoked &&
+                        !sl.Revoked &&
+                        sl.Token == token &&
                         (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
                     )
                 )
@@ -792,13 +794,56 @@ public class MainController : BaseController
     [HttpGet("orig")]
     public async Task<IActionResult> Orig(int id, string? token)
     {
-        var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
+
+        var currentUserId = GetUserId();
+
+        var shot = dbContext.Shots
+            .Include(s => s.ShotComments)
+            .Include(s => s.Album)
+                .ThenInclude(a => a.User)
+            .FirstOrDefault(s =>
+                s.ShotId == id &&
+                (
+                    // 1️⃣ Shot is owned by current user
+                    s.Album.User.UserId == currentUserId ||
+
+                    // 2️⃣ Album is shared directly to this user
+                    dbContext.SharedAlbums.Any(sa =>
+                        sa.AlbumId == s.Album.AlbumId &&
+                        sa.GuestUserId == currentUserId
+                    ) ||
+
+                    // 3️⃣ Album belongs to a host user who shared their library
+                    dbContext.SharedUsers.Any(su =>
+                        su.HostUserId == s.Album.User.UserId &&
+                        su.GuestUserId == currentUserId
+                    ) ||
+
+                    // 4️⃣ Shot (or album) is shared via public link
+                    dbContext.SharedLinks.Any(sl =>
+                        (
+                            (sl.ResourceType == "shot" && sl.ResourceId == s.ShotId) ||
+                            (sl.ResourceType == "album" && sl.ResourceId == s.Album.AlbumId)
+                        ) &&
+                        !sl.Revoked &&
+                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow) &&
+                        sl.Token == token
+                    )
+                )
+            );
+
         if (shot == null || shot.FullScreen == null)
         {
             return NotFound();
         }
-        Stream stream = await Storage.GetFile(shot);
+        
+        Stream? stream = await Storage.GetFile(shot);
+
+        if (stream == null)
+            return NotFound(); 
+
         return File(stream, shot.ContentType ?? "application/octet-stream");
+        
     }
 
     [Authorize]
@@ -954,7 +999,8 @@ public class MainController : BaseController
                             (sl.ResourceType == "album" && sl.ResourceId == s.Album.AlbumId)
                         ) &&
                         !sl.Revoked &&
-                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
+                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow) &&
+                        sl.Token == token
                     )
                 )
             );

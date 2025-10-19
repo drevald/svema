@@ -603,10 +603,10 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("view_album")]
-    public IActionResult ViewAlbum(int id)
+    public IActionResult ViewAlbum(int id, string? token)
     {
         AlbumDTO dto = new AlbumDTO();
-
+        dto.Token = token;
         var currentUserId = GetUserId();
 
         // var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
@@ -790,7 +790,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("orig")]
-    public async Task<IActionResult> Orig(int id)
+    public async Task<IActionResult> Orig(int id, string? token)
     {
         var shot = dbContext.Shots.Where(s => s.ShotId == id).Include(s => s.Storage).FirstOrDefault();
         if (shot == null || shot.FullScreen == null)
@@ -915,7 +915,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("view_shot")]
-    public IActionResult ViewShot(int id)
+    public IActionResult ViewShot(int id, string? token)
     {
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOT " + id);
         // var shot = dbContext.Shots
@@ -961,7 +961,10 @@ public class MainController : BaseController
 
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOT " + id);
         if (shot == null) return NotFound();
-        return View(shot);
+        ShotDTO dto = new ShotDTO(shot);
+        dto.Token = token;
+        dto.ShotComments = new List<ShotComment>();
+        return View(dto);
     }
 
     [Authorize]
@@ -980,7 +983,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("view_next_shot")]
-    public IActionResult ViewNextShot(int id)
+    public IActionResult ViewNextShot(int id, string? token)
     {
         var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
@@ -989,14 +992,14 @@ public class MainController : BaseController
         int index = shots.FindIndex(a => a.ShotId == id);
         if (index >= 0 && index + 1 < shots.Count)
         {
-            return Redirect("/view_shot?id=" + shots[index + 1].ShotId);
+            return Redirect("/view_shot?id=" + shots[index + 1].ShotId + "&token=" + token);
         }
-        return Redirect("/view_shot?id=" + id);
+        return Redirect("/view_shot?id=" + id + "&token=" + token);
     }
 
     [Authorize]
     [HttpGet("view_prev_shot")]
-    public IActionResult ViewPrevShot(int id)
+    public IActionResult ViewPrevShot(int id, string? token)
     {
         var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
@@ -1005,9 +1008,9 @@ public class MainController : BaseController
         int index = shots.FindIndex(a => a.ShotId == id);
         if (index > 0)
         {
-            return Redirect("/view_shot?id=" + shots[index - 1].ShotId);
+            return Redirect("/view_shot?id=" + shots[index - 1].ShotId + "&token=" + token);
         }
-        return Redirect("/view_shot?id=" + id);
+        return Redirect("/view_shot?id=" + id + "&token=" + token);
     }
 
     [Authorize]

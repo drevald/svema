@@ -141,7 +141,7 @@ public class AlbumDTO
     [Required]
     [Range(-180, 180)]
     public double West { get; set; }
-
+    public string Token { get; set; }
     public AlbumDTO()
     {
         North = 90;
@@ -228,13 +228,19 @@ public class ShotDTO {
     public String LocationName {get; set;}
     public bool Flip {get; set;}
     public int Rotate {get; set;}
-
-    public ShotDTO() {
+    public String Token { get; set; }
+    public Album Album { get; set; }
+    public String CameraModel { get; set; }
+    public String CameraManufacturer { get; set; }
+    public String OrigPath { get; set; }
+    public ShotDTO()
+    {
 
     }    
 
     public ShotDTO(Shot shot) {
         ShotId = shot.ShotId;
+        Album = shot.Album;
         Name = shot.Name;
         AlbumId = shot.AlbumId;
         DateStart = shot.DateStart;
@@ -243,6 +249,9 @@ public class ShotDTO {
         ShotComments = shot.ShotComments;
         Flip = shot.Flip;
         Rotate = shot.Rotate;
+        OrigPath = shot.OrigPath;
+        CameraManufacturer = shot.CameraManufacturer;
+        CameraModel = shot.CameraModel;
     }
 
 }

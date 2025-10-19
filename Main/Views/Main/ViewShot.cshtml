@@ -1,4 +1,4 @@
-@model Data.Shot
+@model Form.ShotDTO
 @using Newtonsoft.Json
 @using System.Web
 @{Layout = "_Layout";}
@@ -31,7 +31,6 @@
       {preset: 'islands#blackStretchyIcon', draggable: false}
     )
   )
-
 }
 
 </script>
@@ -40,13 +39,13 @@
   <div class="col-md-2 p-5 h-100" style="width:500px">
     <div class="row g-3">
       <div class="col-sm-7">
-        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId">Назад</a>
+        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId&token=@Model.Token">Назад</a>
         <a class="btn btn-primary" href="/edit_shot?id=@Model.ShotId">Ред</a>&nbsp;
-        <a class="btn btn-primary" href="/orig?id=@Model.ShotId">Ориг</a>&nbsp;
+        <a class="btn btn-primary" href="/orig?id=@Model.ShotId&token=@Model.Token">Ориг</a>&nbsp;
       </div>      
       <div class="col-sm-5 text-end">
-        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId">Пред</a>&nbsp;
-        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId">След</a>
+        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId&token=@Model.Token">Пред</a>&nbsp;
+        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId&token=@Model.Token">След</a>
       </div>
       <div class="col-sm-3">Альбом</div>
       <div class="col-sm-9">@Model.Album.Name</div>
@@ -59,6 +58,9 @@
       <div class="col-sm-3">Место</div>
       <div class="col-sm-12" id="map" style="height:240px"></div>
       <div class="col-sm-12">Комментарии</div>
+      @if (@Model != null) {
+        <p> here we go </p>
+      }
       @if (@Model.ShotComments != null)      
       {
         @foreach (var comment in @Model.ShotComments)
@@ -95,7 +97,7 @@
   <div class="col p-5">
     <div class="card" style="height: calc(100% - 65px);">
       <div class="card-body bg-secondary" style="
-        background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate'); 
+        background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate&token=@Model.Token'); 
         background-position: center;
         background-repeat: no-repeat; 
         background-size: contain;">

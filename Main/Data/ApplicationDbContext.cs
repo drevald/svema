@@ -9,7 +9,6 @@ using Common;
 using System.Security.Cryptography;
 
 namespace Data;
-
 public class ApplicationDbContext : DbContext
 {
 
@@ -48,6 +47,11 @@ public class ApplicationDbContext : DbContext
         builder.Entity<ShotStorage>()
         .Property(e => e.Provider)
         .HasConversion<string>();
+        builder.Entity<Album>()
+        .HasOne(a => a.PreviewShot)
+        .WithMany() // no back-reference from Shot
+        .HasForeignKey(a => a.PreviewId)
+        .OnDelete(DeleteBehavior.SetNull);
     }
 
     public DbSet<Album> Albums { get; set; }
@@ -64,20 +68,22 @@ public class ApplicationDbContext : DbContext
 
 }
 
+#nullable enable
 [Table("albums")]
 public class Album
 {
     [Column("id")]
     public int AlbumId { get; set; }
     [Column("name")]
-    public string Name { get; set; }
+    public required string Name { get; set; }
     [Column("user_id")]
-    public User User { get; set; }
+    public required User User { get; set; }
     [Column("preview_id")]
     public int PreviewId { get; set; }
+    public Shot? PreviewShot { get; set; }
     [JsonIgnore]
-    public ICollection<Shot> Shots { get; }
-    public ICollection<AlbumComment> AlbumComments { get; set; }
+    public ICollection<Shot>? Shots { get; }
+    public  ICollection<AlbumComment>? AlbumComments { get; set; }
     [Column("longitude")]
     public double Longitude { get; set; }
     [Column("latitude")]
@@ -85,6 +91,7 @@ public class Album
     [Column("zoom")]
     public int Zoom { get; set; }
 }
+#nullable disable
 
 [Table("shots")]
 public class Shot

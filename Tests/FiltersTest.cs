@@ -38,7 +38,7 @@ namespace Tests
                     DateEnd = new DateTime(2020, 12, 31),
                     Latitude = 0,
                     Longitude = 0,
-                    Album = new Album { User = user }
+                    Album = new Album { User = user, Name = "Album" }
                 },
                 new Shot
                 {
@@ -47,7 +47,7 @@ namespace Tests
                     DateEnd = new DateTime(2019, 12, 31),
                     Latitude = 0,
                     Longitude = 0,
-                    Album = new Album { User = user }
+                    Album = new Album { User = user, Name = "Album" }
                 });
 
             context.SaveChanges();

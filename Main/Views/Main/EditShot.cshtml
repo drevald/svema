@@ -18,6 +18,7 @@
   <div class="row">
     <div class="col-md-12 p-5 pb-0 text-end">
       <input type="submit" class="btn btn-primary" value="Сохранить">
+      <a class="btn btn-primary btn px-3" href="/share_link?id=@Model.ShotId&type=shot">Поделится</a>
       <a class="btn btn-secondary" href="edit_album?id=@Model.AlbumId">Отменить</a>
     </div>
   </div>
@@ -116,8 +117,8 @@
     </div>
 
     <div class="col p-5">
-      <div class="card" style="height: calc(100% - 65px);">
-        <div class="card-body bg-secondary" style="
+      <div class="card border-0" style="height: calc(100% - 65px);">
+        <div class="card-body" style="
         background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate'); 
         background-position: center;
         background-repeat: no-repeat; 

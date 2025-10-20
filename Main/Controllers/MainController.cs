@@ -257,14 +257,15 @@ public class MainController : BaseController
         var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
 
         var albumCards = dbContext.Albums
+            .Include(a => a.PreviewShot)
             .Where(a => albumIds.Contains(a.AlbumId))
             .Select(a => new AlbumCardDTO
             {
                 AlbumId = a.AlbumId,
                 Name = a.Name,
                 PreviewId = a.PreviewId,
-                PreviewFlip = false,
-                PreviewRotate = 0
+                PreviewFlip = a.PreviewShot != null && a.PreviewShot.Flip,
+                PreviewRotate = a.PreviewShot != null ? a.PreviewShot.Rotate : 0
             })
             .ToList();
 
@@ -689,6 +690,7 @@ public class MainController : BaseController
 
         var album = dbContext.Albums.Find(shot.AlbumId);
         var dto = new ShotDTO(shot! ?? new Shot());
+        dto.AlbumName = album?.Name ?? "";
         dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         dto.Longitude = shot!.Longitude;
         dto.Latitude = shot.Latitude;
@@ -799,6 +801,7 @@ public class MainController : BaseController
 
         var shot = dbContext.Shots
             .Include(s => s.ShotComments)
+            .Include(s => s.Storage)
             .Include(s => s.Album)
                 .ThenInclude(a => a.User)
             .FirstOrDefault(s =>
@@ -1009,6 +1012,7 @@ public class MainController : BaseController
         if (shot == null) return NotFound();
         ShotDTO dto = new ShotDTO(shot);
         dto.Token = token;
+        dto.AlbumName = shot.Album.Name;
         dto.ShotComments = new List<ShotComment>();
         return View(dto);
     }

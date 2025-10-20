@@ -229,7 +229,7 @@ public class ShotDTO {
     public bool Flip {get; set;}
     public int Rotate {get; set;}
     public String Token { get; set; }
-    public Album Album { get; set; }
+    public String AlbumName { get; set; }
     public String CameraModel { get; set; }
     public String CameraManufacturer { get; set; }
     public String OrigPath { get; set; }
@@ -240,7 +240,7 @@ public class ShotDTO {
 
     public ShotDTO(Shot shot) {
         ShotId = shot.ShotId;
-        Album = shot.Album;
+        AlbumId = shot.AlbumId;
         Name = shot.Name;
         AlbumId = shot.AlbumId;
         DateStart = shot.DateStart;

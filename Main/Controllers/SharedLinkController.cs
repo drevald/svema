@@ -25,7 +25,7 @@ public class SharedLinkController : BaseController
         dbContext.SaveChanges();
 
         var request = HttpContext.Request;
-        var baseUrl = $"{request.Scheme}://{request.Host}/view_album{request.QueryString}";
+        var baseUrl = $"{request.Scheme}://{request.Host}/view_{type}{request.QueryString}";
 
         SharedLinkDTO dto = new SharedLinkDTO();
         dto.SharedLink = sharedLink;

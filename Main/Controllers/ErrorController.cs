@@ -1,24 +1,21 @@
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 public class ErrorController : Controller
 {
-    [Route("Error/{statusCode}")]
-    public IActionResult HttpStatusCodeHandler(int statusCode)
+    [Route("Error/{code:int}")]
+    public IActionResult HandleStatusCode(int code)
     {
-        switch (statusCode)
-        {
-            case 404:
-                return View("NotFound"); // Views/Error/NotFound.cshtml
-            case 403:
-                return View("Forbidden"); // Views/Error/Forbidden.cshtml
-            default:
-                return View("Error"); // generic fallback
-        }
+        ViewData["Code"] = code;
+        return View("Error", new { StatusCode = code });
     }
 
     [Route("Error")]
-    public IActionResult Error()
+    public IActionResult HandleException()
     {
+        var feature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
+        ViewData["Path"] = feature?.Path;
+        ViewData["ErrorMessage"] = feature?.Error?.Message;
         return View("Error");
     }
 }

@@ -9,7 +9,7 @@ ymaps.ready(initFunc);
  * Initialize a map with multiple placemarks and bounds
  * @param jsShot - object containing map bounds and placemarks
  */
-function init_locations(jsShot) {
+function init_locations(jsModel) {
 
   // Get bounding coordinates from model
   const north = jsModel.North;
@@ -87,7 +87,7 @@ function init_locations(jsShot) {
 
 /**
  * Initialize a map with a single draggable marker
- * @param jsShot - object with initial marker coordinates and zoom
+ * @param jsModel - object with initial marker coordinates and zoom
  */
 function init(jsShot) {
 

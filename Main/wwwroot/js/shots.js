@@ -1,3 +1,5 @@
+jsShots = jsModel.Shots;
+
 function flip() {
     for (let i = 0; i < jsShots.length; i++) {
         const checkbox = document.querySelector(`[name="Shots[${i}].IsChecked"]`);

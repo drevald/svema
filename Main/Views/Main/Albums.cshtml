@@ -3,15 +3,6 @@
 @using Newtonsoft.Json
 @{Layout = "_Layout";}
 
-<style>
-  .bg-image {
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-  }
-</style>
-
 <script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
   var initFunc = function () { init_locations(jsModel); };

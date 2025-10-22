@@ -3,11 +3,16 @@
 @model Form.AlbumDTO
 @{Layout = "_Layout";}
 
-<script asp-append-version="true">
+<!-- <script asp-append-version="true">
     var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
     var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
     var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
     var initFunc = function () { init(jsShot);};
+</script> -->
+
+<script asp-append-version="true">
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () { init_locations(jsModel); };
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>

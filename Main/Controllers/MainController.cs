@@ -16,6 +16,7 @@ using Data;
 using Utils;
 using Npgsql;
 using Common;
+using Services;
 
 namespace Controllers;
 
@@ -28,92 +29,6 @@ public class MainController : BaseController
     public List<string> GetCameraModels()
     {
         return dbContext.Shots.Select(s => s.Name).ToList();
-    }
-
-    //To get clustered view of locations on map
-    public List<LocationDTO> GetClusteredShotsWithLabels(bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
-    {
-        var filters = new List<string>();
-        filters.Add("s.longitude BETWEEN @longitudeMin AND @longitudeMax");
-        filters.Add("s.latitude BETWEEN @latitudeMin AND @latitudeMax");
-
-        if (onlyMine)
-        {
-            filters.Add("u.username = @username");
-        }
-        else
-        {
-            filters.Add(@"(
-                u.username = @username
-                OR EXISTS (
-                    SELECT 1 FROM shared_users su
-                    WHERE su.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
-                    AND su.host_user_id = a.""UserId""
-                )
-                OR EXISTS (
-                    SELECT 1 FROM shared_albums sa
-                    JOIN albums shared_a ON sa.shared_album_id = shared_a.id
-                    WHERE sa.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
-                    AND shared_a.id = a.id
-                )
-            )");
-        }
-
-        string whereClause = string.Join(" AND ", filters);
-
-        string sql = $@"
-        SELECT 
-            COUNT(*) AS count,
-            ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
-            ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
-        FROM (
-            SELECT ST_SnapToGrid(
-                    ST_SetSRID(ST_MakePoint(s.longitude, s.latitude), 4326), @gridSize
-                ) AS tile_geom,
-                ST_SetSRID(ST_MakePoint(s.longitude, s.latitude), 4326) AS geom
-            FROM shots s
-            JOIN albums a ON s.album_id = a.id
-            JOIN users u ON a.""UserId"" = u.id
-            WHERE {whereClause}
-        ) AS clustered
-        GROUP BY tile_geom;
-        ";
-
-        var locationList = new List<LocationDTO>();
-
-        using (var connection = dbContext.Database.GetDbConnection())
-        {
-            connection.Open();
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = sql;
-
-                var username = GetUsername() ?? string.Empty;
-
-                command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 10));
-                command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
-                command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
-                command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
-                command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
-                command.Parameters.Add(new NpgsqlParameter("@username", username));
-
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var location = new LocationDTO
-                        {
-                            Label = reader.GetInt32(reader.GetOrdinal("count")).ToString(),
-                            Longitude = reader.GetDouble(reader.GetOrdinal("lon")),
-                            Latitude = reader.GetDouble(reader.GetOrdinal("lat"))
-                        };
-                        locationList.Add(location);
-                    }
-                }
-            }
-        }
-        return locationList;
     }
 
     [Authorize]
@@ -240,8 +155,8 @@ public class MainController : BaseController
     {
         dto ??= new AlbumsListDTO();
 
+        var username = GetUsername() ?? string.Empty;
         var filteredShots = ApplyShotFilters(dto, onlyMine);
-
         var shotGroups = filteredShots
             .GroupBy(s => s.AlbumId)
             .Select(g => new
@@ -255,7 +170,6 @@ public class MainController : BaseController
             .ToList();
 
         var albumIds = shotGroups.Select(g => g.AlbumId).ToList();
-
         var albumCards = dbContext.Albums
             .Include(a => a.PreviewShot)
             .Where(a => albumIds.Contains(a.AlbumId))
@@ -307,7 +221,6 @@ public class MainController : BaseController
 
         if (onlyMine)
         {
-            var username = GetUsername() ?? string.Empty;
             var emptyAlbums = dbContext.Albums
                 .Where(a => a.User != null && a.User.Username == username)
                 .Where(a => !dbContext.Shots.Any(s => s.AlbumId == a.AlbumId))
@@ -327,9 +240,10 @@ public class MainController : BaseController
             finalAlbumCards.AddRange(emptyAlbumCards);
         }
 
+
         var cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList();
         var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
-        var placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North);
+        var placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North);
 
         var northBound = placemarks.Max(p => p.Latitude) - 0.1;
         var southBound = placemarks.Min(p => p.Latitude) + 0.1;
@@ -454,6 +368,12 @@ public class MainController : BaseController
             })
             .ToList();
 
+        dto.Placemarks = locationService.GetShotsForShots(dto.Shots);
+        GeoRect rect = GeoRect.FromPlacemarks(dto.Placemarks, 0.1);
+        dto.North = rect.North;
+        dto.South = rect.South;
+        dto.East = rect.East;
+        dto.West = rect.West;
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
@@ -668,11 +588,18 @@ public class MainController : BaseController
             })
             .ToList();
 
+        dto.Placemarks = locationService.GetShotsForShots(dto.Shots);
+        GeoRect rect = GeoRect.FromPlacemarks(dto.Placemarks, 0.1);
+        dto.North = rect.North;
+        dto.South = rect.South;
+        dto.East = rect.East;
+        dto.West = rect.West;
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
         dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
-        dto.Placemarks = GetClusteredShotsWithLabels(false, dto.West, dto.East, dto.South, dto.North);
+        //dto.Placemarks = GetClusteredShotsWithLabels(false, dto.West, dto.East, dto.South, dto.North);
+       
 
         return View(dto);
     }
@@ -1012,6 +939,10 @@ public class MainController : BaseController
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} END GETTING SHOT " + id);
         if (shot == null) return NotFound();
         ShotDTO dto = new ShotDTO(shot);
+        dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
+        dto.Longitude = shot!.Longitude;
+        dto.Latitude = shot.Latitude;
+        dto.Zoom = shot.Zoom;
         dto.Token = token;
         dto.AlbumName = shot.Album.Name;
         dto.ShotComments = new List<ShotComment>();

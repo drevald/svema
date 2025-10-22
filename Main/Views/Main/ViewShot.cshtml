@@ -39,23 +39,6 @@
     }
 </script>
 
-<style>
-    /* Make photo scale responsively */
-    .photo-view {
-        height: 80vh;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: contain;
-        border-radius: 12px;
-    }
-
-    @@media (max-width: 768px) {
-        .photo-view {
-            height: 60vh;
-        }
-    }
-</style>
-
 <div class="container-fluid">
     <div class="row flex-column flex-md-row h-100">
         <!-- PHOTO FIRST ON MOBILE -->
@@ -131,6 +114,10 @@
                     }
 
                     <form action="/add_shot_comment" method="post">
+                        <input type="hidden" id="North" name="North" />
+                        <input type="hidden" id="South" name="South" />
+                        <input type="hidden" id="East" name="East" />
+                        <input type="hidden" id="West" name="West" />
                         <input type="hidden" id="id" name="id" value="@Model.ShotId" />
                         <input type="hidden" id="commentId" name="commentId" value="0" />
                         <div class="col-12">

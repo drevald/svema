@@ -11,11 +11,14 @@ using SixLabors.ImageSharp.Processing;
 using Data;
 using Utils;
 using System.Security.Claims;
+using Services;
 
 namespace Controllers;
 
 public class BaseController : Controller
 {
+
+    public LocationService locationService;
 
     protected ApplicationDbContext dbContext;
 
@@ -25,6 +28,7 @@ public class BaseController : Controller
     {
         this.dbContext = dbContext;
         this.config = config;
+        this.locationService = new LocationService(dbContext);
     }
 
 

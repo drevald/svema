@@ -6,9 +6,9 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Http;
+using System.Linq;
 
 namespace Form;
-
 
 public class AlbumViewDTO
 {
@@ -46,38 +46,39 @@ public class AlbumCardDTO
     public int PreviewRotate { get; set; }
     public int Size { get; set; }
     public bool IsSelected { get; set; }
-    public bool IsChecked {get; set;}
+    public bool IsChecked { get; set; }
 }
 
-public class AlbumsListDTO {
-    public String DateStart {get; set;}
-    public String DateEnd {get; set;}
-    public int LocationId {get; set;}
-    public string Camera {get; set;}
-    public ICollection<Location> Locations {get; set;}
-    public List<AlbumCardDTO> Albums {get; set;}
-    public ICollection<LocationDTO> Placemarks {get; set;}
-    public ICollection<string> Cameras {get; set;}
+public class AlbumsListDTO
+{
+    public String DateStart { get; set; }
+    public String DateEnd { get; set; }
+    public int LocationId { get; set; }
+    public string Camera { get; set; }
+    public ICollection<Location> Locations { get; set; }
+    public List<AlbumCardDTO> Albums { get; set; }
+    public ICollection<LocationDTO> Placemarks { get; set; }
+    public ICollection<string> Cameras { get; set; }
     [Required]
     [Range(-90, 90)]
-    public double North {get; set;}
+    public double North { get; set; }
     [Required]
     [Range(-90, 90)]
-    public double South {get; set;}
+    public double South { get; set; }
     [Required]
     [Range(-180, 180)]
-    public double East {get; set;}
+    public double East { get; set; }
     [Required]
     [Range(-180, 180)]
-    public double West {get; set;}
-    public SortBy SortBy {get; set;}
+    public double West { get; set; }
+    public SortBy SortBy { get; set; }
     public List<SelectListItem> SortByOptions { get; set; }
-    public SortDirection SortDirection {get; set;}
+    public SortDirection SortDirection { get; set; }
     public List<SelectListItem> SortDirectionOptions { get; set; }
     public Boolean EditLocation { get; set; }
-    public double Longitude {get; set;}
-    public double Latitude {get; set;}
-    public int Zoom {get; set;}
+    public double Longitude { get; set; }
+    public double Latitude { get; set; }
+    public int Zoom { get; set; }
     public String LocationName { get; set; }
     public AlbumsListDTO()
     {
@@ -152,19 +153,22 @@ public class AlbumDTO
 
 }
 
-public class ShotPreviewDTO {
+public class ShotPreviewDTO
+{
 
-    public int ShotId {get; set;}
-    public string Name {get; set;}
-    public bool IsChecked {get; set;}
-    public string SourceUri {get; set;}
-    public int Rotate {get; set;}
-    public bool Flip {get; set;}
+    public int ShotId { get; set; }
+    public string Name { get; set; }
+    public bool IsChecked { get; set; }
+    public string SourceUri { get; set; }
+    public int Rotate { get; set; }
+    public bool Flip { get; set; }
 
-    public ShotPreviewDTO () {
-    }    
+    public ShotPreviewDTO()
+    {
+    }
 
-    public ShotPreviewDTO (Shot shot) {
+    public ShotPreviewDTO(Shot shot)
+    {
         ShotId = shot.ShotId;
         Name = shot.Name;
         IsChecked = false;
@@ -175,25 +179,28 @@ public class ShotPreviewDTO {
 
 }
 
-public class ShotREST {
-    public int ShotId {get; set;}
-    public int AlbumId {get; set;}
-    public string Name {get; set;}
-    public int UserId {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
-    public DateTime DateStart {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
-    public DateTime DateEnd {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
-    public DateTime DateUploaded {get; set;}
-    public byte[] Data {get; set;}
-    public string Mime {get; set;}  
-    public string OrigPath {get; set;}  
-    public ShotREST() {
+public class ShotREST
+{
+    public int ShotId { get; set; }
+    public int AlbumId { get; set; }
+    public string Name { get; set; }
+    public int UserId { get; set; }
+    [BindProperty, DataType(DataType.Date)]
+    public DateTime DateStart { get; set; }
+    [BindProperty, DataType(DataType.Date)]
+    public DateTime DateEnd { get; set; }
+    [BindProperty, DataType(DataType.Date)]
+    public DateTime DateUploaded { get; set; }
+    public byte[] Data { get; set; }
+    public string Mime { get; set; }
+    public string OrigPath { get; set; }
+    public ShotREST()
+    {
 
     }
 
-    public ShotREST(Shot shot) {
+    public ShotREST(Shot shot)
+    {
         ShotId = shot.ShotId;
         AlbumId = shot.AlbumId;
         Name = shot.Name;
@@ -207,27 +214,28 @@ public class ShotREST {
 
 }
 
-public class ShotDTO {
+public class ShotDTO
+{
 
-    public int ShotId {get; set;}
-    public string Name {get; set;}
-    public int AlbumId {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
-    public DateTime DateStart {get; set;}
-    [BindProperty, DataType(DataType.Date)] 
-    public DateTime DateEnd {get; set;}
-    public byte[] Preview {get; set;}
-    public System.Nullable<int> LocationId {get; set;}    
-    public Location Location {get; set;}    
-    public ICollection<ShotComment> ShotComments {get; set;}     
-    public ICollection<Location> Locations {get; set;} 
-    public bool IsCover {get; set;}
-    public double Longitude {get; set;}
-    public double Latitude {get; set;}
-    public int Zoom {get; set;}
-    public String LocationName {get; set;}
-    public bool Flip {get; set;}
-    public int Rotate {get; set;}
+    public int ShotId { get; set; }
+    public string Name { get; set; }
+    public int AlbumId { get; set; }
+    [BindProperty, DataType(DataType.Date)]
+    public DateTime DateStart { get; set; }
+    [BindProperty, DataType(DataType.Date)]
+    public DateTime DateEnd { get; set; }
+    public byte[] Preview { get; set; }
+    public System.Nullable<int> LocationId { get; set; }
+    public Location Location { get; set; }
+    public ICollection<ShotComment> ShotComments { get; set; }
+    public ICollection<Location> Locations { get; set; }
+    public bool IsCover { get; set; }
+    public double Longitude { get; set; }
+    public double Latitude { get; set; }
+    public int Zoom { get; set; }
+    public String LocationName { get; set; }
+    public bool Flip { get; set; }
+    public int Rotate { get; set; }
     public String Token { get; set; }
     public String AlbumName { get; set; }
     public String CameraModel { get; set; }
@@ -236,9 +244,10 @@ public class ShotDTO {
     public ShotDTO()
     {
 
-    }    
+    }
 
-    public ShotDTO(Shot shot) {
+    public ShotDTO(Shot shot)
+    {
         ShotId = shot.ShotId;
         AlbumId = shot.AlbumId;
         Name = shot.Name;
@@ -256,49 +265,104 @@ public class ShotDTO {
 
 }
 
-public class LoginDTO : DTO {
+public class LoginDTO : DTO
+{
 
-    public string Username {get; set;}
-    public string Password {get; set;}
-
-}
-
-public class UploadedFilesDTO : DTO {
-
-    public int AlbumId {get; set;}
-    public List<IFormFile> Files {get; set;}
-    public Dictionary<string, string> FileErrors {get; set;}
+    public string Username { get; set; }
+    public string Password { get; set; }
 
 }
 
-public class DTO {
+public class UploadedFilesDTO : DTO
+{
 
-    public string ErrorMessage {get; set;}
-
-}
-
-public class ProfileDTO : DTO {
-    public List<ShotStorage> Storages {get; set;}
-    public User User {get; set;}
-}
-
-public class StorageDTO : DTO {
-
-    public ShotStorage Storage {get; set;}
+    public int AlbumId { get; set; }
+    public List<IFormFile> Files { get; set; }
+    public Dictionary<string, string> FileErrors { get; set; }
 
 }
 
-public class LocationDTO : DTO {
-    public string Label {get; set;}
-    public double Longitude {get; set;}
-    public double Latitude {get; set;}
+public class DTO
+{
+
+    public string ErrorMessage { get; set; }
 
 }
 
-public class SelectAlbumDTO {
-    public int SourceAlbumId {get; set;}
-    public int TargetAlbumId {get; set;}
-    public List<AlbumCardDTO> Albums {get; set;}
-    public List<ShotPreviewDTO> Shots {get; set;}
+public class ProfileDTO : DTO
+{
+    public List<ShotStorage> Storages { get; set; }
+    public User User { get; set; }
+}
 
+public class StorageDTO : DTO
+{
+
+    public ShotStorage Storage { get; set; }
+
+}
+
+public class LocationDTO : DTO
+{
+    public string Label { get; set; }
+    public double Longitude { get; set; }
+    public double Latitude { get; set; }
+
+}
+
+public class SelectAlbumDTO
+{
+    public int SourceAlbumId { get; set; }
+    public int TargetAlbumId { get; set; }
+    public List<AlbumCardDTO> Albums { get; set; }
+    public List<ShotPreviewDTO> Shots { get; set; }
+}
+
+public readonly record struct GeoRect(
+    double North,
+    double South,
+    double West,
+    double East)
+{
+    public double Width => East - West;
+    public double Height => North - South;
+
+    public bool Contains(double lat, double lon) =>
+        lat <= North && lat >= South &&
+        lon >= West && lon <= East;
+
+    public static GeoRect FromPlacemarks(IEnumerable<LocationDTO> placemarks, double marginPercent = 0.05)
+    {
+        if (placemarks == null || !placemarks.Any())
+            return default;
+
+        var north = placemarks.Max(p => p.Latitude);
+        var south = placemarks.Min(p => p.Latitude);
+        var east = placemarks.Max(p => p.Longitude);
+        var west = placemarks.Min(p => p.Longitude);
+
+        var latSpan = north - south;
+        var lonSpan = east - west;
+
+        const double minSpan = 0.1;
+
+        if (latSpan < minSpan)
+            latSpan = minSpan;
+
+        if (lonSpan < minSpan)
+            lonSpan = minSpan;
+
+        var latMargin = latSpan * marginPercent;
+        var lonMargin = lonSpan * marginPercent;
+
+        var latCenter = (north + south) / 2;
+        var lonCenter = (east + west) / 2;
+
+        return new GeoRect(
+            latCenter + latSpan / 2 + latMargin,
+            latCenter - latSpan / 2 - latMargin,
+            lonCenter - lonSpan / 2 - lonMargin,
+            lonCenter + lonSpan / 2 + lonMargin
+        );
+    }
 }

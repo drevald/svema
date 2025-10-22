@@ -58,6 +58,10 @@
       }
 
       <form action="add_comment" method="post">
+        <input type="hidden" id="North" name="North" />
+        <input type="hidden" id="South" name="South" />
+        <input type="hidden" id="East" name="East" />
+        <input type="hidden" id="West" name="West" />        
         <input type="hidden" id="id" value="@Model.AlbumId" name="id">
         <input type="hidden" id="commentId" name="commentId" value="0">
         <div class="col-sm-12">

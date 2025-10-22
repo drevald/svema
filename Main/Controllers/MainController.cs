@@ -331,16 +331,21 @@ public class MainController : BaseController
         var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         var placemarks = GetClusteredShotsWithLabels(onlyMine, dto.West, dto.East, dto.South, dto.North);
 
+        var northBound = placemarks.Max(p => p.Latitude) - 0.1;
+        var southBound = placemarks.Min(p => p.Latitude) + 0.1;
+        var westBound = placemarks.Min(p => p.Longitude) - 0.1;
+        var eastBound = placemarks.Max(p => p.Longitude) + 0.1;
+
         return new AlbumsListDTO
         {
             Albums = finalAlbumCards,
             Locations = locations,
             DateStart = dto.DateStart,
             DateEnd = dto.DateEnd,
-            North = dto.North,
-            South = dto.South,
-            West = dto.West,
-            East = dto.East,
+            North = northBound,
+            South = southBound,
+            West = westBound,
+            East = eastBound,
             EditLocation = dto.EditLocation,
             Cameras = cameras,
             Placemarks = placemarks,
@@ -966,10 +971,6 @@ public class MainController : BaseController
     public IActionResult ViewShot(int id, string? token)
     {
         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} START GETTING SHOT " + id);
-        // var shot = dbContext.Shots
-        //     .Include(s => s.ShotComments)
-        //     .Include(s => s.Album)
-        //     .FirstOrDefault(s => s.ShotId == id);
 
         var currentUserId = GetUserId();
 

@@ -72,7 +72,7 @@ function init_locations(jsShot) {
       document.querySelector('#West').value = coords[1] - 0.01;
 
       // Submit the form
-      // document.forms[0].submit();
+      document.forms[0].submit();
     });
 
     // Add placemark to the map

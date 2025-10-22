@@ -1,108 +1,148 @@
 @model Form.ShotDTO
 @using Newtonsoft.Json
 @using System.Web
-@{Layout = "_Layout";}
+@{
+    Layout = "_Layout";
+}
 
 <script>
-  function editComment(id, text) {
-    document.all("text").value = text;
-    document.all("commentId").value = id;
-  }
+    function editComment(id, text) {
+        document.getElementById("text").value = text;
+        document.getElementById("commentId").value = id;
+    }
 </script>
 
 <script type="text/javascript">
+    ymaps.ready(init);
 
-  ymaps.ready(init);
+    var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@Model)))");
 
-  var counter = 0;
-  var circle;
-  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(@Model)))");
+    function init() {
+        const myMap = new ymaps.Map("map", {
+            center: [jsModel.Latitude, jsModel.Longitude],
+            zoom: jsModel.Zoom,
+            controls: []
+        });
 
-  function init() {    
-    myMap = new ymaps.Map("map", {
-      center: [jsModel.Latitude, jsModel.Longitude],
-    zoom: jsModel.Zoom,
-    controls: []
-  })
-
-  myMap.geoObjects.add(
-    new ymaps.GeoObject(
-      {geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude]}, properties: { iconContent: jsModel.Name }}, 
-      {preset: 'islands#blackStretchyIcon', draggable: false}
-    )
-  )
-}
-
+        myMap.geoObjects.add(
+            new ymaps.GeoObject(
+                {
+                    geometry: { type: "Point", coordinates: [jsModel.Latitude, jsModel.Longitude] },
+                    properties: { iconContent: jsModel.Name }
+                },
+                {
+                    preset: 'islands#blackStretchyIcon',
+                    draggable: false
+                }
+            )
+        );
+    }
 </script>
 
-<div class="row h-100">
-  <div class="col-md-2 p-5 h-100" style="width:500px">
-    <div class="row g-3">
-      <div class="col-sm-7">
-        <a class="btn btn-secondary" href="/view_album?id=@Model.AlbumId&token=@Model.Token">Назад</a>
-        <a class="btn btn-primary" href="/edit_shot?id=@Model.ShotId">Ред</a>&nbsp;
-        <a class="btn btn-primary" href="/orig?id=@Model.ShotId&token=@Model.Token">Ориг</a>&nbsp;
-      </div>      
-      <div class="col-sm-5 text-end">
-        <a class="btn btn-primary" href="view_prev_shot?id=@Model.ShotId&token=@Model.Token">Пред</a>&nbsp;
-        <a class="btn btn-primary" href="view_next_shot?id=@Model.ShotId&token=@Model.Token">След</a>
-      </div>
-      <div class="col-sm-3">Альбом</div>
-      <div class="col-sm-9">@Model.AlbumName</div>
-      <div class="col-sm-3">Дата снимка</div>
-      <div class="col-sm-9">@Model.DateStart</div>
-      <div class="col-sm-3">Камера</div>
-      <div class="col-sm-9">@Model.CameraManufacturer&nbsp;@Model.CameraModel</div>
-      <div class="col-sm-3">Источник</div>
-      <div class="col-sm-9">@Model.OrigPath</div>      
-      <div class="col-sm-3">Место</div>
-      <div class="col-sm-12" id="map" style="height:240px"></div>
-      <div class="col-sm-12">Комментарии</div>
-      @if (@Model != null) {
-        <p> here we go </p>
-      }
-      @if (@Model.ShotComments != null)      
-      {
-        @foreach (var comment in @Model.ShotComments)
-        {
-          <div class="col-sm-12">
-            <small>
-              <b>@comment.AuthorUsername</b>&nbsp;
-              @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br>
-              @comment.Text
-              @if (@comment.AuthorUsername == Context.User.Identity.Name)
-              {
-                <a href="delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete&nbsp;</a>
-                <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
-              }
-            </small>
-          </div>
-        }
-      }
-
-      <form action="add_shot_comment" method="post">
-        <input type="hidden" id="id" value="@Model.ShotId" name="id">
-        <input type="hidden" id="commentId" name="commentId" value="0">
-        <div class="col-sm-12">
-          <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
-        </div>
-        <div class="col-sm-12">
-          <input class="btn btn-primary btn-sm" value="Set Comment" type="submit">&nbsp;<input
-            class="btn btn-secondary btn-sm" type="reset">
-        </div>
-      </form>       
-
-    </div>
-  </div>
-  <div class="col p-5">
-    <div class="card border-0" style="height: calc(100% - 65px);">
-      <div class="card-body" style="
-        background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate&token=@Model.Token'); 
+<style>
+    /* Make photo scale responsively */
+    .photo-view {
+        height: 80vh;
         background-position: center;
-        background-repeat: no-repeat; 
-        background-size: contain;">
-      </div>
+        background-repeat: no-repeat;
+        background-size: contain;
+        border-radius: 12px;
+    }
+
+    @@media (max-width: 768px) {
+        .photo-view {
+            height: 60vh;
+        }
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row flex-column flex-md-row h-100">
+        <!-- PHOTO FIRST ON MOBILE -->
+        <div class="col-md-9 col-lg-9 p-4 order-1 order-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body photo-view"
+                     style="background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate&token=@Model.Token');">
+                </div>
+            </div>
+        </div>
+
+        <!-- LEFT COLUMN -->
+        <div class="col-md-3 col-lg-3 p-4 border-end order-2 order-md-1">
+            <div class="d-flex justify-content-between mb-3">
+                <div>
+                    <a class="btn btn-secondary btn-sm" href="/view_album?id=@Model.AlbumId&token=@Model.Token">Назад</a>
+                    <a class="btn btn-primary btn-sm" href="/edit_shot?id=@Model.ShotId">Ред</a>
+                    <a class="btn btn-primary btn-sm" href="/orig?id=@Model.ShotId&token=@Model.Token">Ориг</a>
+                </div>
+                <div>
+                    <a class="btn btn-primary btn-sm" href="/view_prev_shot?id=@Model.ShotId&token=@Model.Token">Пред</a>
+                    <a class="btn btn-primary btn-sm" href="/view_next_shot?id=@Model.ShotId&token=@Model.Token">След</a>
+                </div>
+            </div>
+
+            <!-- COLLAPSE BUTTON (mobile only) -->
+            <button class="btn btn-outline-secondary w-100 mb-3 d-md-none"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#detailsPanel">
+                Показать / Скрыть детали
+            </button>
+
+            <!-- COLLAPSIBLE DETAILS PANEL -->
+            <div class="collapse d-md-block" id="detailsPanel">
+                <div class="row g-2">
+                    <div class="col-4 fw-bold">Альбом</div>
+                    <div class="col-8">@Model.AlbumName</div>
+
+                    <div class="col-4 fw-bold">Дата снимка</div>
+                    <div class="col-8">@Model.DateStart</div>
+
+                    <div class="col-4 fw-bold">Камера</div>
+                    <div class="col-8">@Model.CameraManufacturer&nbsp;@Model.CameraModel</div>
+
+                    <div class="col-12 fw-bold mt-2">Место</div>
+                    <div class="col-12 mb-3">
+                        <div id="map" style="height:240px; border-radius: 10px; overflow:hidden;"></div>
+                    </div>
+
+                    <div class="col-12 fw-bold mt-3">Комментарии</div>
+
+                    @if (Model != null)
+                    {
+                        <p>here we go</p>
+                    }
+
+                    @if (Model.ShotComments != null)
+                    {
+                        foreach (var comment in Model.ShotComments)
+                        {
+                            <div class="col-12 mb-2 border-bottom pb-1">
+                                <small>
+                                    <b>@comment.AuthorUsername</b>&nbsp;
+                                    @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br />
+                                    @comment.Text
+                                    @if (comment.AuthorUsername == Context.User.Identity.Name)
+                                    {
+                                        <a href="/delete_shot_comment?commentId=@comment.Id&id=@Model.ShotId">Delete&nbsp;</a>
+                                        <a href="javascript:editComment(@comment.Id, '@HttpUtility.JavaScriptStringEncode(comment.Text)')">Edit&nbsp;</a>
+                                    }
+                                </small>
+                            </div>
+                        }
+                    }
+
+                    <form action="/add_shot_comment" method="post">
+                        <input type="hidden" id="id" name="id" value="@Model.ShotId" />
+                        <input type="hidden" id="commentId" name="commentId" value="0" />
+                        <div class="col-12">
+                            <textarea class="form-control mb-3" rows="4" id="text" name="text"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <input class="btn btn-primary btn-sm" value="Set Comment" type="submit" />
+                            <input class="btn btn-secondary btn-sm" type="reset" value="Reset" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 </div>

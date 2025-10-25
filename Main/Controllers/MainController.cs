@@ -245,8 +245,8 @@ public class MainController : BaseController
         var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         var placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North);
 
-        var northBound = placemarks.Max(p => p.Latitude) - 0.1;
-        var southBound = placemarks.Min(p => p.Latitude) + 0.1;
+        var northBound = placemarks.Max(p => p.Latitude) + 0.1;
+        var southBound = placemarks.Min(p => p.Latitude) - 0.1;
         var westBound = placemarks.Min(p => p.Longitude) - 0.1;
         var eastBound = placemarks.Max(p => p.Longitude) + 0.1;
 
@@ -281,10 +281,10 @@ public class MainController : BaseController
 
     public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, bool onlyMine)
     {
-        if (dto == null) return dbContext.Shots.AsQueryable();
+        if (dto == null) return dbContext.Shots.AsNoTracking().AsQueryable();
 
         var provider = CultureInfo.InvariantCulture;
-        var query = dbContext.Shots.AsQueryable();
+        var query = dbContext.Shots.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(dto.DateStart))
         {
@@ -331,6 +331,7 @@ public class MainController : BaseController
                         sa.GuestUser != null && sa.GuestUser.Username == username &&
                         sa.Album != null && sa.Album.AlbumId == (shot.Album != null ? shot.Album.AlbumId : -1)));
         }
+
 
         return query;
     }

@@ -21,6 +21,11 @@
 
 <form method="post">
 
+<input type="hidden" id="North" name="North" />
+<input type="hidden" id="South" name="South" />
+<input type="hidden" id="East" name="East" />
+<input type="hidden" id="West" name="West" />    
+
 <div class="row">
 
     <div class="col-md-2 p-5" style="width:500px">
@@ -37,7 +42,7 @@
 
                 <div class="col-sm-12">
                     <label class="form-label">Год</label>
-                    <select asp-for="Year" class="form-select" id="state" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+                    <select asp-for="Year" class="form-select" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
                         <option></option>
                         <option value="-1">Unknown</option>
                         @{
@@ -73,7 +78,7 @@
 
                 <div class="col-sm-12">
                     <label class="form-label">Место</label>
-                    <select asp-for="LocationId" class="form-select" id="state"  onchange="javascript:show(this.selectedIndex, jsLocations, 2)">
+                    <select asp-for="LocationId" class="form-select" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 2)">
                         <option></option>
                         <option value=-1>Unknown</option>
                         @foreach(var location in @Model.Locations) {

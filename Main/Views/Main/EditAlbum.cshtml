@@ -87,6 +87,13 @@
                     </select>
                 </div>
 
+                <div class="col-12">
+                    <input asp-for="EditLocation"
+                                       type="checkbox"
+                                       onclick="toggleEditing(this);" />
+                    <label class="form-label">Изменить локацию</label>
+                </div>
+
                 <input asp-for="Zoom" class="form-control" type="hidden" value="" />
 
                 <div class="col-sm-6">

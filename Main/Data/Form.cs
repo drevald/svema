@@ -143,6 +143,7 @@ public class AlbumDTO
     [Range(-180, 180)]
     public double West { get; set; }
     public string Token { get; set; }
+    public Boolean EditLocation { get; set; }
     public AlbumDTO()
     {
         North = 90;

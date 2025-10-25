@@ -406,58 +406,98 @@ public class MainController : BaseController
             return BadRequest();
         }
 
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] START >>>>>> ");
+
+        // Update album name
         storedAlbum.Name = dto.Name;
 
-        var shotIds = dto.Shots.Select(s => s?.ShotId ?? -1).Where(id => id != -1).ToList();
-        if (!shotIds.Any())
-        {
-            Console.WriteLine($"No shots to update for album {dto.AlbumId}");
-        }
-
-        var shots = dbContext.Shots
-            .Where(s => shotIds.Contains(s.ShotId))
+        // Get shots that need updates
+        var shotsToUpdate = dto.Shots
+            .Where(s => s != null && (s.IsChecked || s.Rotate != 0 || s.Flip))
+            .Select(s => s.ShotId)
+            .Where(id => id > 0)
             .ToList();
 
-        var shotsDict = shots.ToDictionary(s => s.ShotId);
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] FOUND {shotsToUpdate.Count} SHOTS TO UPDATE");
 
-        foreach (var s in dto.Shots)
+        if (shotsToUpdate.Any())
         {
-            if (s == null) continue;
-
-            if (!shotsDict.TryGetValue(s.ShotId, out var shot))
+            // Bulk update shots using ExecuteSqlRaw for better performance
+            int chunkSize = 1000;
+            var shotIds = shotsToUpdate.ToArray();
+            
+            for (int i = 0; i < shotIds.Length; i += chunkSize)
             {
-                Console.WriteLine($"Shot {s.ShotId} not found in database, skipping");
-                continue;
-            }
+                var chunk = shotIds.Skip(i).Take(chunkSize).ToArray();
+                var idParams = string.Join(",", chunk);
+                
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] START UPDATE CHUNK {i/chunkSize + 1}");
+                
+                // Build dynamic SQL based on what needs to be updated
+                var updateFields = new List<string>();
+                var parameters = new List<object>();
+                var paramIndex = 0;
 
-            if (s.IsChecked || s.Rotate != shot.Rotate || s.Flip != shot.Flip)
-            {
                 if (dto.Year < 0)
                 {
-                    shot.DateStart = DateTime.MinValue;
-                    shot.DateEnd = DateTime.MinValue;
+                    updateFields.Add($"DateStart = {{{paramIndex++}}}, DateEnd = {{{paramIndex++}}}");
+                    parameters.Add(DateTime.MinValue);
+                    parameters.Add(DateTime.MinValue);
                 }
-                if (DateTime.MinValue != dto.DateStart)
+                else
                 {
-                    shot.DateStart = dto.DateStart;
+                    if (DateTime.MinValue != dto.DateStart)
+                    {
+                        updateFields.Add($"DateStart = {{{paramIndex++}}}");
+                        parameters.Add(dto.DateStart);
+                    }
+                    if (DateTime.MinValue != dto.DateEnd)
+                    {
+                        updateFields.Add($"DateEnd = {{{paramIndex++}}}");
+                        parameters.Add(dto.DateEnd);
+                    }
                 }
-                if (DateTime.MinValue != dto.DateEnd)
-                {
-                    shot.DateEnd = dto.DateEnd;
-                }
+
                 if (dto.Longitude != 0 && dto.Latitude != 0)
                 {
-                    shot.Latitude = dto.Latitude;
-                    shot.Longitude = dto.Longitude;
-                    shot.Zoom = dto.Zoom;
+                    updateFields.Add($"Latitude = {{{paramIndex++}}}, Longitude = {{{paramIndex++}}}, Zoom = {{{paramIndex++}}}");
+                    parameters.Add(dto.Latitude);
+                    parameters.Add(dto.Longitude);
+                    parameters.Add(dto.Zoom);
                 }
-                shot.Flip = s.Flip;
-                shot.Rotate = s.Rotate;
+
+                // Handle flip and rotate updates
+                var flipRotateUpdates = dto.Shots
+                    .Where(s => s != null && shotsToUpdate.Contains(s.ShotId))
+                    .GroupBy(s => new { s.Flip, s.Rotate })
+                    .ToList();
+
+                foreach (var group in flipRotateUpdates)
+                {
+                    var groupShotIds = group.Select(s => s.ShotId).ToArray();
+                    var groupIdParams = string.Join(",", groupShotIds);
+                    
+                    var groupUpdateFields = new List<string>(updateFields);
+                    groupUpdateFields.Add($"Flip = {{{paramIndex++}}}, Rotate = {{{paramIndex++}}}");
+                    
+                    var groupParameters = new List<object>(parameters);
+                    groupParameters.Add(group.Key.Flip);
+                    groupParameters.Add(group.Key.Rotate);
+
+                    var sql = $"UPDATE Shots SET {string.Join(", ", groupUpdateFields)} WHERE Id IN ({groupIdParams})";
+                    
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] EXECUTING SQL FOR {groupShotIds.Length} SHOTS");
+                    dbContext.Database.ExecuteSqlRaw(sql, groupParameters.ToArray());
+                }
+                
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] END UPDATE CHUNK {i/chunkSize + 1}");
             }
         }
 
+        // Add location if specified
         if (!string.IsNullOrEmpty(dto.LocationName) && dto.Longitude != 0 && dto.Latitude != 0)
         {
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] ADDING LOCATION");
             var location = new Location
             {
                 Zoom = dto.Zoom,
@@ -468,8 +508,9 @@ public class MainController : BaseController
             dbContext.Add(location);
         }
 
-        Console.WriteLine($"STORING ALBUM ({dto.AlbumId})");
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] START SAVE CHANGES");
         await dbContext.SaveChangesAsync();
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] END SAVE CHANGES <<<<<<<<<<<<< ");
 
         return Redirect("/my");
     }

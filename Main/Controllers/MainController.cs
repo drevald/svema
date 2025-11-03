@@ -14,9 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Form;
 using Data;
 using Utils;
-using Npgsql;
 using Common;
-using Services;
 
 namespace Controllers;
 
@@ -240,26 +238,20 @@ public class MainController : BaseController
             finalAlbumCards.AddRange(emptyAlbumCards);
         }
 
-
         var cameras = dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList();
         var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
         var placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North);
-
-        var northBound = placemarks.Max(p => p.Latitude) + 0.1;
-        var southBound = placemarks.Min(p => p.Latitude) - 0.1;
-        var westBound = placemarks.Min(p => p.Longitude) - 0.1;
-        var eastBound = placemarks.Max(p => p.Longitude) + 0.1;
-
+        var rect = GeoRect.FromPlacemarks(placemarks, 0.1);
         return new AlbumsListDTO
         {
             Albums = finalAlbumCards,
             Locations = locations,
             DateStart = dto.DateStart,
             DateEnd = dto.DateEnd,
-            North = northBound,
-            South = southBound,
-            West = westBound,
-            East = eastBound,
+            North = rect.North,
+            South = rect.South,
+            West = rect.West,
+            East = rect.East,
             EditLocation = dto.EditLocation,
             Cameras = cameras,
             Placemarks = placemarks,
@@ -1012,13 +1004,19 @@ public class MainController : BaseController
         var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
 
-        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
-        int index = shots.FindIndex(a => a.ShotId == id);
-        if (index >= 0 && index + 1 < shots.Count)
+        // Get the next shot in the album
+        var nextShot = dbContext.Shots
+            .Where(s => s.AlbumId == shot.AlbumId && s.ShotId > shot.ShotId)
+            .OrderBy(s => s.ShotId)
+            .FirstOrDefault();
+
+        if (nextShot != null)
         {
-            return Redirect("/view_shot?id=" + shots[index + 1].ShotId + "&token=" + token);
+            return Redirect($"/view_shot?id={nextShot.ShotId}&token={token}");
         }
-        return Redirect("/view_shot?id=" + id + "&token=" + token);
+
+        // If no next shot, stay on current
+        return Redirect($"/view_shot?id={id}&token={token}");
     }
 
     [Authorize]
@@ -1028,13 +1026,17 @@ public class MainController : BaseController
         var shot = dbContext.Shots.Find(id);
         if (shot == null) return Redirect("/view_shot?id=" + id);
 
-        var shots = dbContext.Shots.Where(s => s.AlbumId == shot.AlbumId).OrderBy(s => s.ShotId).ToList();
-        int index = shots.FindIndex(a => a.ShotId == id);
-        if (index > 0)
+        var prevShot = dbContext.Shots
+        .Where(s => s.AlbumId == shot.AlbumId && s.ShotId < shot.ShotId)
+        .OrderBy(s => s.ShotId)
+        .LastOrDefault();
+
+        if (prevShot != null)
         {
-            return Redirect("/view_shot?id=" + shots[index - 1].ShotId + "&token=" + token);
+            return Redirect($"/view_shot?id={prevShot.ShotId}&token={token}");
         }
-        return Redirect("/view_shot?id=" + id + "&token=" + token);
+
+        return Redirect($"/view_shot?id={id}&token={token}");
     }
 
     [Authorize]
@@ -1161,9 +1163,10 @@ public class MainController : BaseController
         }
         else
         {
+            string storageRoot = Environment.GetEnvironmentVariable("STORAGE_DIR") ?? "/storage";
             dto.Storage = new ShotStorage
             {
-                Root = "/storage",
+                Root = storageRoot,
                 Provider = Provider.Local,
                 UserId = userId
             };

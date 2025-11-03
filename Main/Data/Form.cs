@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Http;
 using System.Linq;
-
+using Microsoft.VisualBasic;
+using Shared;
 namespace Form;
 
 public class AlbumViewDTO
@@ -332,10 +333,10 @@ public readonly record struct GeoRect(
         lat <= North && lat >= South &&
         lon >= West && lon <= East;
 
-    public static GeoRect FromPlacemarks(IEnumerable<LocationDTO> placemarks, double marginPercent = 0.05)
+    public static GeoRect FromPlacemarks(IEnumerable<LocationDTO> placemarks, double marginPercent = AppConstants.MAP_MARGIN)
     {
         if (placemarks == null || !placemarks.Any())
-            return default;
+            return new GeoRect(90, -90, -180, 180);
 
         var north = placemarks.Max(p => p.Latitude);
         var south = placemarks.Min(p => p.Latitude);

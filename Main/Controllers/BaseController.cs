@@ -52,6 +52,11 @@ public class BaseController : Controller
             shot.FullScreen = GetFullSizeImage(fullImage);
 
             // Metadata
+            if (photoMetadata.CreationDate != null)
+            {
+                shot.DateStart = photoMetadata.CreationDate!.Value;
+                shot.DateEnd = photoMetadata.CreationDate!.Value;
+            }
             shot.Size = data.Length;
             shot.ContentType = mime;
             shot.Name = name;

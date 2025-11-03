@@ -3,13 +3,23 @@
 
 <form method="post">
 
-<div class="row">
-  <div class="col-md-2 p-5 pb-0 text-start">
-    <h4 class="mb-3">Хранилище</h4>
-    <div class="pb-3">
-      <label class="form-label">Путь</label>
-      <input asp-for="@Model.Storage.Root" class="form-control"/>
-      <input asp-for="@Model.Storage.UserId" class="form-control"/>
+
+
+  <div class="row">
+  <div class="col-md-2 p-5">
+      <h4 class="mb-3">Хранилище</h4>
+      <div class="pb-3">
+        <label class="form-label">Путь</label>
+        <input asp-for="@Model.Storage.Root" class="form-control" readonly />
+      </div>
+      <div class="pb-3">
+        <label class="form-label">User Id</label>
+        <input asp-for="@Model.Storage.UserId" class="form-control" readonly />
+      </div>
+      <div class="pb-3">
+        <input type="submit" class="btn btn-primary" value="Сохранить" />
+        <a class="btn btn-secondary" href="javascript:history.back();">Отменить</a>
+      </div>
     </div>
     <input type="submit" class="btn btn-primary" value="Сохранить"/>  
     <a class="btn btn-secondary" href="javascript:history.back();">Отменить</a>

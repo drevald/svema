@@ -16,7 +16,7 @@ public class LocationService : Service
     {
     }
 
-//To get clustered view of locations on map
+    //To get clustered view of locations on map
     public List<LocationDTO> GetClusteredShotsWithLabels(String username, bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
     {
         var filters = new List<string>();
@@ -153,6 +153,10 @@ public class LocationService : Service
         return locations;
     }
 
+    public List<Location> GetLocations()
+    {
+        return dbContext.Locations.OrderBy(l => l.Name).ToList();        
+    }
 
 }
 

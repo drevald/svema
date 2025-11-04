@@ -10,6 +10,13 @@
     var initFunc = function () { init(jsShot);};
 </script> -->
 
+<script>
+    function editComment(id, text) {
+        document.getElementById("text").value = text;
+        document.getElementById("commentId").value = id;
+    }
+</script>
+
 <script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
   var initFunc = function () { init_locations(jsModel, true); };
@@ -37,7 +44,7 @@
       }
       <div class="col-sm-12" id="map" style="height:240px"></div>
       <div class="col-sm-12">
-        <input class="btn btn-primary btn-sm" value="Set Comment" name="refresh" type="submit"/>
+        <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Refresh">
       </div>
       <div class="col-sm-12">Комментарии</div>
 
@@ -70,7 +77,7 @@
           <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
         </div>
         <div class="col-sm-12">
-          <input class="btn btn-primary btn-sm" value="Set Comment" name="comment" type="submit">
+          <input class="btn btn-primary btn-sm" type="submit" name="comment" value="Comment">
           <input class="btn btn-secondary btn-sm" type="reset">
         </div>
 

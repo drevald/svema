@@ -596,8 +596,12 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpPost("view_album")]
-    public IActionResult ReloadAlbum(AlbumDTO dto)
+    public IActionResult ReloadAlbum(AlbumDTO dto, string? refresh, string? comment, string text, int id, int commentId)    
     {
+        if (comment != null)
+        {
+            commentService.AddComment(GetUsername(), text, id, commentId);
+        }
         return RedirectToAction("ViewAlbum", new
         {
             Id = dto.AlbumId,
@@ -1002,7 +1006,7 @@ public class MainController : BaseController
         dto.Zoom = shot.Zoom;
         dto.Token = token;
         dto.AlbumName = shot.Album.Name;
-        dto.ShotComments = new List<ShotComment>();
+        dto.ShotComments = commentService.GetShotComments(id);
         return View(dto);
     }
 
@@ -1063,39 +1067,6 @@ public class MainController : BaseController
     }
 
     [Authorize]
-    [HttpPost("add_comment")]
-    public IActionResult AddComment(string text, int id, int commentId)
-    {
-        var user = dbContext.Users.FirstOrDefault(u => u.Username == GetUsername());
-        if (user == null) return Unauthorized();
-
-        if (commentId == 0)
-        {
-            var comment = new AlbumComment
-            {
-                Author = user,
-                AuthorId = user.UserId,
-                AuthorUsername = user.Username,
-                Text = text,
-                AlbumId = id,
-                Timestamp = DateTime.Now
-            };
-            dbContext.AlbumComments.Add(comment);
-        }
-        else
-        {
-            var comment = dbContext.AlbumComments.Find(commentId);
-            if (comment == null) return NotFound();
-            comment.Text = text;
-            comment.AlbumId = id;
-            comment.Timestamp = DateTime.Now;
-            dbContext.AlbumComments.Update(comment);
-        }
-        dbContext.SaveChanges();
-        return Redirect("view_album?id=" + id);
-    }
-
-    [Authorize]
     [HttpGet("delete_comment")]
     public IActionResult DeleteComment(int commentId, int id)
     {
@@ -1145,12 +1116,7 @@ public class MainController : BaseController
     [HttpGet("delete_shot_comment")]
     public IActionResult DeleteShotComment(int commentId, int id)
     {
-        var comment = dbContext.ShotComments.Find(commentId);
-        if (comment != null)
-        {
-            dbContext.ShotComments.Remove(comment);
-            dbContext.SaveChanges();
-        }
+        commentService.DeleteShotComment(commentId);
         return Redirect("view_shot?id=" + id);
     }
 
@@ -1158,7 +1124,8 @@ public class MainController : BaseController
     [HttpGet("locations")]
     public IActionResult Locations()
     {
-        var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
+        //var locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
+        var locations = locationService.GetLocations();
         return View(locations);
     }
 

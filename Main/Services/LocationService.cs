@@ -75,7 +75,7 @@ public class LocationService : Service
             {
                 command.CommandText = sql;
 
-                command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 100));
+                command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 1000));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));

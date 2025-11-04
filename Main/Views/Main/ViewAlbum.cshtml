@@ -12,12 +12,13 @@
 
 <script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  var initFunc = function () { init_locations(jsModel); };
+  var initFunc = function () { init_locations(jsModel, true); };
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
 
 <div class="row">
+  <form method="post" style="display:contents">
   <div class="col-md-2 p-5" style="width:500px">
     <div class="row g-3">
       <div class="col-sm-4">
@@ -35,7 +36,9 @@
       }
       }
       <div class="col-sm-12" id="map" style="height:240px"></div>
-
+      <div class="col-sm-12">
+        <input class="btn btn-primary btn-sm" value="Set Comment" name="refresh" type="submit"/>
+      </div>
       <div class="col-sm-12">Комментарии</div>
 
       @if (@Model.AlbumComments != null)
@@ -57,21 +60,19 @@
       }
       }
 
-      <form action="add_comment" method="post">
-        <input type="hidden" id="North" name="North" />
-        <input type="hidden" id="South" name="South" />
-        <input type="hidden" id="East" name="East" />
-        <input type="hidden" id="West" name="West" />        
-        <input type="hidden" id="id" value="@Model.AlbumId" name="id">
+        <input type="hidden" asp-for="North" />
+        <input type="hidden" asp-for="South" />
+        <input type="hidden" asp-for="East" />
+        <input type="hidden" asp-for="West" />
+        <input type="hidden" asp-for="AlbumId" />
         <input type="hidden" id="commentId" name="commentId" value="0">
         <div class="col-sm-12">
           <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
         </div>
         <div class="col-sm-12">
-          <input class="btn btn-primary btn-sm" value="Set Comment" type="submit">&nbsp;<input
-            class="btn btn-secondary btn-sm" type="reset">
+          <input class="btn btn-primary btn-sm" value="Set Comment" name="comment" type="submit">
+          <input class="btn btn-secondary btn-sm" type="reset">
         </div>
-      </form>
 
     </div>
   </div>
@@ -89,4 +90,5 @@
 
     </div>
   </div>
+  </form>
 </div>

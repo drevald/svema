@@ -9,7 +9,7 @@ ymaps.ready(initFunc);
  * Initialize a map with multiple placemarks and bounds
  * @param jsShot - object containing map bounds and placemarks
  */
-function init_locations(jsModel) {
+function init_locations(jsModel, isInteractive) {
 
   // Get bounding coordinates from model
   const north = jsModel.North;
@@ -42,19 +42,21 @@ function init_locations(jsModel) {
     document.querySelector('#East').value = east;
     document.querySelector('#West').value = west;
 
-    // Submit the form to refresh results based on new bounds
-    // document.forms[0].submit();
+    if(isInteractive && document.querySelector('input[name="refresh"]')) {
+      document.querySelector('input[name="refresh"]').click();
+    }
+
   });
 
   // Add placemarks from the model
-  for (let i = 0; i < jsModel.Placemarks.length; i++) {
-    let placemark = new ymaps.GeoObject({
+  jsModel.Placemarks.forEach(pm => {
+    const placemark = new ymaps.GeoObject({
       geometry: {
         type: "Point",
-        coordinates: [jsModel.Placemarks[i].Latitude, jsModel.Placemarks[i].Longitude]
+        coordinates: [pm.Latitude, pm.Longitude]
       },
       properties: {
-        iconContent: jsModel.Placemarks[i].Label // Label shown on the map
+        iconContent: pm.Label // Label shown on the map
       }
     }, {
       preset: 'islands#invertedGreenClusterIcons',
@@ -62,27 +64,46 @@ function init_locations(jsModel) {
     });
 
     // Event: Clicking on a placemark
-    placemark.events.add('click', function (e) {
-      let coords = e.get('target').geometry.getCoordinates();
+    placemark.events.add('click', e => {
+      const coords = e.get('target').geometry.getCoordinates();
 
-      // Set a small bounding box around clicked placemark
-      document.querySelector('#North').value = coords[0] + 0.01;
-      document.querySelector('#South').value = coords[0] - 0.01;
-      document.querySelector('#East').value = coords[1] + 0.01;
-      document.querySelector('#West').value = coords[1] - 0.01;
+      // Ensure the coordinate input elements exist
+      const northEl = document.querySelector('#North');
+      const southEl = document.querySelector('#South');
+      const eastEl = document.querySelector('#East');
+      const westEl = document.querySelector('#West');
 
-      // Submit the form
-      document.forms[0].submit();
+      const lat = coords[0];
+      const lon = coords[1];
+      const delta = 0.01; // small offset in degrees (~1 km)
+
+      if (northEl && southEl && eastEl && westEl) {
+        northEl.value = lat + delta;
+        southEl.value = lat - delta;
+        eastEl.value  = lon + delta;
+        westEl.value  = lon - delta;
+      } else {
+        console.warn('Coordinate input elements not found.');
+      }
+
+      // Set map boundaries based on those coordinates
+      const bounds = [
+        [lat - delta, lon - delta], // southwest corner (South, West)
+        [lat + delta, lon + delta]  // northeast corner (North, East)
+      ];
+      myMap.setBounds(bounds, { checkZoomRange: true, duration: 300 });
+
     });
 
-    // Add placemark to the map
+    // Add the placemark to the map
     myMap.geoObjects.add(placemark);
+  });
 
-    if(jsModel.EditLocation) {
-      enableEditing();
-    }
-
+  // Enable editing after all placemarks are added (if applicable)
+  if (jsModel.EditLocation) {
+    enableEditing();
   }
+
 }
 
 /**
@@ -185,51 +206,51 @@ var greenPlacemark = null;
  * Reuses existing placemark if already created.
  */
 function enableEditing() {
-    if (!myMap) return;
+  if (!myMap) return;
 
-    // Enable basic map behaviors
-    myMap.behaviors.enable('drag');
-    myMap.behaviors.enable('scrollZoom');
+  // Enable basic map behaviors
+  myMap.behaviors.enable('drag');
+  myMap.behaviors.enable('scrollZoom');
 
-    // Get current map center
-    const center = myMap.getCenter();
+  // Get current map center
+  const center = myMap.getCenter();
 
-    if (greenPlacemark) {
-        // Reuse existing placemark, just move it to the new center
-        greenPlacemark.geometry.setCoordinates(center);
-    } else {
-        // Create a new green draggable placemark at the center
-        greenPlacemark = new ymaps.GeoObject(
-            {
-                geometry: { type: "Point", coordinates: center },
-                properties: { iconContent: '' }
-            },
-            {
-                preset: 'islands#greenDotIcon',
-                draggable: true
-            }
-        );
+  if (greenPlacemark) {
+    // Reuse existing placemark, just move it to the new center
+    greenPlacemark.geometry.setCoordinates(center);
+  } else {
+    // Create a new green draggable placemark at the center
+    greenPlacemark = new ymaps.GeoObject(
+      {
+        geometry: { type: "Point", coordinates: center },
+        properties: { iconContent: '' }
+      },
+      {
+        preset: 'islands#greenDotIcon',
+        draggable: true
+      }
+    );
 
-        // Add it to the map
-        myMap.geoObjects.add(greenPlacemark);
+    // Add it to the map
+    myMap.geoObjects.add(greenPlacemark);
 
-        // Optional: handle drag end to update form or log
-        greenPlacemark.events.add('dragend', function (e) {
-            const coords = greenPlacemark.geometry.getCoordinates();
-            console.log('Green placemark moved to:', coords);
-            if (document.all['Latitude']) document.all['Latitude'].value = coords[0];
-            if (document.all['Longitude']) document.all['Longitude'].value = coords[1];
-            if (document.all['Zoom']) document.all['Zoom'].value = myMap.getZoom();
-        });
-    }
+    // Optional: handle drag end to update form or log
+    greenPlacemark.events.add('dragend', function (e) {
+      const coords = greenPlacemark.geometry.getCoordinates();
+      console.log('Green placemark moved to:', coords);
+      if (document.all['Latitude']) document.all['Latitude'].value = coords[0];
+      if (document.all['Longitude']) document.all['Longitude'].value = coords[1];
+      if (document.all['Zoom']) document.all['Zoom'].value = myMap.getZoom();
+    });
+  }
 }
 
 function toggleEditing(checkbox) {
-    if (checkbox.checked) {
-        enableEditing();
-    } else {
-        disableEditing();
-    }
+  if (checkbox.checked) {
+    enableEditing();
+  } else {
+    disableEditing();
+  }
 }
 
 /**
@@ -239,21 +260,21 @@ function toggleEditing(checkbox) {
  * - Optionally disables map editing behaviors
  */
 function disableEditing() {
-    if (!myMap || !greenPlacemark) return;
+  if (!myMap || !greenPlacemark) return;
 
-    // Remove the green placemark from the map
-    myMap.geoObjects.remove(greenPlacemark);
+  // Remove the green placemark from the map
+  myMap.geoObjects.remove(greenPlacemark);
 
-    // Clear all properties and geometry
-    greenPlacemark.properties.set({});
-    greenPlacemark.geometry.setCoordinates([]);
+  // Clear all properties and geometry
+  greenPlacemark.properties.set({});
+  greenPlacemark.geometry.setCoordinates([]);
 
-    // Nullify reference
-    greenPlacemark = null;
+  // Nullify reference
+  greenPlacemark = null;
 
-    // Optionally disable map editing behaviors
-    myMap.behaviors.disable('drag');
-    myMap.behaviors.disable('scrollZoom');
+  // Optionally disable map editing behaviors
+  myMap.behaviors.disable('drag');
+  myMap.behaviors.disable('scrollZoom');
 }
 
 

@@ -19,6 +19,7 @@ public class BaseController : Controller
 {
 
     public LocationService locationService;
+    public AlbumService albumService;
 
     protected ApplicationDbContext dbContext;
 
@@ -29,6 +30,7 @@ public class BaseController : Controller
         this.dbContext = dbContext;
         this.config = config;
         this.locationService = new LocationService(dbContext);
+        this.albumService = new AlbumService(dbContext);
     }
 
 

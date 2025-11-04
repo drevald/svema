@@ -15,6 +15,7 @@ using Form;
 using Data;
 using Utils;
 using Common;
+using Services;
 
 namespace Controllers;
 
@@ -58,7 +59,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpPost("my")]
-    #nullable enable
+#nullable enable
     public async Task<IActionResult> UpdateMyAlbums(AlbumsListDTO dto, string? delete, string? save)
     {
         if (dto == null || dto.Albums == null)
@@ -93,7 +94,7 @@ public class MainController : BaseController
                 Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS END GETTING SHOTS FOR ALBUM " + a.AlbumId);
                 if (save != null)
                 {
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS START SAVE " + a.AlbumId);                    
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS START SAVE " + a.AlbumId);
                     if (dto.EditLocation && shotsToChange.Any())
                     {
                         Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [T{Environment.CurrentManagedThreadId}] UPDATE_MY_ALBUMS SAVE SHOTS");
@@ -155,6 +156,8 @@ public class MainController : BaseController
 
         var username = GetUsername() ?? string.Empty;
         var filteredShots = ApplyShotFilters(dto, onlyMine);
+        int count = filteredShots.Count();
+        Console.WriteLine($"Count = {count}");
         var shotGroups = filteredShots
             .GroupBy(s => s.AlbumId)
             .Select(g => new
@@ -278,6 +281,8 @@ public class MainController : BaseController
         var provider = CultureInfo.InvariantCulture;
         var query = dbContext.Shots.AsNoTracking().AsQueryable();
 
+        Console.WriteLine($"Count A = {query.Count()}");
+
         if (!string.IsNullOrEmpty(dto.DateStart))
         {
             if (DateTime.TryParseExact(dto.DateStart, "yyyy", provider, DateTimeStyles.None, out var start))
@@ -285,6 +290,8 @@ public class MainController : BaseController
                 query = query.Where(s => s.DateStart >= start);
             }
         }
+
+        Console.WriteLine($"Count B = {query.Count()}");
 
         if (!string.IsNullOrEmpty(dto.DateEnd))
         {
@@ -294,6 +301,8 @@ public class MainController : BaseController
             }
         }
 
+        Console.WriteLine($"Count C = {query.Count()}");
+
         query = query.Where(s =>
             s.Latitude <= dto.North &&
             s.Latitude >= dto.South &&
@@ -301,16 +310,21 @@ public class MainController : BaseController
             s.Longitude <= dto.East
         );
 
+        Console.WriteLine($"Count D = {query.Count()}");
+
         if (!string.IsNullOrEmpty(dto.Camera))
         {
             query = query.Where(s => s.CameraModel == dto.Camera);
         }
+
+        Console.WriteLine($"Count E = {query.Count()}");
 
         var username = GetUsername() ?? string.Empty;
 
         if (onlyMine)
         {
             query = query.Where(s => s.Album != null && s.Album.User != null && s.Album.User.Username == username);
+            Console.WriteLine($"Count F = {query.Count()}");
         }
         else
         {
@@ -322,7 +336,9 @@ public class MainController : BaseController
                     || dbContext.SharedAlbums.Any(sa =>
                         sa.GuestUser != null && sa.GuestUser.Username == username &&
                         sa.Album != null && sa.Album.AlbumId == (shot.Album != null ? shot.Album.AlbumId : -1)));
+            Console.WriteLine($"Count G = {query.Count()}");
         }
+
 
 
         return query;
@@ -332,9 +348,13 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("edit_album")]
-    public IActionResult EditAlbum(int id)
+    public IActionResult EditAlbum(int id, double? north, double? south, double? west, double? east)
     {
         AlbumDTO dto = new AlbumDTO();
+        dto.North = north ?? dto.North;
+        dto.South = south ?? dto.South;
+        dto.East = east ?? dto.East;
+        dto.West = west ?? dto.West;
 
         var currentUserId = GetUserId();
 
@@ -349,7 +369,7 @@ public class MainController : BaseController
         }
 
         dto.Shots = dbContext.Shots
-            .Where(s => s.AlbumId == id)
+            .Where(s => s.AlbumId == id && s.Longitude > dto.West && s.Longitude < dto.East && s.Latitude > dto.South && s.Latitude < dto.North)
             .OrderBy(s => s.ShotId)
             .Select(s => new ShotPreviewDTO
             {
@@ -363,10 +383,10 @@ public class MainController : BaseController
 
         dto.Placemarks = locationService.GetShotsForShots(dto.Shots);
         GeoRect rect = GeoRect.FromPlacemarks(dto.Placemarks, 0.1);
-        dto.North = rect.North;
-        dto.South = rect.South;
-        dto.East = rect.East;
-        dto.West = rect.West;
+        dto.North = north ?? rect.North;
+        dto.South = south ?? rect.South;
+        dto.East = east ?? rect.East;
+        dto.West = west ?? rect.West;
         dto.AlbumId = album.AlbumId;
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
@@ -377,8 +397,21 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpPost("edit_album")]
-    public async Task<IActionResult> StoreAlbum(AlbumDTO dto)
+    public async Task<IActionResult> StoreAlbum(AlbumDTO dto, string? refresh)
     {
+
+        if (refresh != null)
+        {
+            return RedirectToAction("EditAlbum", new
+            {
+                Id = dto.AlbumId,
+                North = dto.North,
+                South = dto.South,
+                West = dto.West,
+                East = dto.East
+            });   
+        }
+
         if (dto == null)
         {
             Console.WriteLine("DTO is null");
@@ -417,14 +450,14 @@ public class MainController : BaseController
             // Bulk update shots using ExecuteSqlRaw for better performance
             int chunkSize = 1000;
             var shotIds = shotsToUpdate.ToArray();
-            
+
             for (int i = 0; i < shotIds.Length; i += chunkSize)
             {
                 var chunk = shotIds.Skip(i).Take(chunkSize).ToArray();
                 var idParams = string.Join(",", chunk);
-                
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] START UPDATE CHUNK {i/chunkSize + 1}");
-                
+
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] START UPDATE CHUNK {i / chunkSize + 1}");
+
                 // Build dynamic SQL based on what needs to be updated
                 var updateFields = new List<string>();
                 var parameters = new List<object>();
@@ -468,21 +501,21 @@ public class MainController : BaseController
                 {
                     var groupShotIds = group.Select(s => s.ShotId).ToArray();
                     var groupIdParams = string.Join(",", groupShotIds);
-                    
+
                     var groupUpdateFields = new List<string>(updateFields);
                     groupUpdateFields.Add($"Flip = {{{paramIndex++}}}, Rotate = {{{paramIndex++}}}");
-                    
+
                     var groupParameters = new List<object>(parameters);
                     groupParameters.Add(group.Key.Flip);
                     groupParameters.Add(group.Key.Rotate);
 
                     var sql = $"UPDATE Shots SET {string.Join(", ", groupUpdateFields)} WHERE Id IN ({groupIdParams})";
-                    
+
                     Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] EXECUTING SQL FOR {groupShotIds.Length} SHOTS");
                     dbContext.Database.ExecuteSqlRaw(sql, groupParameters.ToArray());
                 }
-                
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] END UPDATE CHUNK {i/chunkSize + 1}");
+
+                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] END UPDATE CHUNK {i / chunkSize + 1}");
             }
         }
 
@@ -562,47 +595,38 @@ public class MainController : BaseController
     }
 
     [Authorize]
+    [HttpPost("view_album")]
+    public IActionResult ReloadAlbum(AlbumDTO dto)
+    {
+        return RedirectToAction("ViewAlbum", new
+        {
+            Id = dto.AlbumId,
+            Token = dto.Token,
+            DateStart = dto.DateStart,
+            DateEnd = dto.DateEnd,
+            LocationId = dto.LocationId,
+            North = dto.North,
+            South = dto.South,
+            West = dto.West,
+            East = dto.East
+        });
+    }
+
+    [Authorize]
     [HttpGet("view_album")]
-    public IActionResult ViewAlbum(int id, string? token)
+    public IActionResult ViewAlbum(
+    int id, string? token,
+    double? north, double? south, double? west, double? east,
+    DateTime? dateStart, DateTime? dateEnd, int? locationId)
     {
         AlbumDTO dto = new AlbumDTO();
+        dto.North = north ?? dto.North;
+        dto.South = south ?? dto.South;
+        dto.East = east ?? dto.East;
+        dto.West = west ?? dto.West;
         dto.Token = token;
         var currentUserId = GetUserId();
-
-        // var album = dbContext.Albums.Include(a => a.AlbumComments).FirstOrDefault(a => a.AlbumId == id);
-        
-        var album = dbContext.Albums
-            .Include(a => a.AlbumComments)
-            .FirstOrDefault(a =>
-                a.AlbumId == id &&
-                (
-                    // 1️⃣ Owned by current user
-                    a.User.UserId == currentUserId ||
-
-                    // 2️⃣ Shared directly to this user
-                    dbContext.SharedAlbums.Any(sa =>
-                        sa.AlbumId == a.AlbumId &&
-                        sa.GuestUserId == currentUserId
-                    ) ||
-
-                    // 3️⃣ Shared via host-user relationship (shared user)
-                    dbContext.SharedUsers.Any(su =>
-                        su.HostUserId == a.User.UserId &&
-                        su.GuestUserId == currentUserId
-                    ) ||
-
-                    // 4️⃣ Public shared link (still active)
-                    dbContext.SharedLinks.Any(sl =>
-                        sl.ResourceType == "album" &&
-                        sl.ResourceId == a.AlbumId &&
-                        !sl.Revoked &&
-                        !sl.Revoked &&
-                        sl.Token == token &&
-                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
-                    )
-                )
-            );
-
+        var album = albumService.GetAuthorizedAlbum(id, GetUserId(), token);
 
         if (album == null)
         {
@@ -610,7 +634,7 @@ public class MainController : BaseController
         }
 
         dto.Shots = dbContext.Shots
-            .Where(s => s.AlbumId == id)
+            .Where(s => s.AlbumId == id && s.Longitude > dto.West && s.Longitude < dto.East && s.Latitude > dto.South && s.Latitude < dto.North)
             .OrderBy(s => s.ShotId)
             .Select(s => new ShotPreviewDTO
             {
@@ -632,10 +656,9 @@ public class MainController : BaseController
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? new List<AlbumComment>();
         dto.Locations = dbContext.Locations.OrderBy(l => l.Name).ToList();
-        //dto.Placemarks = GetClusteredShotsWithLabels(false, dto.West, dto.East, dto.South, dto.North);
-       
 
         return View(dto);
+
     }
 
     ///////////////////////////////////      SHOTS     ////////////////////////////////////
@@ -651,7 +674,7 @@ public class MainController : BaseController
             .Include(s => s.Album)           // include navigation if you need Album info
             .ThenInclude(a => a.User)        // optional: if you need the user too
             .FirstOrDefault(s => s.ShotId == id && s.Album.User.UserId == currentUserId);
-            
+
         if (shot == null) return RedirectToAction("Albums");
 
         var album = dbContext.Albums.Find(shot.AlbumId);
@@ -805,14 +828,14 @@ public class MainController : BaseController
         {
             return NotFound();
         }
-        
+
         Stream? stream = await Storage.GetFile(shot);
 
         if (stream == null)
-            return NotFound(); 
+            return NotFound();
 
         return File(stream, shot.ContentType ?? "application/octet-stream");
-        
+
     }
 
     [Authorize]

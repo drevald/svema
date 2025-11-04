@@ -12,7 +12,7 @@
 
 <script asp-append-version="true">
   var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  var initFunc = function () { init_locations(jsModel); };
+  var initFunc = function () {init_locations(jsModel, false); };
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
@@ -21,10 +21,10 @@
 
 <form method="post">
 
-<input type="hidden" id="North" name="North" />
-<input type="hidden" id="South" name="South" />
-<input type="hidden" id="East" name="East" />
-<input type="hidden" id="West" name="West" />    
+<input type="text" id="North" name="North" />
+<input type="text" id="South" name="South" />
+<input type="text" id="East" name="East" />
+<input type="text" id="West" name="West" />    
 
 <div class="row">
 
@@ -110,6 +110,10 @@
                     <label for="lastName" class="form-label">Карта</label>
                     <div id="map" style="height:240px"></div>
                 </div>
+
+                <div class="col-sm-12">
+                    <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Обновить">
+                </div>                
 
                 <div class="col-sm-12">
                     <label class="form-label">Название места</label>

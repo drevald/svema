@@ -5,8 +5,9 @@
 
 
 <script asp-append-version="true">
-  var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
-  var initFunc = function () { init_edit(jsShot);};
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  // var initFunc = function () { init_edit(jsShot);};
+  var initFunc = function () { init_locations(jsModel, false);};
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>

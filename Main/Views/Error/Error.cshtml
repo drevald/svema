@@ -1,0 +1,28 @@
+@{
+    Layout = "_Layout";
+    var code = ViewData["Code"] as int?;
+    var message = ViewData["ErrorMessage"] as string;
+    var path = ViewData["Path"] as string;
+}
+
+<div class="row">
+  <div class="col-md-2 p-5" style="width:500px">
+
+<h2>@(code != null ? $"{code} — Error" : "Unexpected error")</h2>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p><b>Message:</b> @message</p>
+}
+
+@if (!string.IsNullOrEmpty(path))
+{
+    <p><b>Path:</b> @path</p>
+}
+
+<a href="/">Go back to Home</a>
+
+
+  </div>
+</div>
+

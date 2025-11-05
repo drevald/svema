@@ -155,7 +155,50 @@ public class LocationService : Service
 
     public List<Location> GetLocations()
     {
-        return dbContext.Locations.OrderBy(l => l.Name).ToList();        
+        return dbContext.Locations.OrderBy(l => l.Name).ToList();
+    }
+
+    public Location GetLocation(int locationId)
+    {
+        return dbContext.Locations.Find(locationId);
+    }
+
+    public void CreateLocation(Location location)
+    {
+        dbContext.Locations.Add(location);
+        dbContext.SaveChanges();
+    }
+
+    public void UpdateLocation(Location location)
+    {
+        dbContext.Update(location);
+        dbContext.SaveChanges();
+    }
+
+    public void DeleteLocation(int locationId)
+    {
+        var location = dbContext.Locations.Find(locationId);
+        if (location != null)
+        {
+            dbContext.Remove(location);
+            dbContext.SaveChanges();
+        }
+    }
+
+    public void AddLocationIfProvided(string locationName, double latitude, double longitude, int zoom)
+    {
+        if (!string.IsNullOrEmpty(locationName) && longitude != 0 && latitude != 0)
+        {
+            var location = new Location
+            {
+                Latitude = latitude,
+                Longitude = longitude,
+                Name = locationName,
+                Zoom = zoom
+            };
+            dbContext.Locations.Add(location);
+            dbContext.SaveChanges();
+        }
     }
 
 }

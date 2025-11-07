@@ -318,4 +318,31 @@ public class ShotService : Service
             .ThenInclude(a => a.User)
             .FirstOrDefault(s => s.ShotId == shotId && s.Album.User.UserId == currentUserId);
     }
+
+    public List<ShotPreviewDTO> GetSameDayShots(int month, int day, int tolerance)
+    {
+        // Compute target day-of-year using an arbitrary non-leap year (e.g., 2025)
+        int targetDayOfYear = new DateTime(2025, month, day).DayOfYear;
+
+       var shots = dbContext.Shots
+        .FromSqlInterpolated($@"
+            SELECT *
+            FROM shots
+            WHERE date_start IS NOT NULL
+            AND date_start NOT IN ('infinity', '-infinity')
+            AND EXTRACT(doy FROM date_start) - {targetDayOfYear} <= {tolerance}
+            AND EXTRACT(doy FROM date_start) - {targetDayOfYear} >= -{tolerance}")
+        .Select(s => new ShotPreviewDTO
+        {
+            ShotId = s.ShotId,
+            Name = s.Name,
+            SourceUri = s.SourceUri,
+            Flip = s.Flip,
+            Rotate = s.Rotate,
+            DateStart = s.DateStart
+        })
+        .ToList();
+
+        return shots;
+    }
 }

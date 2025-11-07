@@ -77,8 +77,18 @@
                     <div class="col-8">@Model.AlbumName</div>
 
                     <div class="col-4 fw-bold">Дата снимка</div>
-                    <div class="col-8">@Model.DateStart</div>
-
+                    <div class="col-5">@Model.DateStart</div>
+                    @if (Model.DateStart != DateTime.MinValue 
+                        && Model.DateEnd != DateTime.MinValue
+                        && Model.DateStart == Model.DateEnd
+                        && Model.DateStart != DateTime.MaxValue)
+                    {
+                        <div class="col-3 fw-bold">
+                            <a class="btn btn-primary btn-sm border-end" href="/same_day?month=@Model.DateStart.Month&day=@Model.DateStart.Day">
+                                Другие годы
+                            </a>
+                        </div>
+                    }
                     <div class="col-4 fw-bold">Камера</div>
                     <div class="col-8">@Model.CameraManufacturer&nbsp;@Model.CameraModel</div>
 

@@ -76,6 +76,15 @@
                     <input asp-for="DateEnd" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
                 </div> 
 
+                <div class="col-12">
+                    <label for="lastName" class="form-label">Карта</label>
+                    <div id="map" style="height:240px"></div>
+                </div>
+
+                <div class="col-sm-12">
+                    <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Обновить">
+                </div>  
+
                 <div class="col-sm-12">
                     <label class="form-label">Место</label>
                     <select asp-for="LocationId" class="form-select" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 2)">
@@ -106,14 +115,7 @@
                     <input asp-for="Latitude" class="form-control" value="" />
                 </div> 
 
-                <div class="col-12">
-                    <label for="lastName" class="form-label">Карта</label>
-                    <div id="map" style="height:240px"></div>
-                </div>
-
-                <div class="col-sm-12">
-                    <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Обновить">
-                </div>                
+              
 
                 <div class="col-sm-12">
                     <label class="form-label">Название места</label>

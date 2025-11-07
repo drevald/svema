@@ -164,6 +164,7 @@ public class ShotPreviewDTO
     public string SourceUri { get; set; }
     public int Rotate { get; set; }
     public bool Flip { get; set; }
+    public DateTime DateStart { get; set; }
 
     public ShotPreviewDTO()
     {
@@ -177,6 +178,7 @@ public class ShotPreviewDTO
         SourceUri = shot.SourceUri;
         Flip = shot.Flip;
         Rotate = shot.Rotate;
+        DateStart = shot.DateStart;
     }
 
 }

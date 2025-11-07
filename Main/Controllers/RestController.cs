@@ -20,7 +20,7 @@ public class RestController : BaseController {
 
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpPost("users/{userId}/shots/{shotId}/comments")]
-    public async Task AddComment(int userId, int shotId, [FromBody] AddCommentDto dto) {
+    public void AddComment(int userId, int shotId, [FromBody] AddCommentDto dto) {
         commentService.AddShotCommentForApi(userId, shotId, dto.Caption);
     }
 

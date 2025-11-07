@@ -152,7 +152,7 @@ public class MainController : BaseController
 
         var currentUserId = GetUserId();
 
-        var album = albumService.GetAlbumWithUser(id, currentUserId.Value);
+        var album = albumService.GetAlbumWithUser(id, currentUserId!.Value);
 
         if (album == null)
         {
@@ -341,7 +341,7 @@ public class MainController : BaseController
 
         var currentUserId = GetUserId();
 
-        var shot = shotService.GetShotWithAlbumAndUser(id, currentUserId.Value);
+        var shot = shotService.GetShotWithAlbumAndUser(id, currentUserId!.Value);
 
         if (shot == null) return RedirectToAction("Albums");
 
@@ -410,7 +410,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpGet("shot")]
-    public async Task<IActionResult> Shot(int id, int? rotate, bool? flip)
+    public IActionResult Shot(int id, int? rotate, bool? flip)
     {
         var result = shotService.GetShot(id);
         if (result == null || result.FullScreen == null || result.FullScreen.Length == 0)
@@ -710,7 +710,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpPost("select_album")]
-    public async Task<IActionResult> SelectAlbum(AlbumDTO dto)
+    public IActionResult SelectAlbum(AlbumDTO dto)
     {
         if (dto == null)
         {
@@ -767,5 +767,14 @@ public class MainController : BaseController
             ? albums.OrderBy(keySelector)
             : albums.OrderByDescending(keySelector);
     }
+
+    [Authorize]
+    [HttpGet("same_day")]
+    public IActionResult SameDay(int month, int day)
+    {
+        var shots = shotService.GetSameDayShots(month, day, 1);
+        return View(shots);
+    }
+
 }
 

@@ -42,9 +42,9 @@ public class BaseController : Controller
     }
 
 
-    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors)
+    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors, PhotoMetadata photoMetadata)
     {
-        await fileService.ProcessShot(data, name, mime, shot, album, storage, fileErrors);
+        await fileService.ProcessShot(data, name, mime, shot, album, storage, fileErrors, photoMetadata);
     }
 
     protected string GetUsername()

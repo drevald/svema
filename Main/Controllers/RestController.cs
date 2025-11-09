@@ -9,6 +9,7 @@ using Data;
 using Form;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Utils;
 
 namespace Controllers;
 
@@ -76,7 +77,8 @@ public class RestController : BaseController {
             DateUploaded = DateTime.Now
         };
 
-        await fileService.ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, storage, errors);
+        PhotoMetadata photoMetadata = fileService.GetMetadata(dto.Data, dto.Name, errors);
+        await fileService.ProcessShot(dto.Data, dto.Name, dto.Mime, shot, album, storage, errors, photoMetadata);
 
         if (errors.Any())
         {

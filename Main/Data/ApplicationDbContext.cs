@@ -90,6 +90,7 @@ public class Album
     public double Latitude { get; set; }
     [Column("zoom")]
     public int Zoom { get; set; }
+
 }
 #nullable disable
 

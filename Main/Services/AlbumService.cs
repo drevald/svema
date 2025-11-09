@@ -274,6 +274,11 @@ public class AlbumService : Service
         return dbContext.Albums.Find(id);
     }
 
+    public Album GetAlbumByName(string name, int userId)
+    {
+        return dbContext.Albums.Where(a => a.Name == name && a.User.UserId == userId).FirstOrDefault();
+    }
+
     public Album GetAlbumWithUser(int id, int currentUserId)
     {
         return dbContext.Albums
@@ -287,29 +292,50 @@ public class AlbumService : Service
         dbContext.SaveChanges();
     }
 
-    public async Task DeleteAlbum(int id)
+    public async Task DeleteAlbumAsync(int id)
     {
-        var album = dbContext.Albums.Find(id);
-        if (album == null) return;
+        // 1️⃣ Find album and its shots in one query (tracked)
+        var album = await dbContext.Albums
+            .Include(a => a.Shots)
+            .FirstOrDefaultAsync(a => a.AlbumId == id);
 
-        var shotInfos = dbContext.Shots
-            .Where(s => s.AlbumId == id)
-            .Select(s => new
-            {
-                s.SourceUri,
-                s.Storage
-            })
+        if (album == null)
+            return;
+
+        // 2️⃣ Collect file info before DB deletion
+        var shotFiles = album.Shots
+            .Select(s => new { s.SourceUri, s.Storage })
             .ToList();
 
-        foreach (var shot in shotInfos)
+        // 3️⃣ Start a transaction for atomic DB operations
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+        try
         {
-            await Storage.DeleteFileAsync(shot.Storage, shot.SourceUri);
+            // 4️⃣ Delete related shots first, then album
+            dbContext.Shots.RemoveRange(album.Shots);
+            dbContext.Albums.Remove(album);
+            await dbContext.SaveChangesAsync();
+
+            // 5️⃣ Commit the DB transaction — all DB work done successfully
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            // Roll back if anything failed before committing
+            await transaction.RollbackAsync();
+            throw;
         }
 
-        dbContext.Shots.RemoveRange(dbContext.Shots.Where(s => s.AlbumId == id));
-        dbContext.Albums.Remove(album);
-        dbContext.SaveChanges();
+        // 6️⃣ Now delete physical files (outside the transaction)
+        // Doing this after commit avoids losing both DB + files if something goes wrong
+        var deleteTasks = shotFiles
+            .Select(s => Storage.DeleteFileAsync(s.Storage, s.SourceUri));
+
+        // Parallel deletion (if Storage.DeleteFileAsync is thread-safe)
+        await Task.WhenAll(deleteTasks);
     }
+
 
     public void UpdateAlbumName(int albumId, string name)
     {

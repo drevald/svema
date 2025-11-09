@@ -180,7 +180,7 @@ public class ShotService : Service
 
             if (dto.Year < 0)
             {
-                updateFields.Add($"DateStart = {{{paramIndex++}}}, DateEnd = {{{paramIndex++}}}");
+                updateFields.Add($"date_start = {{{paramIndex++}}}, date_end = {{{paramIndex++}}}");
                 parameters.Add(DateTime.MinValue);
                 parameters.Add(DateTime.MinValue);
             }
@@ -188,19 +188,19 @@ public class ShotService : Service
             {
                 if (DateTime.MinValue != dto.DateStart)
                 {
-                    updateFields.Add($"DateStart = {{{paramIndex++}}}");
+                    updateFields.Add($"date_start = {{{paramIndex++}}}");
                     parameters.Add(dto.DateStart);
                 }
                 if (DateTime.MinValue != dto.DateEnd)
                 {
-                    updateFields.Add($"DateEnd = {{{paramIndex++}}}");
+                    updateFields.Add($"date_end = {{{paramIndex++}}}");
                     parameters.Add(dto.DateEnd);
                 }
             }
 
             if (dto.Longitude != 0 && dto.Latitude != 0)
             {
-                updateFields.Add($"Latitude = {{{paramIndex++}}}, Longitude = {{{paramIndex++}}}, Zoom = {{{paramIndex++}}}");
+                updateFields.Add($"latitude = {{{paramIndex++}}}, longitude = {{{paramIndex++}}}, zoom = {{{paramIndex++}}}");
                 parameters.Add(dto.Latitude);
                 parameters.Add(dto.Longitude);
                 parameters.Add(dto.Zoom);
@@ -217,13 +217,13 @@ public class ShotService : Service
                 var groupIdParams = string.Join(",", groupShotIds);
 
                 var groupUpdateFields = new List<string>(updateFields);
-                groupUpdateFields.Add($"Flip = {{{paramIndex}}}, Rotate = {{{paramIndex + 1}}}");
+                groupUpdateFields.Add($"flip = {{{paramIndex}}}, rotate = {{{paramIndex + 1}}}");
 
                 var groupParameters = new List<object>(parameters);
                 groupParameters.Add(group.Key.Flip);
                 groupParameters.Add(group.Key.Rotate);
 
-                var sql = $"UPDATE Shots SET {string.Join(", ", groupUpdateFields)} WHERE Id IN ({groupIdParams})";
+                var sql = $"UPDATE shots SET {string.Join(", ", groupUpdateFields)} WHERE Id IN ({groupIdParams})";
 
                 Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} STORE_ALBUM [T{Environment.CurrentManagedThreadId}] EXECUTING SQL FOR {groupShotIds.Length} SHOTS");
                 dbContext.Database.ExecuteSqlRaw(sql, groupParameters.ToArray());

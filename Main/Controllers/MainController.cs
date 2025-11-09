@@ -268,7 +268,7 @@ public class MainController : BaseController
     [HttpGet("delete_album")]
     public async Task<IActionResult> DeleteAlbum(int id)
     {
-        await albumService.DeleteAlbum(id);
+        await albumService.DeleteAlbumAsync(id);
         return Redirect("/my");
     }
 
@@ -495,7 +495,7 @@ public class MainController : BaseController
         await dbContext.SaveChangesAsync();
 
         var album = albumService.GetAlbum(dto.AlbumId);
-        if (album == null)
+        if (dto.AlbumId != 0 && album == null)
         {
             dto.ErrorMessage = "Album not found";
             return View(dto);
@@ -512,11 +512,35 @@ public class MainController : BaseController
                 var shot = new Shot();
                 try
                 {
-                    await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, dto.FileErrors);
+                    PhotoMetadata metadata = fileService.GetMetadata(bytes, formFile.FileName, dto.FileErrors);
+                    if (dto.AlbumId == 0)
+                    {
+                        if (metadata.CreationDate != null)
+                        {
+                            string albumName = metadata.CreationDate.Value.ToString("yyyy-MM-dd");
+                            Album newAlbum = albumService.GetAlbumByName(albumName, user.UserId);
+                            if (newAlbum == null)
+                            {
+                                newAlbum = new Album
+                                {
+                                    User = user,
+                                    Name = albumName
+                                };
+                                albumService.CreateAlbum(newAlbum);
+                            }
+                            album = newAlbum;
+                        }
+                        else
+                        {
+                            dto.FileErrors.Add(formFile.FileName, "Can not create album when date is missing");
+                        }
+                    }
+                    await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, dto.FileErrors, metadata);
                 }
                 catch (Exception e)
                 {
                     Console.Write(e.Message);
+                    dto.FileErrors.Add(formFile.FileName, e.Message);
                 }
             }
         }

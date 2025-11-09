@@ -22,7 +22,21 @@ public class FileService : Service
     {
     }
 
-    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors)
+    public PhotoMetadata GetMetadata(byte[] data, string name, Dictionary<string, string> fileErrors)
+    {
+        try
+        {
+            return ImageUtils.GetMetadata(data);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("The Exception is " + e.Data);
+            fileErrors.Add(name, e.Message);
+            return null;
+        }           
+    }
+
+    public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors, PhotoMetadata photoMetadata)
     {
         try
         {
@@ -32,8 +46,6 @@ public class FileService : Service
             using var fullStream = new MemoryStream(data);
             using var previewImage = Image.Load(previewStream);
             using var fullImage = Image.Load(fullStream);
-
-            PhotoMetadata photoMetadata = ImageUtils.GetMetadata(data);
 
             // Preview
             shot.Preview = GetImagePreview(previewImage);

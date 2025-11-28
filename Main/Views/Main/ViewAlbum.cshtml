@@ -23,6 +23,7 @@
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/slideshow.js" asp-append-version="true"> </script>
 
 <div class="row">
   <form method="post" style="display:contents">
@@ -32,7 +33,7 @@
         <a class="btn btn-secondary" href="/">Вернуться</a>
       </div>
       <div class="col-sm-8 text-end">
-        <a class="btn btn-primary" href="#">Слайдшоу</a>&nbsp;
+        <a class="btn btn-primary" href="#" onclick="startSlideshow(jsModel.Shots, jsModel.Token); return false;">Слайдшоу</a>&nbsp;
         <a class="btn btn-primary" href="/edit_album?id=@Model.AlbumId">Ред</a>&nbsp;
       </div>      
       <div class="col-sm-3">Название</div>

@@ -80,7 +80,7 @@ public class FileService : Service
 
             await Storage.StoreShot(shot, originalStream.ToArray());
 
-            fileErrors.Add(name, "File successfully added");
+            Console.WriteLine(name, "File successfully added");
         }
         catch (DbUpdateException e)
         {

@@ -85,7 +85,7 @@ public class RestController : BaseController {
             return BadRequest(errors);
         }
 
-        return Ok(new { message = "Shot uploaded successfully" });
+        return Ok(new { message = "Uploaded", lat = shot.Latitude, lon = shot.Longitude, date = shot.DateStart, album = album.Name });
     }
 
 

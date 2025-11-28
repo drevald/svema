@@ -9,6 +9,27 @@
 </script>
 
 <script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/slideshow.js" asp-append-version="true"> </script>
+<script>
+function playRandomSlideshow() {
+    var form = document.querySelector('form');
+    var formData = new FormData(form);
+    
+    fetch('/random_shots', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(shots => {
+        if (shots && shots.length > 0) {
+            startSlideshow(shots, "");
+        } else {
+            alert("No photos found for slideshow.");
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
 
 <div class="row">
   <div class="col-md-2 p-5" style="width:500px">
@@ -96,6 +117,7 @@
 
         <div class="col-sm-12 text-start">
           <input type="submit" class="btn btn-primary" value="Обновить">
+          <button type="button" class="btn btn-secondary" onclick="playRandomSlideshow()">Слайдшоу</button>
         </div>
 
         <!-- <div class="col-12" style="white-space: nowrap; overflow:hidden;">

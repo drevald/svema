@@ -49,6 +49,31 @@ public class MainController : BaseController
     }
 
     [Authorize]
+    [HttpPost("random_shots")]
+    public IActionResult GetRandomShots(AlbumsListDTO dto)
+    {
+        dto ??= new AlbumsListDTO();
+        var username = GetUsername() ?? string.Empty;
+        var query = albumService.ApplyShotFilters(dto, username, onlyMine: false);
+
+        var shots = query
+            .OrderBy(x => EF.Functions.Random())
+            .Take(100)
+            .Select(s => new ShotPreviewDTO
+            {
+                ShotId = s.ShotId,
+                Name = s.Name,
+                SourceUri = s.SourceUri,
+                Flip = s.Flip,
+                Rotate = s.Rotate,
+                DateStart = s.DateStart
+            })
+            .ToList();
+
+        return Json(shots);
+    }
+
+    [Authorize]
     [HttpGet("my")]
     public IActionResult MyAlbums(AlbumsListDTO dto)
     {
@@ -189,7 +214,7 @@ public class MainController : BaseController
                 South = dto.South,
                 West = dto.West,
                 East = dto.East
-            });   
+            });
         }
 
         if (dto == null)
@@ -274,7 +299,7 @@ public class MainController : BaseController
 
     [Authorize]
     [HttpPost("view_album")]
-    public IActionResult ReloadAlbum(AlbumDTO dto, string? refresh, string? comment, string text, int id, int commentId)    
+    public IActionResult ReloadAlbum(AlbumDTO dto, string? refresh, string? comment, string text, int id, int commentId)
     {
         if (comment != null)
         {

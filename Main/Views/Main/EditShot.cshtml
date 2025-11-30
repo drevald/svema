@@ -1,0 +1,137 @@
+@using System.Web
+@using Newtonsoft.Json
+@model Form.ShotDTO
+@{Layout = "_Layout";}
+
+
+<script asp-append-version="true">
+    var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+    var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var initFunc = function () { init(jsShot);};
+</script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/dates.js" asp-append-version="true"> </script>
+
+<form method="post">
+
+  <input type="hidden" id="North" name="North" />
+  <input type="hidden" id="South" name="South" />
+  <input type="hidden" id="East" name="East" />
+  <input type="hidden" id="West" name="West" />
+
+  <div class="row">
+    <div class="col-md-12 p-5 pb-0 text-end">
+      <input type="submit" class="btn btn-primary" value="Сохранить">
+      <a class="btn btn-primary btn px-3" href="/share_link?id=@Model.ShotId&type=shot">Поделится</a>
+      <a class="btn btn-secondary" href="edit_album?id=@Model.AlbumId">Отменить</a>
+    </div>
+  </div>
+
+  <div class="row h-100">
+
+    <div class="col-md-2 p-5" style="width:500px">
+
+      <h4 class="mb-3">Снимок</h4>
+
+      <form class="needs-validation" novalidate>
+        <div class="row g-3">
+
+          <div class="col-sm-12">
+            <input asp-for="IsCover" class="form-label" type="checkbox"/>
+            <label class="form-label">Сделать заглавным</label>
+          </div>
+
+
+          <div class="col-sm-12">
+            <label class="form-label">Название</label>
+            <input asp-for="ShotId" type="hidden" />
+            <input asp-for="Name" class="form-control" />
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Год</label>
+            <select class="form-select" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+              @{
+                var startdec = 195;
+                var enddec = DateTime.Now.Year / 10;
+                var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                foreach (var number in numbersdec)
+                {
+                  <option value="@number">@(number + "X")</option>
+                }
+              }
+              @{
+                var start = 1950;
+                var end = DateTime.Now.Year;
+                var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                foreach (var number in numbers)
+                {
+                  <option value="@number">@number</option>
+                }
+              }
+            </select>
+          </div>
+
+          <div class="col-sm-6">
+            <label class="form-label">Дата, от</label>
+            <input asp-for="DateStart" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+          </div>
+
+          <div class="col-sm-6">
+            <label class="form-label">Дата, до</label>
+            <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
+          </div>          
+
+          <div class="col-sm-12">
+            <label class="form-label">Место</label>
+            <select asp-for="LocationId" class="form-select" onchange="javascript:show(this.selectedIndex, jsLocations)">
+              <option></option>
+              @foreach (var location in @Model.Locations)
+              {
+                <option value="@location.Id">@location.Name</option>
+              }
+            </select>
+          </div>
+
+
+          <input asp-for="Zoom" class="form-control" type="hidden" value="" />
+
+          <div class="col-sm-6">
+              <label class="form-label">Долгота</label>
+              <input asp-for="Longitude" class="form-control"/>
+          </div> 
+
+          <div class="col-sm-6">
+              <label class="form-label">Широта</label>
+              <input asp-for="Latitude" class="form-control" />
+          </div> 
+
+          <div class="col-12">
+            <label class="form-label">Карта</label>
+            <div id="map" style="height:240px"></div>
+          </div>
+
+          <div class="col-sm-12">
+            <label class="form-label">Название места</label>
+            <input asp-for="LocationName" class="form-control"/>
+          </div> 
+
+        </div>
+      </form>
+    </div>
+
+    <div class="col p-5">
+      <div class="card border-0" style="height: calc(100% - 65px);">
+        <div class="card-body" style="
+        background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate'); 
+        background-position: center;
+        background-repeat: no-repeat; 
+        background-size: contain;">
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</form>

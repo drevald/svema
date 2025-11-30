@@ -1,0 +1,27 @@
+@model Data.Album
+@{Layout = "_Layout";}
+
+<div class="row">
+  <div class="col-md-2 p-5" style="width:500px">
+
+    <form class="needs-validation" method="post">
+        <div class="row g-3">
+
+          <div class="col-12">
+            <label for="firstName" class="form-label">Название</label>
+            <input class="form-control" asp-for="Name"/>
+          </div>
+
+          <div class="col-12">
+            <input type="submit" class="btn btn-primary" value="Сохранить"/>
+          </div>
+        </div>
+      </form>    
+
+  </div>
+  <div class="col p-5">
+    <div class="d-flex p-0 flex-wrap overflow-auto">
+
+    </div>
+  </div>
+</div>

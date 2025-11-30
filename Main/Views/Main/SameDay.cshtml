@@ -1,0 +1,40 @@
+@using System.Web
+@using Newtonsoft.Json
+@model IEnumerable<Form.ShotPreviewDTO>
+@{Layout = "_Layout";}
+
+
+<script asp-append-version="true">
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () { init_locations(jsModel, true); };
+</script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
+
+<div class="row">
+  <div class="col-md-2 p-5" style="width:500px">
+    <div class="row g-3">
+      <div class="col-sm-4">
+        <a class="btn btn-secondary" href="/">Вернуться</a>
+      </div>
+    </div>
+  </div>    
+  
+  <div class="col p-5">
+    <div class="d-flex p-0 flex-wrap overflow-auto">
+      @foreach(var shot in @Model) {
+      <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div title="@shot.DateStart.ToString("d MMMM yyyy")">
+                @shot.DateStart.ToString("d MMMM yyyy")
+            </div>
+          </div>        
+        <div class="card-body"
+          style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+        </div>
+        <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
+      </div>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,52 @@
+@{Layout = "_Layout";}
+@model Form.UploadedFilesDTO
+<script>
+
+    function show() {
+        var upload = document.all["formFile"].files;
+        var uploadList = document.all['uploadedFiles'];
+        while (uploadList.firstChild) {
+            uploadList.removeChild(uploadList.lastChild);
+        }
+        for (i=0; i < upload.length; i++) {
+            uploadedFile = document.createElement('div');
+            uploadedFile.className = "col-sm-12";
+            uploadedFile.innerText = upload.item(i).name;
+            uploadList.appendChild(uploadedFile);
+        }
+        if (upload.length > 0)  {
+            document.all["uploadBtn"].style.display="block";
+        }
+    }
+
+</script>
+
+<form method="post" enctype="multipart/form-data" asp-controller="StoreFile" asp-action="store">
+
+    <div class="row">
+        <div class="col-md-12 p-5 pb-0 text-end">
+            <a class="btn btn-secondary" href="/edit_album?id=@Model.AlbumId">Отменить</a>
+        </div>
+    </div>
+    
+    <div class="row">
+
+        <div class="col-md-2 p-5" style="width:500px">
+            <h4 class="mb-3">Добавить снимки</h4>
+            <div class="row g-3">
+                <div class="col-sm-12">
+                    <input type="hidden" asp-for="AlbumId"/>
+                    <input class="form-control" type="file" asp-for="Files" multiple id="formFile" onchange="javascript:show();">
+                </div>
+            </div>
+        </div>
+    
+        <div class="col p-5">
+            <h4 class="mb-3">Файлы</h4>
+            <div class="row g-3 pb-3" id="uploadedFiles"></div>
+            <input class="btn btn-primary" type="submit" value="Загрузить" id="uploadBtn" style="display:none">
+        </div>
+
+    </div>
+
+</form>

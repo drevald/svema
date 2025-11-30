@@ -1,0 +1,102 @@
+@using System.Web
+@using Newtonsoft.Json
+@model Form.AlbumDTO
+@{Layout = "_Layout";}
+
+<!-- <script asp-append-version="true">
+    var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+    var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    var initFunc = function () { init(jsShot);};
+</script> -->
+
+<script>
+    function editComment(id, text) {
+        document.getElementById("text").value = text;
+        document.getElementById("commentId").value = id;
+    }
+</script>
+
+<script asp-append-version="true">
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () { init_locations(jsModel, true); };
+</script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/slideshow.js" asp-append-version="true"> </script>
+
+<div class="row">
+  <form method="post" style="display:contents">
+  <div class="col-md-2 p-5" style="width:500px">
+    <div class="row g-3">
+      <div class="col-sm-4">
+        <a class="btn btn-secondary" href="/">Вернуться</a>
+      </div>
+      <div class="col-sm-8 text-end">
+        <a class="btn btn-primary" href="#" onclick="startSlideshow(jsModel.Shots, jsModel.Token); return false;">Слайдшоу</a>&nbsp;
+        <a class="btn btn-primary" href="/edit_album?id=@Model.AlbumId">Ред</a>&nbsp;
+      </div>      
+      <div class="col-sm-3">Название</div>
+      <div class="col-sm-9">@Model.Name</div>
+      @if (@ViewBag.Locations != null) {
+      @foreach(var location in @ViewBag.locations) {
+      @* <div class="col-sm-12">@location.Name</div> *@
+      }
+      }
+      <div class="col-sm-12" id="map" style="height:240px"></div>
+      <div class="col-sm-12">
+        <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Refresh">
+      </div>
+      <div class="col-sm-12">Комментарии</div>
+
+      @if (@Model.AlbumComments != null)
+      {
+      @foreach (var comment in @Model.AlbumComments)
+      {
+      <div class="col-sm-12">
+        <small>
+          <b>@comment.AuthorUsername</b>&nbsp;
+          @comment.Timestamp.ToString("yyyy/MM/dd, HH:mm:ss")<br>
+          @comment.Text
+          @if (@comment.AuthorUsername == Context.User.Identity.Name)
+          {
+          <a href="delete_comment?commentId=@comment.Id&id=@Model.AlbumId">Delete&nbsp;</a>
+          <a href="javascript:editComment(@comment.Id, '@comment.Text')">Edit&nbsp;</a>
+          }
+        </small>
+      </div>
+      }
+      }
+
+        <input type="hidden" asp-for="North" />
+        <input type="hidden" asp-for="South" />
+        <input type="hidden" asp-for="East" />
+        <input type="hidden" asp-for="West" />
+        <input type="hidden" asp-for="AlbumId" />
+        <input type="hidden" id="commentId" name="commentId" value="0">
+        <div class="col-sm-12">
+          <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>
+        </div>
+        <div class="col-sm-12">
+          <input class="btn btn-primary btn-sm" type="submit" name="comment" value="Comment">
+          <input class="btn btn-secondary btn-sm" type="reset">
+        </div>
+
+    </div>
+  </div>
+  <div class="col p-5">
+    <div class="d-flex p-0 flex-wrap overflow-auto">
+
+      @foreach(var shot in @Model.Shots) {
+      <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+        <div class="card-body"
+          style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate&token=@Model.Token'); background-repeat: no-repeat; background-size: cover;">
+        </div>
+        <a href="/view_shot?id=@shot.ShotId&token=@Model.Token" class="stretched-link"></a>
+      </div>
+      }
+
+    </div>
+  </div>
+  </form>
+</div>

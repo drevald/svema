@@ -1,0 +1,128 @@
+@using System.Web
+@using Newtonsoft.Json
+@model IEnumerable<Data.Location>
+@{Layout = "_Layout";}
+
+<script type="text/javascript">
+
+  ymaps.ready(init);
+
+  var counter = 0;
+  var circle;
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var myGeoObject;
+
+  function init() {    
+
+    myMap = new ymaps.Map("map", {
+      center: [0, 0],
+      zoom: 2,
+      controls: []
+    });
+
+    showAll();
+
+  }
+
+  function showAll() {
+  myMap.geoObjects.removeAll();
+
+  if (jsModel.length === 0) return;
+
+  var bounds = [];
+
+  for (let i = 0; i < jsModel.length; i++) {
+    const point = [jsModel[i].Latitude, jsModel[i].Longitude];
+    bounds.push(point);
+
+    const placemark = new ymaps.Placemark(point, {
+      iconContent: jsModel[i].Name
+    }, {
+      preset: 'islands#blackStretchyIcon',
+      draggable: false
+    });
+
+    myMap.geoObjects.add(placemark);
+  }
+
+  // Fit all points with padding (margin)
+  const mapBounds = ymaps.geoQuery(myMap.geoObjects).getBounds();
+  if (mapBounds) {
+    myMap.setBounds(mapBounds, {
+      checkZoomRange: true,
+      zoomMargin: 50 // pixels padding around
+    });
+  }
+}
+
+
+  function show(i) {
+    if (i == 0) {
+        myMap.setCenter([0, 0]);
+        myMap.setZoom(0);
+        myMap.geoObjects.removeAll();
+    }
+    if (myGeoObject == null) {
+        myGeoObject = new ymaps.GeoObject(
+            {geometry: { type: "Point", coordinates: [jsModel[i-1].Latitude, jsModel[i-1].Longitude]}, properties: { iconContent: jsModel[i-1].Name }}, 
+            {preset: 'islands#blackStretchyIcon', draggable: true}
+        )
+        myMap.geoObjects.add(myGeoObject);
+    }
+    myGeoObject.geometry.setCoordinates([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
+    myGeoObject.properties.set('iconContent', jsModel[i-1].Name); 
+    myMap.setCenter([jsModel[i-1].Latitude, jsModel[i-1].Longitude]);
+    myMap.setZoom(jsModel[i-1].Zoom);
+  }
+
+
+</script>
+
+<div class="row">
+
+  <div class="col-md-2 p-5" style="width:50%; position: sticky; top: 0; height: 100vh; overflow: auto; background: white; z-index: 10;">
+    <h4 class="mb-3">Места</h4>
+    <div id="map" style="height: 80vh;"></div>
+  </div>
+
+  <div class="col p-5"> 
+        <div class="col p-5 text-end">
+      <a class="btn btn-primary" href="add_location">Добавить</a>  
+      <a class="btn btn-secondary" href="javascript:history.back();">Отменить</a>
+    </div>
+    <table class="table table-condensed">
+      <thead>
+        <tr>
+          <th class="small">Название</th>
+          <th class="small">Долгота</th>
+          <th class="small">Широта</th>
+          <th class="small">Точность</th>
+          <th class="small">&nbsp;</th>
+        </tr>
+      </thead>
+      @{
+          var index = 1;
+      }
+      @foreach (var location in Model)
+      {
+          var north = location.Latitude + 0.01;
+          var south = location.Latitude - 0.01;
+          var east  = location.Longitude + 0.01;
+          var west  = location.Longitude - 0.01;
+
+          <tr>
+              <td>@location.Name</td>
+              <td>@location.Longitude</td>
+              <td>@location.Latitude</td>
+              <td>
+                  <a class="btn btn-sm btn-danger" href="delete_location?LocationId=@location.Id">Удалить</a>
+                  <a class="btn btn-sm btn-info" href="javascript:show(@index);">Показать</a>
+                  <a class="btn btn-sm btn-info" href="/?north=@north&south=@south&west=@west&east=@east">Галерея</a>
+                  <a class="btn btn-sm btn-primary" href="edit_location?LocationId=@location.Id">Редактировать</a>
+              </td>
+          </tr>
+          index++;
+      }
+    </table>
+  </div>
+</div>

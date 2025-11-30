@@ -1,0 +1,23 @@
+@model Form.SharedLinkDTO
+@{Layout = "_Layout";}
+
+<div class="row">
+    <div class="col-md-2 p-5" style="width:100%">
+
+        <form class="needs-validation" method="post">
+            <div class="row g-3">
+
+                <div class="col-12">
+                    <label for="firstName" class="form-label">Поделится</label>
+                </div>
+                <div class="col-12">
+                    <a href="@Model.LinkWithToken">@Model.LinkWithToken</a>
+                </div>
+                <div class="col-12">
+                    <input type="submit" class="btn btn-primary" value="Сохранить" />
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>

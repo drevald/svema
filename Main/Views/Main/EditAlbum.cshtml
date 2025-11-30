@@ -1,0 +1,204 @@
+@using System.Web
+@using Newtonsoft.Json
+@model Form.AlbumDTO
+@{Layout = "_Layout";}
+
+<!-- <script asp-append-version="true">
+    var jsLocations = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Locations)))");
+    var jsShot = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+    var jsShots = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model.Shots)))");
+    var initFunc = function () { init(jsShot);};
+</script> -->
+
+<script asp-append-version="true">
+  var jsModel = JSON.parse("@Html.Raw(HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(Model)))");
+  var initFunc = function () {init_locations(jsModel, false); };
+</script>
+
+<script src="~/js/map.js" asp-append-version="true"> </script>
+<script src="~/js/dates.js" asp-append-version="true"> </script>
+<script src="~/js/shots.js" asp-append-version="true"> </script>
+
+<form method="post">
+
+<input type="hidden" id="North" name="North" />
+<input type="hidden" id="South" name="South" />
+<input type="hidden" id="East" name="East" />
+<input type="hidden" id="West" name="West" />    
+
+<div class="row">
+
+    <div class="col-md-2 p-5" style="width:500px">
+
+        <h4 class="mb-3">Альбом</h4>
+
+            <div class="row g-3">
+
+                <div class="col-sm-12">
+                    <label for="firstName" class="form-label">Название</label>
+                    <input asp-for="AlbumId" type="hidden"/>
+                    <input asp-for="Name" class="form-control"/>
+                </div>
+
+                <div class="col-sm-12">
+                    <label class="form-label">Год</label>
+                    <select asp-for="Year" class="form-select" onchange="javascript:setdate(this.options[this.selectedIndex].value)">
+                        <option></option>
+                        <option value="-1">Unknown</option>
+                        @{
+                        var startdec = 195;
+                        var enddec = DateTime.Now.Year / 10;
+                        var numbersdec = Enumerable.Range(startdec, enddec - startdec + 1).Reverse();
+                        foreach (var number in numbersdec)
+                            {
+                                <option value="@number">@(number + "X")</option>
+                            }
+                        }
+                        @{
+                        var start = 1950;
+                        var end = DateTime.Now.Year;
+                        var numbers = Enumerable.Range(start, end - start + 1).Reverse();
+                        foreach (var number in numbers)
+                            {
+                                <option value="@number">@number</option>
+                            }
+                        }
+                    </select>
+                </div>
+    
+                <div class="col-sm-6">
+                    <label class="form-label">Дата, от</label>
+                    <input asp-for="DateStart" class="form-control" value="" asp-format="{0:yyyy-MM-dd}" onchange="javascript:document.getElementById('DateEnd').value=this.value"/>
+                </div>
+    
+                <div class="col-sm-6">
+                    <label class="form-label">Дата, до</label>
+                    <input asp-for="DateEnd" class="form-control" value="" asp-format="{0:yyyy-MM-dd}"/>
+                </div> 
+
+                <div class="col-12">
+                    <label for="lastName" class="form-label">Карта</label>
+                    <div id="map" style="height:240px"></div>
+                </div>
+
+                <div class="col-sm-12">
+                    <input class="btn btn-primary btn-sm" type="submit" name="refresh" value="Обновить">
+                </div>  
+
+                <div class="col-sm-12">
+                    <label class="form-label">Место</label>
+                    <select asp-for="LocationId" class="form-select" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 2)">
+                        <option></option>
+                        <option value=-1>Unknown</option>
+                        @foreach(var location in @Model.Locations) {
+                            <option value="@location.Id">@location.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <input asp-for="EditLocation"
+                                       type="checkbox"
+                                       onclick="toggleEditing(this);" />
+                    <label class="form-label">Изменить локацию</label>
+                </div>
+
+                <input asp-for="Zoom" class="form-control" type="hidden" value="" />
+
+                <div class="col-sm-6">
+                    <label class="form-label">Долгота</label>
+                    <input asp-for="Longitude" class="form-control" value="" />
+                </div> 
+
+                <div class="col-sm-6">
+                    <label class="form-label">Широта</label>
+                    <input asp-for="Latitude" class="form-control" value="" />
+                </div> 
+
+              
+
+                <div class="col-sm-12">
+                    <label class="form-label">Название места</label>
+                    <input asp-for="LocationName" class="form-control"/>
+                </div> 
+
+            </div>
+    </div>
+
+    <div class="col p-5">
+
+        <div class="row">
+            <div class="col-md-12 p-0 pb-5 text-end">
+                <a class="btn btn-primary btn-sm px-3" href="javascript:flip()">Отразить</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:rotate()">Повернуть</a>
+                <button type="submit" formaction="/select_album" class="btn btn-primary btn-sm px-3">Переместить</button>
+                <a class="btn btn-primary btn-sm px-3" href="upload_shots?id=@Model.AlbumId">Добавить</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:selectAll()">Выбрать все</a>
+                <a class="btn btn-primary btn-sm px-3" href="javascript:deselectAll()">Снять выделение</a>
+                <a class="btn btn-primary btn-sm px-3" href="/share_link?id=@Model.AlbumId&type=album">Поделится</a>
+                <input type="submit" class="btn btn-primary btn-sm px-3" value="Сохранить">
+                <a class="btn btn-secondary btn-sm ps-3" href="/view_album?id=@Model.AlbumId">Отменить</a>
+            </div>
+        </div>       
+
+        <div class="d-flex flex-wrap overflow-auto">
+            @for (var index = 0; index < @Model.Shots.Count(); index++) {
+                <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div title="@Model.Shots[index].Name">
+                            @(
+                                Model.Shots[index].Name?.Length > 20 
+                                    ? Model.Shots[index].Name.Substring(0, 20) + "…" 
+                                    : Model.Shots[index].Name
+                            )
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">&nbsp;</button>
+                            <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/delete_shot?id=@Model.Shots[index].ShotId">Удалить</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body text-end"
+                        onClick="location.href='/edit_shot?id=@Model.Shots[index].ShotId'"
+                        style="background-image: url('/preview?id=@Model.Shots[index].ShotId&flip=@Model.Shots[index].Flip&rotate=@Model.Shots[index].Rotate'); background-repeat: no-repeat; background-size: cover;">
+                        <input asp-for="@Model.Shots[index].IsChecked" type="checkbox" style="width: 1.85rem;height: 1.85rem" onclick="event.stopPropagation()">
+                        <input type="hidden" asp-for="@Model.Shots[index].ShotId" />
+                        <input type="hidden" asp-for="@Model.Shots[index].Name" />
+                        <input type="hidden" asp-for="@Model.Shots[index].Flip" />
+                        <input type="hidden" asp-for="@Model.Shots[index].Rotate" />
+                    </div>                    
+                </div>
+            }           
+        </div>
+    </div>
+
+</div>
+
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name$=".IsChecked"]');
+    let lastChecked = null;
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('click', function (e) {
+            // If Shift key is pressed and we already have a last checked
+            if (e.shiftKey && lastChecked) {
+                const start = Array.prototype.indexOf.call(checkboxes, lastChecked);
+                const end = Array.prototype.indexOf.call(checkboxes, this);
+
+                const [from, to] = start < end ? [start, end] : [end, start];
+
+                for (let i = from; i <= to; i++) {
+                    checkboxes[i].checked = lastChecked.checked;
+                }
+            }
+
+            // Update last checked reference
+            lastChecked = this;
+        });
+    });
+});
+</script>

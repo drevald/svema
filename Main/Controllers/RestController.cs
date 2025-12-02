@@ -113,6 +113,11 @@ public class RestController(ApplicationDbContext dbContext, IConfiguration confi
         }
 
         var album = albumService.GetAlbum(dto.AlbumId);
+        if (album == null)
+        {
+            return BadRequest(new { error = $"Album with ID {dto.AlbumId} not found." });
+        }
+
         var storage = userService.GetStorageForUser(user.UserId);
         if (storage == null)
         {

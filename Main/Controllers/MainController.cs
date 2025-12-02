@@ -19,7 +19,12 @@ using Services;
 
 namespace Svema.Controllers;
 
-public class MainController(ApplicationDbContext dbContext, IConfiguration config) : BaseController(dbContext, config)
+public class MainController(
+    ApplicationDbContext dbContext,
+    IConfiguration config,
+    FaceDetectionService faceDetectionService,
+    FaceClusteringService faceClusteringService,
+    PersonService personService) : BaseController(dbContext, config)
 {
 
     public List<string> GetCameraModels()
@@ -543,11 +548,15 @@ public class MainController(ApplicationDbContext dbContext, IConfiguration confi
 
         await dbContext.SaveChangesAsync();
 
-        var album = albumService.GetAlbum(dto.AlbumId);
-        if (dto.AlbumId != 0 && album == null)
+        Album? album = null;
+        if (dto.AlbumId != 0)
         {
-            dto.ErrorMessage = "Album not found";
-            return View(dto);
+            album = albumService.GetAlbumWithUser(dto.AlbumId, user.UserId);
+            if (album == null)
+            {
+                dto.ErrorMessage = "Album not found";
+                return View(dto);
+            }
         }
 
         foreach (var formFile in files)
@@ -562,6 +571,14 @@ public class MainController(ApplicationDbContext dbContext, IConfiguration confi
                 try
                 {
                     PhotoMetadata metadata = fileService.GetMetadata(bytes, formFile.FileName, dto.FileErrors);
+
+                    // Skip if metadata extraction failed
+                    if (metadata == null)
+                    {
+                        Console.WriteLine($"[DEBUG] Skipping shot {formFile.FileName} because metadata is null.");
+                        continue;
+                    }
+
                     if (dto.AlbumId == 0)
                     {
                         if (metadata.CreationDate != null)
@@ -582,9 +599,20 @@ public class MainController(ApplicationDbContext dbContext, IConfiguration confi
                         else
                         {
                             dto.FileErrors.Add(formFile.FileName, "Can not create album when date is missing");
+                            Console.WriteLine($"[DEBUG] Skipping shot {formFile.FileName} because date is missing and no album selected.");
+                            continue;
                         }
                     }
-                    await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, dto.FileErrors, metadata);
+
+                    if (album != null)
+                    {
+                        Console.WriteLine($"[DEBUG] Processing shot {formFile.FileName}. AlbumId: {album.AlbumId}, AlbumName: {album.Name}");
+                        await ProcessShot(bytes, formFile.FileName, formFile.ContentType, shot, album, storage, dto.FileErrors, metadata);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[DEBUG] Skipping shot {formFile.FileName} because album is null.");
+                    }
                 }
                 catch (Exception e)
                 {
@@ -784,18 +812,14 @@ public class MainController(ApplicationDbContext dbContext, IConfiguration confi
     }
 
     [Authorize]
+    [Authorize]
     [HttpPost("select_album")]
     public IActionResult SelectAlbum(AlbumDTO dto)
     {
-        if (dto == null)
-        {
-            return RedirectToAction("Albums");
-        }
+        if (dto == null) return RedirectToAction("Albums");
 
         var username = GetUsername() ?? string.Empty;
-
         var shots = (dto.Shots ?? []).Where(s => s != null && s.IsChecked).ToList();
-
         var albums = albumService.GetAlbumCardsForUser(username, dto.AlbumId);
 
         SelectAlbumDTO selectAlbumDTO = new()
@@ -822,6 +846,155 @@ public class MainController(ApplicationDbContext dbContext, IConfiguration confi
         albumService.UpdateAlbumPreview(dto.SourceAlbumId, shotsList, dto.TargetAlbumId);
 
         return Redirect("edit_album?id=" + dto.SourceAlbumId);
+    }
+
+    ///////////////////   FACE RECOGNITION  /////////////////////////////////////////
+
+    [Authorize]
+    [HttpPost("api/faces/detect/{shotId}")]
+    public async Task<IActionResult> DetectFaces(int shotId)
+    {
+        var count = await faceDetectionService.DetectAndStoreFacesAsync(shotId);
+        return Ok(new { count });
+    }
+
+    [Authorize(AuthenticationSchemes = "CookieScheme,Bearer")]
+    [HttpPost("api/faces/cluster")]
+    public async Task<IActionResult> ClusterFaces()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var count = await faceClusteringService.ClusterUnassignedFacesAsync(userId.Value);
+        return Ok(new { count });
+    }
+
+    [Authorize]
+    [HttpGet("api/faces/unconfirmed")]
+    public async Task<IActionResult> GetUnconfirmedFaces()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var faces = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value);
+        return Ok(faces);
+    }
+
+    [Authorize]
+    [HttpGet("api/faces/unassigned")]
+    public async Task<IActionResult> GetUnassignedFaces()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var faces = await faceClusteringService.GetUnassignedFacesAsync(userId.Value);
+        return Ok(faces);
+    }
+
+    [Authorize]
+    [HttpPost("api/faces/confirm/{faceId}")]
+    public async Task<IActionResult> ConfirmFace(int faceId)
+    {
+        await personService.ConfirmFaceAssignmentAsync(faceId);
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpPost("api/faces/reassign/{faceId}")]
+    public async Task<IActionResult> ReassignFace(int faceId, [FromBody] int newPersonId)
+    {
+        await personService.ReassignFaceAsync(faceId, newPersonId);
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpPost("api/persons")]
+    public async Task<IActionResult> CreatePerson([FromBody] PersonDTO dto)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var person = await personService.CreatePersonAsync(dto.FirstName, dto.LastName, userId.Value);
+        return Ok(person);
+    }
+
+    [Authorize]
+    [HttpGet("api/persons")]
+    public async Task<IActionResult> GetPersons()
+    {
+        var persons = await personService.GetAllPersonsAsync();
+        return Ok(persons);
+    }
+
+    [Authorize]
+    [HttpGet("api/persons/{personId}/shots")]
+    public async Task<IActionResult> GetPersonShots(int personId)
+    {
+        var shots = await personService.GetShotsForPersonAsync(personId);
+        return Ok(shots);
+    }
+
+    [Authorize]
+    [HttpGet("face/thumbnail/{id}")]
+    public async Task<IActionResult> GetFaceThumbnail(int id)
+    {
+        var bytes = await faceDetectionService.GetFaceImageAsync(id);
+        if (bytes == null) return NotFound();
+        return File(bytes, "image/jpeg");
+    }
+
+    [Authorize]
+    [HttpGet("persons")]
+    public async Task<IActionResult> PersonsList()
+    {
+        var persons = await personService.GetAllPersonsAsync();
+        return View(persons);
+    }
+
+    [Authorize]
+    [HttpGet("person/{id}")]
+    public async Task<IActionResult> Person(int id)
+    {
+        var shots = await personService.GetShotsForPersonAsync(id);
+        var person = (await personService.GetAllPersonsAsync()).FirstOrDefault(p => p.PersonId == id);
+        if (person == null) return NotFound();
+
+        // We might want a DTO here to hold person info + shots
+        ViewBag.Person = person;
+        return View(shots);
+    }
+
+    [Authorize]
+    [HttpGet("faces/review")]
+    public async Task<IActionResult> ReviewFaces()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var unconfirmed = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value);
+        var unassigned = await faceClusteringService.GetUnassignedFacesAsync(userId.Value);
+
+        var model = new FaceReviewViewModel
+        {
+            Unconfirmed = unconfirmed,
+            Unassigned = unassigned,
+            Persons = await personService.GetAllPersonsAsync()
+        };
+
+        return View(model);
+    }
+
+    public class FaceReviewViewModel
+    {
+        public List<FaceDetection> Unconfirmed { get; set; }
+        public List<FaceDetection> Unassigned { get; set; }
+        public List<Person> Persons { get; set; }
+    }
+
+    public class PersonDTO
+    {
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
     }
 
 

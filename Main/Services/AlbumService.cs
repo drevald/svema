@@ -118,7 +118,7 @@ public class AlbumService : Service
             {
                 AlbumId = a.AlbumId,
                 Name = a.Name,
-                PreviewId = a.PreviewId,
+                PreviewId = a.PreviewId ?? 0,
                 PreviewFlip = a.PreviewShot != null && a.PreviewShot.Flip,
                 PreviewRotate = a.PreviewShot != null ? a.PreviewShot.Rotate : 0
             })
@@ -214,7 +214,7 @@ public class AlbumService : Service
         };
     }
 
- public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, String username, bool onlyMine)
+    public IQueryable<Shot> ApplyShotFilters(AlbumsListDTO dto, String username, bool onlyMine)
     {
         if (dto == null) return dbContext.Shots.AsNoTracking().AsQueryable();
 
@@ -272,24 +272,6 @@ public class AlbumService : Service
     public Album GetAlbum(int id)
     {
         return dbContext.Albums.Find(id);
-    }
-
-    public Album GetAlbumByName(string name, int userId)
-    {
-        return dbContext.Albums.Where(a => a.Name == name && a.User.UserId == userId).FirstOrDefault();
-    }
-
-    public Album GetAlbumWithUser(int id, int currentUserId)
-    {
-        return dbContext.Albums
-            .Include(a => a.AlbumComments)
-            .FirstOrDefault(a => a.AlbumId == id && a.User.UserId == currentUserId);
-    }
-
-    public void CreateAlbum(Album album)
-    {
-        dbContext.Add(album);
-        dbContext.SaveChanges();
     }
 
     public async Task DeleteAlbumAsync(int id)
@@ -353,19 +335,19 @@ public class AlbumService : Service
         if (sourceAlbum == null) return;
 
         // Update preview of source album if its current preview was moved
-        if (movedShotIds.Contains(sourceAlbum.PreviewId))
+        if (sourceAlbum.PreviewId.HasValue && movedShotIds.Contains(sourceAlbum.PreviewId.Value))
         {
             var newPreviewId = dbContext.Shots
                 .Where(s => s.AlbumId == sourceAlbumId && !movedShotIds.Contains(s.ShotId))
                 .Select(s => s.ShotId)
                 .FirstOrDefault();
 
-            sourceAlbum.PreviewId = newPreviewId != 0 ? newPreviewId : 0;
+            sourceAlbum.PreviewId = newPreviewId != 0 ? newPreviewId : null;
         }
 
         // Ensure target album has a preview
         var targetAlbum = dbContext.Albums.FirstOrDefault(a => a.AlbumId == targetAlbumId);
-        if (targetAlbum != null && targetAlbum.PreviewId == 0 && movedShotIds.Any())
+        if (targetAlbum != null && (targetAlbum.PreviewId == 0 || targetAlbum.PreviewId == null) && movedShotIds.Any())
         {
             targetAlbum.PreviewId = movedShotIds[0];
         }
@@ -419,7 +401,7 @@ public class AlbumService : Service
                 {
                     AlbumId = x.Album.AlbumId,
                     Name = x.Album.Name,
-                    PreviewId = x.Album.PreviewId,
+                    PreviewId = x.Album.PreviewId ?? 0,
                     PreviewFlip = shot != null ? shot.Flip : false,
                     PreviewRotate = shot != null ? shot.Rotate : 0
                 }
@@ -431,6 +413,27 @@ public class AlbumService : Service
     public List<string> GetCameraModels()
     {
         return dbContext.Shots.Select(s => s.CameraModel).Distinct().ToList();
+    }
+
+    public Album GetAlbumWithUser(int id, int userId)
+    {
+        return dbContext.Albums
+            .Include(a => a.User)
+            .Include(a => a.AlbumComments)
+            .FirstOrDefault(a => a.AlbumId == id && a.User.UserId == userId);
+    }
+
+    public void CreateAlbum(Album album)
+    {
+        dbContext.Albums.Add(album);
+        dbContext.SaveChanges();
+    }
+
+    public Album GetAlbumByName(string name, int userId)
+    {
+        return dbContext.Albums
+            .Include(a => a.User)
+            .FirstOrDefault(a => a.Name == name && a.User.UserId == userId);
     }
 
 }

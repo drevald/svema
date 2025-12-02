@@ -30,10 +30,10 @@ public class FileService : Service
         }
         catch (Exception e)
         {
-            Console.WriteLine("The Exception is " + e.Data);
+            Console.WriteLine("GetMetadata Exception: " + e.Message);
             fileErrors.Add(name, e.Message);
             return null;
-        }           
+        }
     }
 
     public async Task ProcessShot(byte[] data, string name, string mime, Shot shot, Album album, ShotStorage storage, Dictionary<string, string> fileErrors, PhotoMetadata photoMetadata)
@@ -76,6 +76,13 @@ public class FileService : Service
 
             originalStream.Position = 0;
             shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
+
+            Console.WriteLine($"[DEBUG] Before AddShotToDatabase. album is null: {album == null}, shot is null: {shot == null}");
+            if (album != null)
+            {
+                Console.WriteLine($"[DEBUG] Album details: AlbumId={album.AlbumId}, Name={album.Name}, User is null: {album.User == null}");
+            }
+
             AddShotToDatabase(shot, album);
 
             await Storage.StoreShot(shot, originalStream.ToArray());
@@ -85,12 +92,13 @@ public class FileService : Service
         catch (DbUpdateException e)
         {
             dbContext.Entry(shot).State = EntityState.Detached;
-            Console.WriteLine("The DbUpdateException is " + e.Data);
+            Console.WriteLine("The DbUpdateException is: " + e.Message);
             fileErrors.Add(name, "Same file already stored");
         }
         catch (Exception e)
         {
-            Console.WriteLine("The Exception is " + e.Data);
+            Console.WriteLine($"ProcessShot Exception: {e.Message}");
+            Console.WriteLine($"Stack Trace: {e.StackTrace}");
             fileErrors.Add(name, e.Message);
         }
     }
@@ -149,7 +157,7 @@ public class FileService : Service
     {
         dbContext.Shots.Add(shot);
         dbContext.SaveChanges();
-        if (album.PreviewId == 0)
+        if (album.PreviewId == null || album.PreviewId == 0)
         {
             album.PreviewId = shot.ShotId;
             dbContext.Albums.Update(album);

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Data;
 using Middleware;
+using Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication;
 
@@ -60,6 +61,12 @@ builder.Services.AddControllers(options =>
 {
     options.MaxModelBindingCollectionSize = 5000; // default 1024
 });
+
+builder.Services.AddScoped<FaceDetectionService>();
+builder.Services.AddScoped<FaceClusteringService>();
+builder.Services.AddScoped<PersonService>();
+builder.Services.AddHostedService<BackgroundFaceDetectionService>();
+
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {
     opts.UseNpgsql(dbConnection, npgsqlOptions => npgsqlOptions.CommandTimeout(60));

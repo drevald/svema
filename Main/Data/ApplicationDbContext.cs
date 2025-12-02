@@ -65,6 +65,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<SharedUser> SharedUsers { get; set; }
     public DbSet<SharedAlbum> SharedAlbums { get; set; }
     public DbSet<SharedLink> SharedLinks { get; set; }
+    public DbSet<FaceDetection> FaceDetections { get; set; }
+    public DbSet<FaceEncoding> FaceEncodings { get; set; }
 
 }
 
@@ -79,11 +81,11 @@ public class Album
     [Column("user_id")]
     public required User User { get; set; }
     [Column("preview_id")]
-    public int PreviewId { get; set; }
+    public int? PreviewId { get; set; }
     public Shot? PreviewShot { get; set; }
     [JsonIgnore]
     public ICollection<Shot>? Shots { get; }
-    public  ICollection<AlbumComment>? AlbumComments { get; set; }
+    public ICollection<AlbumComment>? AlbumComments { get; set; }
     [Column("longitude")]
     public double Longitude { get; set; }
     [Column("latitude")]
@@ -101,6 +103,7 @@ public class Shot
     public int ShotId { get; set; }
     [Column("name")]
     public string Name { get; set; }
+    [JsonIgnore]
     public Album Album { get; set; }
     [Column("album_id")]
     public int AlbumId { get; set; }
@@ -125,6 +128,7 @@ public class Shot
     public ICollection<ShotComment> ShotComments { get; set; }
     [Column("storage_id")]
     public int StorageId { get; set; }
+    [JsonIgnore]
     public ShotStorage Storage { get; set; }
     [Column("size")]
     public long Size { get; set; }
@@ -146,6 +150,8 @@ public class Shot
     public string CameraManufacturer { get; set; }
     [Column("camera_model")]
     public string CameraModel { get; set; }
+    [Column("is_face_processed")]
+    public bool IsFaceProcessed { get; set; }
 
 }
 
@@ -173,7 +179,11 @@ public class Person
     public string FirstName { get; set; }
     [Column("last_name")]
     public string LastName { get; set; }
+    [JsonIgnore]
     public ICollection<Shot> Shots { get; set; }
+    [Column("profile_photo_id")]
+    public int? ProfilePhotoId { get; set; }
+    public ICollection<FaceDetection> FaceDetections { get; set; }
 }
 
 [Table("users")]
@@ -271,6 +281,7 @@ public class ShotStorage
     public Provider Provider { get; set; }
     [Column("root")]
     public string Root { get; set; }
+    [JsonIgnore]
     public ICollection<Shot> Shots { get; set; }
 }
 
@@ -291,7 +302,7 @@ public class SharedLink
 
     public SharedLink()
     {
-        
+
     }
 
     public SharedLink(

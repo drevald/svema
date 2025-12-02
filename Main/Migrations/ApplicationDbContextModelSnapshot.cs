@@ -40,14 +40,15 @@ namespace Svema.Migrations
                         .HasColumnName("longitude");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
 
-                    b.Property<int>("PreviewId")
+                    b.Property<int?>("PreviewId")
                         .HasColumnType("integer")
                         .HasColumnName("preview_id");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Zoom")
@@ -55,6 +56,8 @@ namespace Svema.Migrations
                         .HasColumnName("zoom");
 
                     b.HasKey("AlbumId");
+
+                    b.HasIndex("PreviewId");
 
                     b.HasIndex("UserId");
 
@@ -97,6 +100,81 @@ namespace Svema.Migrations
                     b.HasIndex("AuthorId");
 
                     b.ToTable("album_comments");
+                });
+
+            modelBuilder.Entity("Data.FaceDetection", b =>
+                {
+                    b.Property<int>("FaceDetectionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("FaceDetectionId"));
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("detected_at");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<bool>("IsConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_confirmed");
+
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("ShotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("shot_id");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.Property<int>("X")
+                        .HasColumnType("integer")
+                        .HasColumnName("x");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("integer")
+                        .HasColumnName("y");
+
+                    b.HasKey("FaceDetectionId");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("ShotId");
+
+                    b.ToTable("face_detections");
+                });
+
+            modelBuilder.Entity("Data.FaceEncoding", b =>
+                {
+                    b.Property<int>("FaceEncodingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("FaceEncodingId"));
+
+                    b.Property<byte[]>("Encoding")
+                        .HasColumnType("bytea")
+                        .HasColumnName("encoding");
+
+                    b.Property<int>("FaceDetectionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("face_detection_id");
+
+                    b.HasKey("FaceEncodingId");
+
+                    b.HasIndex("FaceDetectionId")
+                        .IsUnique();
+
+                    b.ToTable("face_encodings");
                 });
 
             modelBuilder.Entity("Data.Location", b =>
@@ -145,6 +223,10 @@ namespace Svema.Migrations
                     b.Property<string>("LastName")
                         .HasColumnType("text")
                         .HasColumnName("last_name");
+
+                    b.Property<int?>("ProfilePhotoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("profile_photo_id");
 
                     b.HasKey("PersonId");
 
@@ -294,6 +376,10 @@ namespace Svema.Migrations
                     b.Property<byte[]>("FullScreen")
                         .HasColumnType("bytea")
                         .HasColumnName("fullscreen");
+
+                    b.Property<bool>("IsFaceProcessed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_face_processed");
 
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision")
@@ -468,9 +554,18 @@ namespace Svema.Migrations
 
             modelBuilder.Entity("Data.Album", b =>
                 {
+                    b.HasOne("Data.Shot", "PreviewShot")
+                        .WithMany()
+                        .HasForeignKey("PreviewId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Data.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PreviewShot");
 
                     b.Navigation("User");
                 });
@@ -492,6 +587,34 @@ namespace Svema.Migrations
                     b.Navigation("Album");
 
                     b.Navigation("Author");
+                });
+
+            modelBuilder.Entity("Data.FaceDetection", b =>
+                {
+                    b.HasOne("Data.Person", "Person")
+                        .WithMany("FaceDetections")
+                        .HasForeignKey("PersonId");
+
+                    b.HasOne("Data.Shot", "Shot")
+                        .WithMany()
+                        .HasForeignKey("ShotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Person");
+
+                    b.Navigation("Shot");
+                });
+
+            modelBuilder.Entity("Data.FaceEncoding", b =>
+                {
+                    b.HasOne("Data.FaceDetection", "FaceDetection")
+                        .WithOne("FaceEncoding")
+                        .HasForeignKey("Data.FaceEncoding", "FaceDetectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FaceDetection");
                 });
 
             modelBuilder.Entity("Data.SharedAlbum", b =>
@@ -601,6 +724,16 @@ namespace Svema.Migrations
                     b.Navigation("AlbumComments");
 
                     b.Navigation("Shots");
+                });
+
+            modelBuilder.Entity("Data.FaceDetection", b =>
+                {
+                    b.Navigation("FaceEncoding");
+                });
+
+            modelBuilder.Entity("Data.Person", b =>
+                {
+                    b.Navigation("FaceDetections");
                 });
 
             modelBuilder.Entity("Data.Shot", b =>

@@ -1,0 +1,77 @@
+@model IEnumerable<Data.Shot>
+@{
+    Layout = "_Layout";
+    var person = ViewBag.Person as Data.Person;
+}
+
+<div class="container p-5">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" id="firstName" value="@person?.FirstName"
+                    placeholder="First Name">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="lastName" value="@person?.LastName" placeholder="Last Name">
+            </div>
+            <p class="text-muted">@Model.Count() shots</p>
+            <a href="/persons" class="btn btn-secondary">Back to People</a>
+            <button type="button" class="btn btn-primary ms-2" id="saveNameBtn">Save Name</button>
+            <a href="/delete_person/@person?.PersonId" class="btn btn-danger ms-2"
+                onclick="return confirm('Are you sure you want to delete this person? Face detections will become unassigned.');">Delete
+                Person</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="d-flex p-0 flex-wrap overflow-auto">
+            @foreach (var shot in Model)
+            {
+                <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+                    <div class="card-body"
+                        style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+                    </div>
+                    <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('saveNameBtn').addEventListener('click', function () {
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const personId = @person?.PersonId;
+
+        fetch(`/update_person_name/${personId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                firstName: firstName,
+                lastName: lastName
+            })
+        })
+            .then(response => {
+                if (response.ok) {
+                    this.classList.add('btn-success');
+                    this.textContent = 'Saved!';
+                    setTimeout(() => {
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-primary');
+                        this.textContent = 'Save Name';
+                    }, 2000);
+                } else {
+                    alert('Failed to save name');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving name');
+            });
+    });
+</script>

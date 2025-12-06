@@ -1,0 +1,153 @@
+@model Svema.Controllers.MainController.FaceReviewViewModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="container p-5">
+    <h2>Review Faces</h2>
+
+    <h3>Unconfirmed Faces</h3>
+    <div class="row" id="unconfirmed-faces">
+        @foreach (var face in Model.Unconfirmed)
+        {
+            <div class="col-md-3 mb-4 face-card" id="face-@face.FaceDetectionId">
+                <div class="card">
+                    <img src="/face/thumbnail/@face.FaceDetectionId" class="card-img-top"
+                        style="height: 150px; object-fit: cover;">
+                    <div class="card-body">
+                        <p>Assigned to: <strong>@face.Person?.FirstName @face.Person?.LastName</strong></p>
+                        <button class="btn btn-success btn-sm w-100 mb-2"
+                            onclick="confirmFace(@face.FaceDetectionId)">Confirm</button>
+
+                        <select class="form-select form-select-sm mb-2" id="reassign-select-@face.FaceDetectionId">
+                            <option value="">Reassign to...</option>
+                            @foreach (var p in Model.Persons)
+                            {
+                                <option value="@p.PersonId">@p.FirstName @p.LastName</option>
+                            }
+                        </select>
+                        <button class="btn btn-warning btn-sm w-100"
+                            onclick="reassignFace(@face.FaceDetectionId)">Reassign</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <h3>Unassigned Faces</h3>
+    <div class="row" id="unassigned-faces">
+        @foreach (var face in Model.Unassigned)
+        {
+            <div class="col-md-3 mb-4 face-card" id="face-@face.FaceDetectionId">
+                <div class="card">
+                    <img src="/face/thumbnail/@face.FaceDetectionId" class="card-img-top"
+                        style="height: 150px; object-fit: cover;">
+                    <div class="card-body">
+                        <p>Unknown Person</p>
+                        <select class="form-select form-select-sm mb-2" id="assign-select-@face.FaceDetectionId">
+                            <option value="">Assign to...</option>
+                            @foreach (var p in Model.Persons)
+                            {
+                                <option value="@p.PersonId">@p.FirstName @p.LastName</option>
+                            }
+                        </select>
+                        <button class="btn btn-primary btn-sm w-100 mb-2"
+                            onclick="assignFace(@face.FaceDetectionId)">Assign</button>
+
+                        <hr />
+                        <input type="text" class="form-control form-control-sm mb-2" placeholder="New Person Name"
+                            id="new-person-name-@face.FaceDetectionId">
+                        <button class="btn btn-outline-primary btn-sm w-100"
+                            onclick="createAndAssign(@face.FaceDetectionId)">Create & Assign</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    async function confirmFace(faceId) {
+        const response = await fetch(`/api/faces/confirm/${faceId}`, { method: 'POST' });
+        if (response.ok) {
+            document.getElementById(`face-${faceId}`).remove();
+        } else {
+            alert('Failed to confirm face');
+        }
+    }
+
+    async function reassignFace(faceId) {
+        const select = document.getElementById(`reassign-select-${faceId}`);
+        const personId = select.value;
+        if (!personId) return;
+
+        const response = await fetch(`/api/faces/reassign/${faceId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parseInt(personId))
+        });
+
+        if (response.ok) {
+            document.getElementById(`face-${faceId}`).remove();
+        } else {
+            alert('Failed to reassign face');
+        }
+    }
+
+    async function assignFace(faceId) {
+        const select = document.getElementById(`assign-select-${faceId}`);
+        const personId = select.value;
+        if (!personId) return;
+
+        const response = await fetch(`/api/faces/reassign/${faceId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parseInt(personId))
+        });
+
+        if (response.ok) {
+            document.getElementById(`face-${faceId}`).remove();
+        } else {
+            alert('Failed to assign face');
+        }
+    }
+
+    async function createAndAssign(faceId) {
+        const nameInput = document.getElementById(`new-person-name-${faceId}`);
+        const fullName = nameInput.value.trim();
+        if (!fullName) return;
+
+        const parts = fullName.split(' ');
+        const firstName = parts[0];
+        const lastName = parts.slice(1).join(' ') || '';
+
+        // Create person
+        const createResponse = await fetch('/api/persons', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ firstName, lastName })
+        });
+
+        if (!createResponse.ok) {
+            alert('Failed to create person');
+            return;
+        }
+
+        const person = await createResponse.json();
+
+        // Assign face
+        const assignResponse = await fetch(`/api/faces/reassign/${faceId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(person.personId)
+        });
+
+        if (assignResponse.ok) {
+            document.getElementById(`face-${faceId}`).remove();
+            // Optionally reload page to update dropdowns with new person
+            location.reload();
+        } else {
+            alert('Failed to assign face to new person');
+        }
+    }
+</script>

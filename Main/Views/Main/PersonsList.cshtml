@@ -1,0 +1,259 @@
+@model IEnumerable<Data.Person>
+@{
+    Layout = "_Layout";
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var totalPages = ViewBag.TotalPages ?? 1;
+    var totalCount = ViewBag.TotalCount ?? 0;
+}
+
+<div class="container p-5">
+    <form id="personsForm" method="post" action="/merge_persons">
+        <div class="row mb-3">
+            <div class="col">
+                <h2>People <small class="text-muted">(@totalCount total)</small></h2>
+            </div>
+            <div class="col text-end">
+                <button type="button" id="deselectAllBtn" class="btn btn-sm btn-outline-danger me-2 d-none">Deselect
+                    All</button>
+                <button type="submit" id="mergeBtn" class="btn btn-warning me-2" disabled>Merge Selected</button>
+                <a class="btn btn-primary" href="/faces/review">Review Faces</a>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap overflow-auto">
+            @{
+                var faceCounts = ViewBag.FaceCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+                foreach (var person in Model)
+                {
+                    var face = person.FaceDetections?.FirstOrDefault();
+                    var shotCount = faceCounts.ContainsKey(person.PersonId) ? faceCounts[person.PersonId] : 0;
+                    var previewUrl = $"/person/preview/{person.PersonId}";
+
+                    <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div title="@person.FirstName @person.LastName">
+                                @person.FirstName @person.LastName (@shotCount)
+                            </div>
+                        </div>
+
+                        <div class="card-body text-end p-2"
+                            style="background-image: url('@previewUrl'); background-repeat: no-repeat; background-size: cover; background-position: center; cursor: pointer;"
+                            onclick="location.href='/person/@person.PersonId'">
+
+                            <input type="checkbox" name="selectedPersons" value="@person.PersonId"
+                                class="form-check-input person-checkbox shadow"
+                                style="width: 1.85rem; height: 1.85rem; cursor: default;" onclick="event.stopPropagation();">
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </form>
+
+    @if (totalPages > 1)
+    {
+        <nav aria-label="Person pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                @if (currentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/persons?page=@(currentPage - 1)">Previous</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                }
+
+                @{
+                    var startPage = Math.Max(1, currentPage - 2);
+                    var endPage = Math.Min(totalPages, currentPage + 2);
+
+                    if (startPage > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="/persons?page=1">1</a>
+                        </li>
+                        if (startPage > 2)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                    }
+
+                    for (var i = startPage; i <= endPage; i++)
+                    {
+                        if (i == currentPage)
+                        {
+                            <li class="page-item active">
+                                <span class="page-link">@i</span>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="/persons?page=@i">@i</a>
+                            </li>
+                        }
+                    }
+
+                    if (endPage < totalPages)
+                    {
+                        if (endPage < totalPages - 1)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                        <li class="page-item">
+                            <a class="page-link" href="/persons?page=@totalPages">@totalPages</a>
+                        </li>
+                    }
+                }
+
+                @if (currentPage < totalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/persons?page=@(currentPage + 1)">Next</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+</div>
+
+<script>
+    // Persistent selection using localStorage
+    const STORAGE_KEY = 'svema_selected_persons';
+    const checkboxes = document.querySelectorAll('.person-checkbox');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+
+    function getSelectedIds() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    function saveSelectedIds(ids) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+        updateUI();
+    }
+
+    function updateUI() {
+        const selectedIds = getSelectedIds();
+
+        // Update checkboxes
+        checkboxes.forEach(cb => {
+            cb.checked = selectedIds.includes(parseInt(cb.value));
+        });
+
+        // Update buttons
+        const count = selectedIds.length;
+        mergeBtn.disabled = count < 2;
+        mergeBtn.textContent = count > 0 ? `Merge Selected (${count})` : 'Merge Selected';
+
+        if (count > 0) {
+            deselectAllBtn.classList.remove('d-none');
+        } else {
+            deselectAllBtn.classList.add('d-none');
+        }
+    }
+
+    // Initialize
+    updateUI();
+
+    // Checkbox change handler
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function () {
+            const id = parseInt(this.value);
+            let selectedIds = getSelectedIds();
+
+            if (this.checked) {
+                if (!selectedIds.includes(id)) selectedIds.push(id);
+            } else {
+                selectedIds = selectedIds.filter(i => i !== id);
+            }
+            saveSelectedIds(selectedIds);
+        });
+    });
+
+    // Deselect All (Global)
+    deselectAllBtn.addEventListener('click', () => {
+        saveSelectedIds([]);
+    });
+
+    // Form submit
+    document.getElementById('personsForm').addEventListener('submit', (e) => {
+        const selectedIds = getSelectedIds();
+
+        if (selectedIds.length < 2) {
+            e.preventDefault();
+            alert('Please select at least 2 persons to merge.');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to merge ${selectedIds.length} persons into one?`)) {
+            e.preventDefault();
+            return;
+        }
+
+        // Remove existing hidden inputs
+        document.querySelectorAll('input[name="selectedPersons"]').forEach(el => {
+            if (el.type === 'hidden') el.remove();
+        });
+
+        // Add hidden inputs for all selected IDs (including those not on current page)
+        // We need to disable the checkboxes so they don't double-submit
+        checkboxes.forEach(cb => cb.disabled = true);
+
+        const form = e.target;
+        selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selectedPersons';
+            input.value = id;
+            form.appendChild(input);
+        });
+
+        // Clear selection after submit? Maybe wait for success.
+        // For now, let's clear it so it doesn't persist after merge
+        localStorage.removeItem(STORAGE_KEY);
+    });
+
+    // Auto-save name changes
+    document.querySelectorAll('.person-name-input').forEach(input => {
+        let timeout;
+        input.addEventListener('input', function () {
+            clearTimeout(timeout);
+            const personId = this.dataset.personId;
+            const newName = this.value.trim();
+
+            timeout = setTimeout(() => {
+                if (newName) {
+                    fetch(`/update_person_name/${personId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: newName })
+                    })
+                        .then(response => {
+                            if (response.ok) {
+                                this.classList.add('border-success');
+                                setTimeout(() => this.classList.remove('border-success'), 1000);
+                            }
+                        });
+                }
+            }, 1000); // Wait 1 second after user stops typing
+        });
+    });
+</script>

@@ -37,7 +37,7 @@ public class BackgroundFaceDetectionService : BackgroundService
             }
 
             // Wait for a while before checking again
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
 
         _logger.LogInformation("Background Face Detection Service is stopping.");

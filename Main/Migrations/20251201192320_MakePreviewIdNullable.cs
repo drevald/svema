@@ -12,14 +12,8 @@ namespace Svema.Migrations
                 name: "IX_face_encodings_face_detection_id",
                 table: "face_encodings");
 
-            migrationBuilder.AlterColumn<int>(
-                name: "preview_id",
-                table: "albums",
-                type: "integer",
-                nullable: true,
-                oldClrType: typeof(int),
-                oldType: "integer");
-
+            // The FK constraint should already exist from the previous migration
+            // Just recreate the index
             migrationBuilder.CreateIndex(
                 name: "IX_face_encodings_face_detection_id",
                 table: "face_encodings",
@@ -32,16 +26,6 @@ namespace Svema.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_face_encodings_face_detection_id",
                 table: "face_encodings");
-
-            migrationBuilder.AlterColumn<int>(
-                name: "preview_id",
-                table: "albums",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0,
-                oldClrType: typeof(int),
-                oldType: "integer",
-                oldNullable: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_face_encodings_face_detection_id",

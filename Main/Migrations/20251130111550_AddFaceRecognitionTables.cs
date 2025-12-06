@@ -40,6 +40,16 @@ namespace Svema.Migrations
                 oldType: "integer",
                 oldNullable: true);
 
+            // Make preview_id nullable BEFORE adding the foreign key constraint
+            migrationBuilder.AlterColumn<int>(
+                name: "preview_id",
+                table: "albums",
+                type: "integer",
+                nullable: true,
+                oldClrType: typeof(int),
+                oldType: "integer",
+                oldNullable: false);
+
             migrationBuilder.CreateTable(
                 name: "face_detections",
                 columns: table => new
@@ -111,13 +121,11 @@ namespace Svema.Migrations
                 table: "face_encodings",
                 column: "face_detection_id");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_albums_shots_preview_id",
-                table: "albums",
-                column: "preview_id",
-                principalTable: "shots",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
+            // Clean up any orphaned preview_id references before adding the constraint
+            migrationBuilder.Sql("UPDATE albums SET preview_id = NULL WHERE preview_id IS NOT NULL AND preview_id NOT IN (SELECT id FROM shots);");
+
+            // Add the foreign key constraint using NOT VALID to allow existing data
+            migrationBuilder.Sql("ALTER TABLE albums ADD CONSTRAINT \"FK_albums_shots_preview_id\" FOREIGN KEY (preview_id) REFERENCES shots (id) ON DELETE SET NULL NOT VALID;");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_albums_users_UserId",
@@ -167,6 +175,15 @@ namespace Svema.Migrations
                 nullable: true,
                 oldClrType: typeof(int),
                 oldType: "integer");
+
+            migrationBuilder.AlterColumn<int>(
+                name: "preview_id",
+                table: "albums",
+                type: "integer",
+                nullable: false,
+                oldClrType: typeof(int),
+                oldType: "integer",
+                oldNullable: true);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_albums_users_UserId",

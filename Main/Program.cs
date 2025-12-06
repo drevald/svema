@@ -114,7 +114,13 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 app.UseStaticFiles();
 app.UseRouting();
 app.UseExceptionHandler("/Error");
-app.UseStatusCodePagesWithReExecute("/Error/{0}");
+
+// Only use status code pages (HTML error pages) for non-API requests
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), subApp =>
+{
+    subApp.UseStatusCodePagesWithReExecute("/Error/{0}");
+});
+
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
@@ -128,11 +134,6 @@ app.Use(async (context, next) =>
     }
     await next();
 });
-app.UseAuthorization();
-app.MapControllers();
-app.UseStaticFiles();
-app.UseRouting();
-app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

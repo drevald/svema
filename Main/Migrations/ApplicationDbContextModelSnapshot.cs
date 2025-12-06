@@ -224,6 +224,10 @@ namespace Svema.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_name");
 
+                    b.Property<byte[]>("Preview")
+                        .HasColumnType("bytea")
+                        .HasColumnName("preview");
+
                     b.Property<int?>("ProfilePhotoId")
                         .HasColumnType("integer")
                         .HasColumnName("profile_photo_id");

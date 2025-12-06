@@ -42,6 +42,22 @@ public class FileService : Service
         {
             using var md5 = MD5.Create();
             using var originalStream = new MemoryStream(data);
+
+            // 1. Compute MD5 first (Optimization: Check for duplicates before heavy processing)
+            string md5Hash = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
+
+            // 2. Check for duplicates in DB
+            if (await dbContext.Shots.AnyAsync(s => s.MD5 == md5Hash))
+            {
+                Console.WriteLine($"[DEBUG] Duplicate file detected: {name} ({md5Hash})");
+                fileErrors.Add(name, "Same file already stored");
+                return;
+            }
+
+            shot.MD5 = md5Hash;
+
+            // 3. Proceed with heavy image processing
+            originalStream.Position = 0; // Reset stream position
             using var previewStream = new MemoryStream(data);
             using var fullStream = new MemoryStream(data);
             using var previewImage = Image.Load(previewStream);
@@ -74,9 +90,6 @@ public class FileService : Service
                 shot.Zoom = 15;
             }
 
-            originalStream.Position = 0;
-            shot.MD5 = BitConverter.ToString(md5.ComputeHash(originalStream)).Replace("-", "").ToLowerInvariant();
-
             Console.WriteLine($"[DEBUG] Before AddShotToDatabase. album is null: {album == null}, shot is null: {shot == null}");
             if (album != null)
             {
@@ -93,7 +106,7 @@ public class FileService : Service
         {
             dbContext.Entry(shot).State = EntityState.Detached;
             Console.WriteLine("The DbUpdateException is: " + e.Message);
-            fileErrors.Add(name, "Same file already stored");
+            fileErrors.Add(name, "Same file already stored (race condition)");
         }
         catch (Exception e)
         {

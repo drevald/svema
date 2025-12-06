@@ -184,6 +184,8 @@ public class Person
     [Column("profile_photo_id")]
     public int? ProfilePhotoId { get; set; }
     public ICollection<FaceDetection> FaceDetections { get; set; }
+    [Column("preview")]
+    public byte[] Preview { get; set; }
 }
 
 [Table("users")]

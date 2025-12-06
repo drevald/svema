@@ -81,7 +81,7 @@ public class RestController(ApplicationDbContext dbContext, IConfiguration confi
                 issuer: "yourdomain.com",
                 audience: "yourdomain.com",
                 claims: claims,
-                expires: DateTime.Now.AddHours(1),
+                expires: DateTime.UtcNow.AddHours(1),
                 signingCredentials: creds);
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using Form;
 using Data;
@@ -24,7 +25,8 @@ public class MainController(
     IConfiguration config,
     FaceDetectionService faceDetectionService,
     FaceClusteringService faceClusteringService,
-    PersonService personService) : BaseController(dbContext, config)
+    PersonService personService,
+    ILogger<MainController> logger) : BaseController(dbContext, config)
 {
 
     public List<string> GetCameraModels()
@@ -936,18 +938,87 @@ public class MainController(
 
     [Authorize]
     [HttpGet("face/thumbnail/{id}")]
+    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)] // Cache for 24 hours
     public async Task<IActionResult> GetFaceThumbnail(int id)
     {
         var bytes = await faceDetectionService.GetFaceImageAsync(id);
         if (bytes == null) return NotFound();
+
+        // Add cache headers
+        Response.Headers["Cache-Control"] = "public, max-age=86400";
+        Response.Headers["ETag"] = $"\"{id}\"";
+
+        return File(bytes, "image/jpeg");
+    }
+
+    [Authorize]
+    [HttpGet("api/shots/{shotId}/faces")]
+    public async Task<IActionResult> GetShotFaceDetections(int shotId)
+    {
+        var faceDetections = await faceDetectionService.GetAdjustedFaceDetectionsAsync(shotId);
+
+        return Ok(faceDetections);
+    }
+
+    [Authorize]
+    [HttpGet("person/preview/{id}")]
+    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> GetPersonPreview(int id)
+    {
+        var bytes = await personService.GetPersonPreviewAsync(id);
+        if (bytes == null) return NotFound();
+
+        Response.Headers["Cache-Control"] = "public, max-age=86400";
+        Response.Headers["ETag"] = $"\"p{id}\"";
+
         return File(bytes, "image/jpeg");
     }
 
     [Authorize]
     [HttpGet("persons")]
-    public async Task<IActionResult> PersonsList()
+    public async Task<IActionResult> PersonsList(int page = 1, int pageSize = 24)
     {
-        var persons = await personService.GetAllPersonsAsync();
+        // Optimized query: only load what we need for display
+        var personsQuery = dbContext.Persons
+            .Select(p => new
+            {
+                Person = p,
+                FirstFaceId = p.FaceDetections.OrderBy(fd => fd.DetectedAt).Select(fd => fd.FaceDetectionId).FirstOrDefault(),
+                FaceCount = p.FaceDetections.Count
+            })
+            .OrderByDescending(x => x.FaceCount)
+            .ThenBy(x => x.Person.FirstName)
+            .ThenBy(x => x.Person.LastName);
+
+        var totalCount = await personsQuery.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        // Ensure page is within valid range
+        page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
+
+        var personData = await personsQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Create a lightweight model for the view
+        var persons = personData.Select(pd =>
+        {
+            pd.Person.FaceDetections = new List<FaceDetection>();
+            if (pd.FirstFaceId > 0)
+            {
+                pd.Person.FaceDetections.Add(new FaceDetection { FaceDetectionId = pd.FirstFaceId });
+            }
+            return pd.Person;
+        }).ToList();
+
+        // Store face counts separately
+        ViewBag.FaceCounts = personData.ToDictionary(pd => pd.Person.PersonId, pd => pd.FaceCount);
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.TotalCount = totalCount;
+        ViewBag.PageSize = pageSize;
+
         return View(persons);
     }
 
@@ -956,12 +1027,80 @@ public class MainController(
     public async Task<IActionResult> Person(int id)
     {
         var shots = await personService.GetShotsForPersonAsync(id);
+        var person = await dbContext.Persons.FindAsync(id);
+        if (person == null) return NotFound();
+
+        ViewBag.Person = person;
+        return View(shots);
+    }
+
+    [Authorize]
+    [HttpPost("merge_persons")]
+    public async Task<IActionResult> MergePersons([FromForm] List<int> selectedPersons)
+    {
+        try
+        {
+            if (selectedPersons == null || selectedPersons.Count < 2)
+            {
+                return BadRequest("Please select at least 2 persons to merge.");
+            }
+
+            // Merge all selected persons into the first one
+            var targetPersonId = selectedPersons[0];
+            foreach (var personId in selectedPersons.Skip(1))
+            {
+                await personService.MergePeopleAsync(personId, targetPersonId);
+            }
+
+            return Redirect("/persons");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error merging persons");
+            return BadRequest($"Error merging persons: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpPost("update_person_name/{id}")]
+    public async Task<IActionResult> UpdatePersonName(int id, [FromBody] UpdatePersonNameDTO dto)
+    {
         var person = (await personService.GetAllPersonsAsync()).FirstOrDefault(p => p.PersonId == id);
         if (person == null) return NotFound();
 
-        // We might want a DTO here to hold person info + shots
-        ViewBag.Person = person;
-        return View(shots);
+        person.FirstName = string.IsNullOrWhiteSpace(dto.FirstName) ? "Person" : dto.FirstName;
+        person.LastName = string.IsNullOrWhiteSpace(dto.LastName) ? $"#{id}" : dto.LastName;
+
+        await dbContext.SaveChangesAsync();
+        return Ok();
+    }
+
+    public class UpdatePersonNameDTO
+    {
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+    }
+
+    [Authorize]
+    [HttpGet("delete_person/{id}")]
+    public async Task<IActionResult> DeletePerson(int id)
+    {
+        var person = await dbContext.Persons
+            .Include(p => p.FaceDetections)
+            .FirstOrDefaultAsync(p => p.PersonId == id);
+
+        if (person == null) return NotFound();
+
+        // Unassign all face detections
+        foreach (var face in person.FaceDetections)
+        {
+            face.PersonId = null;
+        }
+
+        dbContext.Persons.Remove(person);
+        await dbContext.SaveChangesAsync();
+
+        return Redirect("/persons");
     }
 
     [Authorize]

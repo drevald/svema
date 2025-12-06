@@ -59,7 +59,7 @@ namespace Test
                 .Build();
 
             // Create controller and inject context + config (null for services not needed in this test)
-            var controller = new MainController(context, config, null, null, null)
+            var controller = new MainController(context, config, null, null, null, null)
             {
                 // Inject fake HttpContext with user identity
                 ControllerContext = new ControllerContext

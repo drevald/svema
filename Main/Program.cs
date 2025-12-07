@@ -62,6 +62,9 @@ builder.Services.AddControllers(options =>
     options.MaxModelBindingCollectionSize = 5000; // default 1024
 });
 
+// Add HttpClient for Python Face Recognition Service
+builder.Services.AddHttpClient<PythonFaceRecognitionClient>();
+
 builder.Services.AddScoped<FaceDetectionService>();
 builder.Services.AddScoped<FaceClusteringService>();
 builder.Services.AddScoped<PersonService>();

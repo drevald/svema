@@ -1,17 +1,19 @@
 version: '3.8'
-name: svema 
+name: svema
 services:
   postgres:
-    image: postgis/postgis:12-3.1-alpine 
+    image: postgis/postgis:12-3.1-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=svema
     volumes:
-      - /storage/svema/database:/var/lib/postgresql/data      
+      - /storage/svema/database:/var/lib/postgresql/data
     ports:
       - 5433:5433
     command: -p 5433
+    networks:
+      - svema-network
   web:
     build: .
     environment:
@@ -19,11 +21,19 @@ services:
       - DB_CONNECTION=Host=postgres;Username=postgres;Password=password;Database=svema;Port=5433
       - PORT=7777
       - STORAGE_DIR=/storage/svema
+      - FaceRecognitionServiceUrl=http://svema-face-recognition:5000
     ports:
       - "7777:7777"
     depends_on:
       - postgres
     volumes:
       - /storage/svema/uploads:/storage/svema/uploads
+    networks:
+      - svema-network
+    external_links:
+      - svema-face-recognition
 volumes:
   data:
+networks:
+  svema-network:
+    driver: bridge

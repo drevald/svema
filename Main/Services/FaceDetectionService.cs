@@ -2,13 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenCvSharp;
 
 namespace Services;
@@ -17,92 +14,37 @@ public class FaceDetectionService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<FaceDetectionService> _logger;
-    private readonly string _cascadePath;
-    private readonly string _modelPath;
-    private InferenceSession _session;
-    private readonly object _sessionLock = new object();
+    private readonly PythonFaceRecognitionClient _pythonClient;
 
-    public FaceDetectionService(ApplicationDbContext context, ILogger<FaceDetectionService> logger)
+    public FaceDetectionService(
+        ApplicationDbContext context,
+        ILogger<FaceDetectionService> logger,
+        PythonFaceRecognitionClient pythonClient)
     {
         _context = context;
         _logger = logger;
-        // Assuming the cascade file is copied to the output directory or available in Resources
-        _cascadePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "haarcascade_frontalface_default.xml");
-        _modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "face_recognition_model.onnx");
-    }
-
-    private InferenceSession GetOrCreateSession()
-    {
-        if (_session != null)
-            return _session;
-
-        lock (_sessionLock)
-        {
-            if (_session != null)
-                return _session;
-
-            if (File.Exists(_modelPath))
-            {
-                try
-                {
-                    _session = new InferenceSession(_modelPath);
-                    _logger.LogInformation($"Loaded face recognition model from {_modelPath}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load face recognition model.");
-                }
-            }
-            else
-            {
-                _logger.LogWarning($"Face recognition model not found at {_modelPath}");
-            }
-
-            return _session;
-        }
+        _pythonClient = pythonClient;
     }
 
     public async Task<List<Rect>> DetectFacesAsync(byte[] imageData)
     {
-        if (!File.Exists(_cascadePath))
+        var response = await _pythonClient.DetectFacesAsync(imageData);
+
+        var rects = new List<Rect>();
+        foreach (var face in response.Faces)
         {
-            _logger.LogError($"Haar cascade file not found at {_cascadePath}");
-            return new List<Rect>();
+            // Convert from top/left/bottom/right to x/y/width/height format
+            var rect = new Rect(
+                face.Location.Left,
+                face.Location.Top,
+                face.Location.Width,
+                face.Location.Height
+            );
+            rects.Add(rect);
         }
 
-        using var mat = Mat.FromImageData(imageData, ImreadModes.Color);
-        using var gray = new Mat();
-        Cv2.CvtColor(mat, gray, ColorConversionCodes.BGR2GRAY);
-
-        using var faceCascade = new CascadeClassifier(_cascadePath);
-
-        // Calculate max size as 80% of the smaller dimension to avoid detecting the whole image as a face
-        int maxDimension = (int)(Math.Min(mat.Width, mat.Height) * 0.8);
-
-        var faces = faceCascade.DetectMultiScale(
-            gray,
-            scaleFactor: 1.1,
-            minNeighbors: 6,  // Increased from 5 to reduce false positives
-            flags: HaarDetectionTypes.ScaleImage,
-            minSize: new Size(30, 30),
-            maxSize: new Size(maxDimension, maxDimension)
-        );
-
-        // Filter out detections that are suspiciously large (> 50% of image area)
-        var imageArea = mat.Width * mat.Height;
-        var validFaces = faces.Where(face =>
-        {
-            var faceArea = face.Width * face.Height;
-            var areaRatio = (double)faceArea / imageArea;
-            return areaRatio < 0.5; // Reject if face covers more than 50% of image
-        }).ToList();
-
-        if (validFaces.Count < faces.Length)
-        {
-            _logger.LogInformation($"Filtered out {faces.Length - validFaces.Count} suspicious face detection(s) (too large)");
-        }
-
-        return validFaces;
+        _logger.LogInformation($"Python service detected {rects.Count} face(s)");
+        return rects;
     }
 
     public async Task<int> DetectAndStoreFacesAsync(int shotId)
@@ -122,11 +64,12 @@ public class FaceDetectionService
             return 0;
         }
 
-        var faces = await DetectFacesAsync(imageData);
+        // Call Python service to detect faces and get encodings in one call
+        var response = await _pythonClient.DetectFacesAsync(imageData);
 
-        _logger.LogInformation($"Shot {shotId}: Detected {faces.Count} face(s).");
+        _logger.LogInformation($"Shot {shotId}: Detected {response.Count} face(s).");
 
-        if (faces.Count == 0)
+        if (response.Count == 0)
         {
             shot.IsFaceProcessed = true;
             await _context.SaveChangesAsync();
@@ -140,113 +83,48 @@ public class FaceDetectionService
         _context.FaceDetections.RemoveRange(existingDetections);
         await _context.SaveChangesAsync(); // Save removal first
 
-        using var mat = Mat.FromImageData(imageData, ImreadModes.Color);
-        var session = GetOrCreateSession();
-
-        foreach (var face in faces)
+        foreach (var face in response.Faces)
         {
             var detection = new FaceDetection
             {
                 ShotId = shotId,
-                X = face.X,
-                Y = face.Y,
-                Width = face.Width,
-                Height = face.Height,
+                X = face.Location.Left,
+                Y = face.Location.Top,
+                Width = face.Location.Width,
+                Height = face.Location.Height,
                 DetectedAt = DateTime.UtcNow,
                 IsConfirmed = false
             };
             _context.FaceDetections.Add(detection);
             await _context.SaveChangesAsync(); // Save to get ID
 
-            if (session != null)
+            if (face.Encoding != null && face.Encoding.Length == 128)
             {
                 try
                 {
-                    // Extract face crop
-                    var faceRect = face;
-                    // Ensure rect is within image bounds
-                    faceRect.X = Math.Max(0, faceRect.X);
-                    faceRect.Y = Math.Max(0, faceRect.Y);
-                    if (faceRect.X + faceRect.Width > mat.Width) faceRect.Width = mat.Width - faceRect.X;
-                    if (faceRect.Y + faceRect.Height > mat.Height) faceRect.Height = mat.Height - faceRect.Y;
+                    // Convert float[] to byte array for storage (128 floats = 512 bytes)
+                    var byteEncoding = new byte[face.Encoding.Length * 4];
+                    Buffer.BlockCopy(face.Encoding, 0, byteEncoding, 0, byteEncoding.Length);
 
-                    using var faceMat = new Mat(mat, faceRect);
-
-                    // Preprocess for ArcFace (112x112, [-1, 1])
-
-                    // 1. Resize to 112x112
-                    using var resized = new Mat();
-                    Cv2.Resize(faceMat, resized, new Size(112, 112));
-
-                    // 2. Convert to float32
-                    using var floatMat = new Mat();
-                    resized.ConvertTo(floatMat, MatType.CV_32FC3);
-
-                    // 3. Normalize: (pixel - 127.5) / 127.5 -> [-1, 1]
-                    floatMat.ConvertTo(floatMat, -1, 1.0 / 127.5, -1.0);
-
-                    // 4. Convert BGR -> RGB
-                    Cv2.CvtColor(floatMat, floatMat, ColorConversionCodes.BGR2RGB);
-
-                    // 5. Create NCHW tensor (1, 3, 112, 112)
-                    var tensor = new DenseTensor<float>(new[] { 1, 3, 112, 112 });
-
-                    // Split channels and copy to tensor
-                    var channels = Cv2.Split(floatMat);
-                    for (int c = 0; c < 3; c++)
+                    var faceEncoding = new FaceEncoding
                     {
-                        var channelData = new float[112 * 112];
-                        Marshal.Copy(channels[c].Data, channelData, 0, channelData.Length);
-
-                        for (int h = 0; h < 112; h++)
-                        {
-                            for (int w = 0; w < 112; w++)
-                            {
-                                tensor[0, c, h, w] = channelData[h * 112 + w];
-                            }
-                        }
-                        channels[c].Dispose();
-                    }
-
-                    // 6. Run inference
-                    var inputs = new List<NamedOnnxValue>
-                    {
-                        NamedOnnxValue.CreateFromTensor("data", tensor)
+                        FaceDetectionId = detection.FaceDetectionId,
+                        Encoding = byteEncoding
                     };
+                    _context.FaceEncodings.Add(faceEncoding);
 
-                    using var results = session.Run(inputs);
-                    var output = results.FirstOrDefault()?.AsEnumerable<float>().ToArray();
-
-                    if (output != null && output.Length == 512)
-                    {
-                        // Convert to byte array for storage
-                        var byteEncoding = new byte[output.Length * 4];
-                        Buffer.BlockCopy(output, 0, byteEncoding, 0, byteEncoding.Length);
-
-                        var faceEncoding = new FaceEncoding
-                        {
-                            FaceDetectionId = detection.FaceDetectionId,
-                            Encoding = byteEncoding
-                        };
-                        _context.FaceEncodings.Add(faceEncoding);
-
-                        _logger.LogDebug($"Generated 512D embedding for face detection {detection.FaceDetectionId}");
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"Unexpected output dimension: {output?.Length ?? 0}");
-                    }
+                    _logger.LogDebug($"Generated 128D embedding for face detection {detection.FaceDetectionId}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to extract encoding for face detection {detection.FaceDetectionId}");
+                    _logger.LogError(ex, $"Failed to store encoding for face detection {detection.FaceDetectionId}");
                 }
             }
         }
 
         shot.IsFaceProcessed = true;
         await _context.SaveChangesAsync();
-        return faces.Count;
+        return response.Count;
     }
 
     public async Task<byte[]> GetFaceImageAsync(int faceDetectionId)
@@ -391,72 +269,45 @@ public class FaceDetectionService
             return detection.FaceEncoding.Encoding;
         }
 
-        // If no encoding exists, try to generate it
+        // If no encoding exists, re-run detection on this shot
         if (detection?.Shot?.Preview == null)
         {
-            return new byte[0];
-        }
-
-        var session = GetOrCreateSession();
-        if (session == null)
-        {
+            _logger.LogWarning($"Cannot extract encoding for face detection {faceDetectionId}: no preview image");
             return new byte[0];
         }
 
         try
         {
-            using var mat = Mat.FromImageData(detection.Shot.Preview, ImreadModes.Color);
-            var faceRect = new Rect(detection.X, detection.Y, detection.Width, detection.Height);
+            // Re-detect faces to get encoding
+            var response = await _pythonClient.DetectFacesAsync(detection.Shot.Preview);
 
-            // Ensure rect is within image bounds
-            faceRect.X = Math.Max(0, faceRect.X);
-            faceRect.Y = Math.Max(0, faceRect.Y);
-            if (faceRect.X + faceRect.Width > mat.Width) faceRect.Width = mat.Width - faceRect.X;
-            if (faceRect.Y + faceRect.Height > mat.Height) faceRect.Height = mat.Height - faceRect.Y;
-
-            using var faceMat = new Mat(mat, faceRect);
-
-            // Preprocess and run inference (same as above)
-            using var resized = new Mat();
-            Cv2.Resize(faceMat, resized, new Size(112, 112));
-
-            using var floatMat = new Mat();
-            resized.ConvertTo(floatMat, MatType.CV_32FC3);
-            floatMat.ConvertTo(floatMat, -1, 1.0 / 127.5, -1.0);
-            Cv2.CvtColor(floatMat, floatMat, ColorConversionCodes.BGR2RGB);
-
-            var tensor = new DenseTensor<float>(new[] { 1, 3, 112, 112 });
-            var channels = Cv2.Split(floatMat);
-
-            for (int c = 0; c < 3; c++)
+            // Try to match the face by location
+            foreach (var face in response.Faces)
             {
-                var channelData = new float[112 * 112];
-                Marshal.Copy(channels[c].Data, channelData, 0, channelData.Length);
+                // Check if this face roughly matches our detection coordinates
+                int deltaX = Math.Abs(face.Location.Left - detection.X);
+                int deltaY = Math.Abs(face.Location.Top - detection.Y);
 
-                for (int h = 0; h < 112; h++)
+                if (deltaX < 20 && deltaY < 20 && face.Encoding != null && face.Encoding.Length == 128)
                 {
-                    for (int w = 0; w < 112; w++)
+                    // Convert float[] to byte array
+                    var byteEncoding = new byte[face.Encoding.Length * 4];
+                    Buffer.BlockCopy(face.Encoding, 0, byteEncoding, 0, byteEncoding.Length);
+
+                    // Store it for future use
+                    var faceEncoding = new FaceEncoding
                     {
-                        tensor[0, c, h, w] = channelData[h * 112 + w];
-                    }
+                        FaceDetectionId = faceDetectionId,
+                        Encoding = byteEncoding
+                    };
+                    _context.FaceEncodings.Add(faceEncoding);
+                    await _context.SaveChangesAsync();
+
+                    return byteEncoding;
                 }
-                channels[c].Dispose();
             }
 
-            var inputs = new List<NamedOnnxValue>
-            {
-                NamedOnnxValue.CreateFromTensor("data", tensor)
-            };
-
-            using var results = session.Run(inputs);
-            var output = results.FirstOrDefault()?.AsEnumerable<float>().ToArray();
-
-            if (output != null && output.Length == 512)
-            {
-                var byteEncoding = new byte[output.Length * 4];
-                Buffer.BlockCopy(output, 0, byteEncoding, 0, byteEncoding.Length);
-                return byteEncoding;
-            }
+            _logger.LogWarning($"Could not find matching face in re-detection for face detection {faceDetectionId}");
         }
         catch (Exception ex)
         {

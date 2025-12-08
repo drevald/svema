@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using OpenCvSharp;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace Services;
 
@@ -26,15 +28,15 @@ public class FaceDetectionService
         _pythonClient = pythonClient;
     }
 
-    public async Task<List<Rect>> DetectFacesAsync(byte[] imageData)
+    public async Task<List<FaceRectangle>> DetectFacesAsync(byte[] imageData)
     {
         var response = await _pythonClient.DetectFacesAsync(imageData);
 
-        var rects = new List<Rect>();
+        var rects = new List<FaceRectangle>();
         foreach (var face in response.Faces)
         {
             // Convert from top/left/bottom/right to x/y/width/height format
-            var rect = new Rect(
+            var rect = new FaceRectangle(
                 face.Location.Left,
                 face.Location.Top,
                 face.Location.Width,
@@ -151,11 +153,9 @@ public class FaceDetectionService
 
         // Try to use FullScreen image first (faster than original, better than preview)
         byte[] imageData = detection.Shot.FullScreen;
-        bool usingFullScreen = true;
 
         if (imageData == null || imageData.Length == 0)
         {
-            usingFullScreen = false;
             // Fallback to original if FullScreen is not available
             var originalStream = await Storage.GetFile(detection.Shot);
             if (originalStream != null)
@@ -169,92 +169,98 @@ public class FaceDetectionService
                 _logger.LogWarning($"Could not load original file for shot {detection.Shot.ShotId}, falling back to preview");
                 // Fallback to preview if original is not available
                 if (detection.Shot.Preview == null) return null;
-                using var previewMat = Mat.FromImageData(detection.Shot.Preview, ImreadModes.Color);
-                var previewRect = new Rect(detection.X, detection.Y, detection.Width, detection.Height);
-                previewRect = ClampRect(previewRect, previewMat.Width, previewMat.Height);
-                using var previewFace = new Mat(previewMat, previewRect);
-                return previewFace.ToBytes(".jpg");
+
+                using var previewImage = Image.Load(detection.Shot.Preview);
+                var rect = new Rectangle(detection.X, detection.Y, detection.Width, detection.Height);
+                rect = ClampRect(rect, previewImage.Width, previewImage.Height);
+
+                previewImage.Mutate(x => x.Crop(rect));
+
+                using var ms = new MemoryStream();
+                await previewImage.SaveAsJpegAsync(ms, new JpegEncoder { Quality = 90 });
+                return ms.ToArray();
             }
         }
 
-        using var fullMat = Mat.FromImageData(imageData, ImreadModes.Color);
+        using var fullImage = Image.Load(imageData);
 
         // Get preview dimensions to calculate scale factor
-        using var previewMatForScale = Mat.FromImageData(detection.Shot.Preview, ImreadModes.Color);
-        double scaleX = (double)fullMat.Width / previewMatForScale.Width;
-        double scaleY = (double)fullMat.Height / previewMatForScale.Height;
+        using var previewImageForScale = Image.Load(detection.Shot.Preview);
+        double scaleX = (double)fullImage.Width / previewImageForScale.Width;
+        double scaleY = (double)fullImage.Height / previewImageForScale.Height;
 
         // Scale face coordinates to full resolution
-        var scaledRect = new Rect(
-            (int)(detection.X * scaleX),
-            (int)(detection.Y * scaleY),
-            (int)(detection.Width * scaleX),
-            (int)(detection.Height * scaleY)
-        );
+        int scaledX = (int)(detection.X * scaleX);
+        int scaledY = (int)(detection.Y * scaleY);
+        int scaledWidth = (int)(detection.Width * scaleX);
+        int scaledHeight = (int)(detection.Height * scaleY);
 
         // Add padding to the face rectangle (expand by 50%)
         float paddingFactor = 0.5f;
-        int padX = (int)(scaledRect.Width * paddingFactor / 2);
-        int padY = (int)(scaledRect.Height * paddingFactor / 2);
+        int padX = (int)(scaledWidth * paddingFactor / 2);
+        int padY = (int)(scaledHeight * paddingFactor / 2);
 
-        scaledRect.X -= padX;
-        scaledRect.Y -= padY;
-        scaledRect.Width += (padX * 2);
-        scaledRect.Height += (padY * 2);
+        scaledX -= padX;
+        scaledY -= padY;
+        scaledWidth += (padX * 2);
+        scaledHeight += (padY * 2);
 
         // Make square to ensure consistent display
-        int maxDim = Math.Max(scaledRect.Width, scaledRect.Height);
-        int centerX = scaledRect.X + scaledRect.Width / 2;
-        int centerY = scaledRect.Y + scaledRect.Height / 2;
+        int maxDim = Math.Max(scaledWidth, scaledHeight);
+        int centerX = scaledX + scaledWidth / 2;
+        int centerY = scaledY + scaledHeight / 2;
 
-        scaledRect.X = centerX - maxDim / 2;
-        scaledRect.Y = centerY - maxDim / 2;
-        scaledRect.Width = maxDim;
-        scaledRect.Height = maxDim;
+        scaledX = centerX - maxDim / 2;
+        scaledY = centerY - maxDim / 2;
+        scaledWidth = maxDim;
+        scaledHeight = maxDim;
 
         // Ensure rect is within image bounds
-        // Shift to fit within bounds while maintaining square aspect ratio if possible
-        if (scaledRect.X < 0) scaledRect.X = 0;
-        if (scaledRect.Y < 0) scaledRect.Y = 0;
-        if (scaledRect.Right > fullMat.Width) scaledRect.X = fullMat.Width - scaledRect.Width;
-        if (scaledRect.Bottom > fullMat.Height) scaledRect.Y = fullMat.Height - scaledRect.Height;
+        if (scaledX < 0) scaledX = 0;
+        if (scaledY < 0) scaledY = 0;
+        if (scaledX + scaledWidth > fullImage.Width) scaledX = fullImage.Width - scaledWidth;
+        if (scaledY + scaledHeight > fullImage.Height) scaledY = fullImage.Height - scaledHeight;
 
-        // Re-check left/top boundaries in case the previous shift pushed them out (if crop is larger than image)
-        if (scaledRect.X < 0) scaledRect.X = 0;
-        if (scaledRect.Y < 0) scaledRect.Y = 0;
+        // Re-check boundaries in case shift pushed them out
+        if (scaledX < 0) scaledX = 0;
+        if (scaledY < 0) scaledY = 0;
 
         // Finally clamp size if it's still too big
-        scaledRect = ClampRect(scaledRect, fullMat.Width, fullMat.Height);
+        var finalRect = ClampRect(new Rectangle(scaledX, scaledY, scaledWidth, scaledHeight), fullImage.Width, fullImage.Height);
 
         // Extract face region
-        using var faceMat = new Mat(fullMat, scaledRect);
+        fullImage.Mutate(x => x.Crop(finalRect));
 
         // Resize to a reasonable size for web display (300x300 max while maintaining aspect ratio)
         int targetSize = 300;
-        double scale = Math.Min((double)targetSize / faceMat.Width, (double)targetSize / faceMat.Height);
-        if (scale < 1.0) // Only downscale, don't upscale small faces
+        if (fullImage.Width > targetSize || fullImage.Height > targetSize)
         {
-            int newWidth = (int)(faceMat.Width * scale);
-            int newHeight = (int)(faceMat.Height * scale);
-            using var resized = new Mat();
-            Cv2.Resize(faceMat, resized, new Size(newWidth, newHeight), 0, 0, InterpolationFlags.Lanczos4);
-            var bytes = resized.ToBytes(".jpg");
-            await File.WriteAllBytesAsync(cachePath, bytes);
-            return bytes;
+            double scale = Math.Min((double)targetSize / fullImage.Width, (double)targetSize / fullImage.Height);
+            int newWidth = (int)(fullImage.Width * scale);
+            int newHeight = (int)(fullImage.Height * scale);
+
+            fullImage.Mutate(x => x.Resize(newWidth, newHeight));
         }
 
-        var fullBytes = faceMat.ToBytes(".jpg");
-        await File.WriteAllBytesAsync(cachePath, fullBytes);
-        return fullBytes;
+        using var outputStream = new MemoryStream();
+        await fullImage.SaveAsJpegAsync(outputStream, new JpegEncoder { Quality = 90 });
+        var bytes = outputStream.ToArray();
+
+        await File.WriteAllBytesAsync(cachePath, bytes);
+        return bytes;
     }
 
-    private Rect ClampRect(Rect rect, int maxWidth, int maxHeight)
+    private Rectangle ClampRect(Rectangle rect, int maxWidth, int maxHeight)
     {
-        rect.X = Math.Max(0, rect.X);
-        rect.Y = Math.Max(0, rect.Y);
-        if (rect.X + rect.Width > maxWidth) rect.Width = maxWidth - rect.X;
-        if (rect.Y + rect.Height > maxHeight) rect.Height = maxHeight - rect.Y;
-        return rect;
+        int x = Math.Max(0, rect.X);
+        int y = Math.Max(0, rect.Y);
+        int width = rect.Width;
+        int height = rect.Height;
+
+        if (x + width > maxWidth) width = maxWidth - x;
+        if (y + height > maxHeight) height = maxHeight - y;
+
+        return new Rectangle(x, y, width, height);
     }
 
     public async Task<byte[]> ExtractFaceEncodingAsync(int faceDetectionId)
@@ -328,9 +334,9 @@ public class FaceDetectionService
 
         if (!faces.Any()) return new List<FaceDetectionResult>();
 
-        using var mat = Mat.FromImageData(shot.Preview, ImreadModes.Color);
-        int imgWidth = mat.Width;
-        int imgHeight = mat.Height;
+        using var image = Image.Load(shot.Preview);
+        int imgWidth = image.Width;
+        int imgHeight = image.Height;
 
         var results = new List<FaceDetectionResult>();
 
@@ -407,4 +413,20 @@ public class FaceDetectionResult
     public float Height { get; set; }
     public int? PersonId { get; set; }
     public string PersonName { get; set; }
+}
+
+public class FaceRectangle
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+
+    public FaceRectangle(int x, int y, int width, int height)
+    {
+        X = x;
+        Y = y;
+        Width = width;
+        Height = height;
+    }
 }

@@ -65,10 +65,14 @@ builder.Services.AddControllers(options =>
 // Add HttpClient for Python Face Recognition Service
 builder.Services.AddHttpClient<PythonFaceRecognitionClient>();
 
+// Add HttpClientFactory for Caption Service
+builder.Services.AddHttpClient();
+
 builder.Services.AddScoped<FaceDetectionService>();
 builder.Services.AddScoped<FaceClusteringService>();
 builder.Services.AddScoped<PersonService>();
 builder.Services.AddHostedService<BackgroundFaceDetectionService>();
+builder.Services.AddHostedService<BackgroundCaptionService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(opts =>
 {

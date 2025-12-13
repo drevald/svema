@@ -951,14 +951,14 @@ public class MainController(
         return File(bytes, "image/jpeg");
     }
 
-    [Authorize]
-    [HttpGet("api/shots/{shotId}/faces")]
-    public async Task<IActionResult> GetShotFaceDetections(int shotId)
-    {
-        var faceDetections = await faceDetectionService.GetAdjustedFaceDetectionsAsync(shotId);
+    // [Authorize]
+    // [HttpGet("api/shots/{shotId}/faces")]
+    // public async Task<IActionResult> GetShotFaceDetections(int shotId)
+    // {
+    //     var faceDetections = await faceDetectionService.GetAdjustedFaceDetectionsAsync(shotId);
 
-        return Ok(faceDetections);
-    }
+    //     return Ok(faceDetections);
+    // }
 
     [Authorize]
     [HttpGet("person/preview/{id}")]

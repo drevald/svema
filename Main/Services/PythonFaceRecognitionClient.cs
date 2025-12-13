@@ -22,7 +22,7 @@ public class PythonFaceRecognitionClient
     {
         _httpClient = httpClient;
         _logger = logger;
-        _serviceUrl = configuration.GetValue<string>("FaceRecognitionServiceUrl") ?? "http://localhost:5000";
+        _serviceUrl = configuration.GetValue<string>("FaceRecognitionServiceUrl") ?? "http://localhost:5555";
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 

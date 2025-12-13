@@ -61,36 +61,72 @@ public class FaceClusteringService
             Encoding = ByteArrayToFloatArray(fd.FaceEncoding.Encoding)
         }).ToList();
 
-        const float similarityThreshold = 0.40f; // Lowered from 0.45 for better recall
+        const float similarityThreshold = 0.85f; // Stricter threshold for higher accuracy
+        const float minSimilarityWeight = 0.6f; // Weight for minimum similarity in scoring
+        const float avgSimilarityWeight = 0.4f; // Weight for average similarity in scoring
         int newClustersCount = 0;
 
-        // New clusters we are building in this run: List of (Faces, Centroid)
-        var newClusters = new List<(List<FaceDetection> Faces, float[] Centroid)>();
+        // New clusters: store ALL face encodings, not just centroid
+        var newClusters = new List<(List<FaceDetection> Faces, List<float[]> Encodings)>();
 
         foreach (var face in faceData)
         {
             int? bestPersonId = null;
             int? bestClusterIndex = null;
-            float bestSimilarity = -1f;
+            float bestScore = -1f;
 
-            // A. Try to match with existing persons
-            foreach (var kvp in personCentroids)
+            // A. Try to match with existing persons - use weighted scoring (min + avg similarity)
+            foreach (var person in existingPersons)
             {
-                var sim = CosineSimilarity(face.Encoding, kvp.Value);
-                if (sim > bestSimilarity && sim >= similarityThreshold)
+                var personEncodings = person.FaceDetections
+                    .Where(fd => fd.FaceEncoding != null)
+                    .Select(fd => ByteArrayToFloatArray(fd.FaceEncoding.Encoding))
+                    .ToList();
+
+                // Calculate both minimum and average similarity
+                float minSimilarity = 1.0f;
+                float totalSimilarity = 0f;
+                int count = 0;
+
+                foreach (var encoding in personEncodings)
                 {
-                    bestSimilarity = sim;
-                    bestPersonId = kvp.Key;
+                    var sim = CosineSimilarity(face.Encoding, encoding);
+                    if (sim < minSimilarity) minSimilarity = sim;
+                    totalSimilarity += sim;
+                    count++;
+                }
+
+                float avgSimilarity = count > 0 ? totalSimilarity / count : 0f;
+                float score = (minSimilarity * minSimilarityWeight) + (avgSimilarity * avgSimilarityWeight);
+
+                if (score > bestScore && minSimilarity >= similarityThreshold)
+                {
+                    bestScore = score;
+                    bestPersonId = person.PersonId;
                 }
             }
 
-            // B. Try to match with new clusters
+            // B. Try to match with new clusters - use same weighted scoring
             for (int i = 0; i < newClusters.Count; i++)
             {
-                var sim = CosineSimilarity(face.Encoding, newClusters[i].Centroid);
-                if (sim > bestSimilarity && sim >= similarityThreshold)
+                float minSimilarity = 1.0f;
+                float totalSimilarity = 0f;
+                int count = 0;
+
+                foreach (var encoding in newClusters[i].Encodings)
                 {
-                    bestSimilarity = sim;
+                    var sim = CosineSimilarity(face.Encoding, encoding);
+                    if (sim < minSimilarity) minSimilarity = sim;
+                    totalSimilarity += sim;
+                    count++;
+                }
+
+                float avgSimilarity = count > 0 ? totalSimilarity / count : 0f;
+                float score = (minSimilarity * minSimilarityWeight) + (avgSimilarity * avgSimilarityWeight);
+
+                if (score > bestScore && minSimilarity >= similarityThreshold)
+                {
+                    bestScore = score;
                     bestClusterIndex = i;
                     bestPersonId = null; // Reset person match if cluster is better
                 }
@@ -100,24 +136,23 @@ public class FaceClusteringService
             {
                 // Assign to existing person
                 face.Detection.PersonId = bestPersonId.Value;
-                _logger.LogDebug($"Assigned face {face.Detection.FaceDetectionId} to existing Person {bestPersonId.Value} (similarity: {bestSimilarity:F3})");
+                _logger.LogInformation($"Assigned face {face.Detection.FaceDetectionId} to existing Person {bestPersonId.Value} (score: {bestScore:F3})");
             }
             else if (bestClusterIndex.HasValue)
             {
                 // Add to new cluster
                 var cluster = newClusters[bestClusterIndex.Value];
                 cluster.Faces.Add(face.Detection);
-                // Update centroid
-                cluster.Centroid = RecalculateCentroid(cluster.Centroid, cluster.Faces.Count - 1, face.Encoding);
-                newClusters[bestClusterIndex.Value] = cluster; // Update tuple in list
-                _logger.LogDebug($"Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (similarity: {bestSimilarity:F3})");
+                cluster.Encodings.Add(face.Encoding);
+                newClusters[bestClusterIndex.Value] = cluster;
+                _logger.LogInformation($"Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (score: {bestScore:F3})");
             }
             else
             {
                 // Create new cluster
-                newClusters.Add((new List<FaceDetection> { face.Detection }, face.Encoding));
+                newClusters.Add((new List<FaceDetection> { face.Detection }, new List<float[]> { face.Encoding }));
                 newClustersCount++;
-                _logger.LogDebug($"Created new cluster for face {face.Detection.FaceDetectionId} (best similarity was {bestSimilarity:F3}, threshold: {similarityThreshold})");
+                _logger.LogInformation($"Created new cluster for face {face.Detection.FaceDetectionId} (best score was {bestScore:F3}, threshold: {similarityThreshold})");
             }
         }
 

@@ -22,6 +22,7 @@ services:
       - PORT=7777
       - STORAGE_DIR=/storage/svema
       - FaceRecognitionServiceUrl=http://svema-face-recognition:5000
+      - FaceDetectionModel=hog
     ports:
       - "7777:7777"
     depends_on:

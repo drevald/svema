@@ -18,5 +18,10 @@ namespace Svema.Models
         public string LastName { get; set; }
         [Column("profile_photo_id")]
         public int? ProfilePhotoId { get; set; }
+
+        [NotMapped]
+        public string? Name => string.IsNullOrEmpty(FirstName) && string.IsNullOrEmpty(LastName)
+            ? null
+            : $"{FirstName} {LastName}".Trim();
     }
 }

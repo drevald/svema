@@ -78,6 +78,13 @@ public class FaceClusteringService
             // A. Try to match with existing persons - use weighted scoring (min + avg similarity)
             foreach (var person in existingPersons)
             {
+                // SAME-SHOT CONSTRAINT: Skip if this person already has a face from the same shot
+                if (person.FaceDetections.Any(fd => fd.ShotId == face.Detection.ShotId))
+                {
+                    _logger.LogDebug($"Skipping Person {person.PersonId} - already has a face from Shot {face.Detection.ShotId}");
+                    continue;
+                }
+
                 var personEncodings = person.FaceDetections
                     .Where(fd => fd.FaceEncoding != null)
                     .Select(fd => ByteArrayToFloatArray(fd.FaceEncoding.Encoding))
@@ -109,6 +116,13 @@ public class FaceClusteringService
             // B. Try to match with new clusters - use same weighted scoring
             for (int i = 0; i < newClusters.Count; i++)
             {
+                // SAME-SHOT CONSTRAINT: Skip if this cluster already has a face from the same shot
+                if (newClusters[i].Faces.Any(f => f.ShotId == face.Detection.ShotId))
+                {
+                    _logger.LogDebug($"Skipping cluster {i} - already has a face from Shot {face.Detection.ShotId}");
+                    continue;
+                }
+
                 float minSimilarity = 1.0f;
                 float totalSimilarity = 0f;
                 int count = 0;

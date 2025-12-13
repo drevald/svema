@@ -176,58 +176,51 @@
     function drawFaces() {
         if (!faceData || faceData.length === 0) return;
 
-        // Get the actual image dimensions
-        const img = new Image();
-        img.src = `/shot?id=${shotId}&flip=@Model.Flip&rotate=@Model.Rotate&token=@Model.Token`;
-        img.onload = function () {
-            const containerWidth = photoView.clientWidth;
-            const containerHeight = photoView.clientHeight;
+        // Get the actual image dimensions from the first face (all faces have same image dimensions)
+        if (faceData.length === 0) return;
 
-            // Calculate scale to fit image in container
-            const scale = Math.min(containerWidth / img.width, containerHeight / img.height);
-            const scaledWidth = img.width * scale;
-            const scaledHeight = img.height * scale;
+        const imageWidth = faceData[0].imageWidth;
+        const imageHeight = faceData[0].imageHeight;
 
-            // Calculate offset to center image
-            const offsetX = (containerWidth - scaledWidth) / 2;
-            const offsetY = (containerHeight - scaledHeight) / 2;
+        const containerWidth = photoView.clientWidth;
+        const containerHeight = photoView.clientHeight;
 
-            // Set canvas size to match container
-            canvas.width = containerWidth;
-            canvas.height = containerHeight;
+        // Calculate scale to fit image in container (same logic as background-size: contain)
+        const scale = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
+        const scaledWidth = imageWidth * scale;
+        const scaledHeight = imageHeight * scale;
 
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Calculate offset to center image (same logic as background-position: center)
+        const offsetX = (containerWidth - scaledWidth) / 2;
+        const offsetY = (containerHeight - scaledHeight) / 2;
 
-            // Draw each face rectangle
-            // Draw each face rectangle
-            faceData.forEach(face => {
-                // Handle both camelCase and PascalCase
-                const fx = face.x !== undefined ? face.x : face.X;
-                const fy = face.y !== undefined ? face.y : face.Y;
-                const fw = face.width !== undefined ? face.width : face.Width;
-                const fh = face.height !== undefined ? face.height : face.Height;
+        // Set canvas size to match container
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
 
-                // Coordinates are normalized (0..1), so multiply by scaled dimensions
-                const x = offsetX + (fx * scaledWidth);
-                const y = offsetY + (fy * scaledHeight);
-                const width = fw * scaledWidth;
-                const height = fh * scaledHeight;
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Draw rectangle
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x, y, width, height);
+        // Draw each face rectangle
+        faceData.forEach(face => {
+            // Coordinates are in absolute pixels, scale them to match display
+            const x = offsetX + (face.x * scale);
+            const y = offsetY + (face.y * scale);
+            const width = face.width * scale;
+            const height = face.height * scale;
 
-                // Draw person name if available
-                if (face.personName || face.PersonName) {
-                    const name = face.personName || face.PersonName;
-                    ctx.fillStyle = '#00ff00';
-                    ctx.font = '16px Arial';
-                    ctx.fillText(name, x, y - 5);
-                }
-            });
-        };
+            // Draw rectangle
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+
+            // Draw person name if available
+            if (face.personName) {
+                ctx.fillStyle = '#00ff00';
+                ctx.font = '16px Arial';
+                ctx.fillText(face.personName, x, y - 5);
+            }
+        });
     }
 
     // Clear canvas
@@ -237,14 +230,18 @@
 
     // Toggle button handler
     document.getElementById('toggleFacesBtn').addEventListener('click', async function () {
+        console.log('Toggle faces button clicked');
         await loadFaceDetections();
+        console.log('Face data after load:', faceData);
         facesVisible = !facesVisible;
 
         if (facesVisible) {
+            console.log('Drawing faces...');
             drawFaces();
             this.classList.remove('btn-info');
             this.classList.add('btn-success');
         } else {
+            console.log('Clearing faces...');
             clearFaces();
             this.classList.remove('btn-success');
             this.classList.add('btn-info');

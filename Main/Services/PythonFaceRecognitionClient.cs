@@ -14,6 +14,7 @@ public class PythonFaceRecognitionClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<PythonFaceRecognitionClient> _logger;
     private readonly string _serviceUrl;
+    private readonly string _faceDetectionModel;
 
     public PythonFaceRecognitionClient(
         HttpClient httpClient,
@@ -23,6 +24,7 @@ public class PythonFaceRecognitionClient
         _httpClient = httpClient;
         _logger = logger;
         _serviceUrl = configuration.GetValue<string>("FaceRecognitionServiceUrl") ?? "http://localhost:5555";
+        _faceDetectionModel = configuration.GetValue<string>("FaceDetectionModel") ?? "hog";
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
@@ -35,7 +37,7 @@ public class PythonFaceRecognitionClient
             imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
             content.Add(imageContent, "image", "image.jpg");
 
-            var response = await _httpClient.PostAsync($"{_serviceUrl}/detect", content);
+            var response = await _httpClient.PostAsync($"{_serviceUrl}/detect?model={_faceDetectionModel}", content);
             response.EnsureSuccessStatusCode();
 
             var jsonResponse = await response.Content.ReadAsStringAsync();

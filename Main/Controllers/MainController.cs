@@ -951,14 +951,35 @@ public class MainController(
         return File(bytes, "image/jpeg");
     }
 
-    // [Authorize]
-    // [HttpGet("api/shots/{shotId}/faces")]
-    // public async Task<IActionResult> GetShotFaceDetections(int shotId)
-    // {
-    //     var faceDetections = await faceDetectionService.GetAdjustedFaceDetectionsAsync(shotId);
+    [Authorize]
+    [HttpGet("api/shots/{shotId}/faces")]
+    public async Task<IActionResult> GetShotFaceDetections(int shotId)
+    {
+        var shot = await dbContext.Shots.FindAsync(shotId);
+        if (shot?.FullScreen == null) return NotFound();
 
-    //     return Ok(faceDetections);
-    // }
+        // Load image to get dimensions
+        using var image = SixLabors.ImageSharp.Image.Load(shot.FullScreen);
+        int imageWidth = image.Width;
+        int imageHeight = image.Height;
+
+        var faceDetections = await dbContext.FaceDetections
+            .Include(fd => fd.Person)
+            .Where(fd => fd.ShotId == shotId)
+            .Select(fd => new
+            {
+                x = fd.X,
+                y = fd.Y,
+                width = fd.Width,
+                height = fd.Height,
+                imageWidth = imageWidth,
+                imageHeight = imageHeight,
+                personName = fd.Person != null ? (fd.Person.FirstName + " " + fd.Person.LastName).Trim() : null
+            })
+            .ToListAsync();
+
+        return Ok(faceDetections);
+    }
 
     [Authorize]
     [HttpGet("person/preview/{id}")]

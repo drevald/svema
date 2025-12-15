@@ -21,7 +21,8 @@ services:
       - DB_CONNECTION=Host=postgres;Username=postgres;Password=password;Database=svema;Port=5433
       - PORT=7777
       - STORAGE_DIR=/storage/svema
-      - FaceRecognitionServiceUrl=http://svema-face-recognition:5000
+      - FaceRecognitionServiceUrl=http://svema-face-recognition:5555
+      - CaptionService__Url=http://svema-shot-captioning:5556
       - FaceDetectionModel=hog
     ports:
       - "7777:7777"
@@ -33,6 +34,7 @@ services:
       - svema-network
     external_links:
       - svema-face-recognition
+      - svema-shot-captioning
 volumes:
   data:
 networks:

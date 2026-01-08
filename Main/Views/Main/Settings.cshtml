@@ -1,0 +1,274 @@
+@model Models.ClusteringSettings
+@{
+    ViewData["Title"] = "Face Clustering Settings";
+}
+
+<style>
+    .settings-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    .settings-section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .preset-option {
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .preset-option:hover {
+        border-color: #007bff;
+    }
+    .preset-option.selected {
+        border-color: #007bff;
+        background: #f0f8ff;
+    }
+    .preset-option input[type="radio"] {
+        margin-right: 10px;
+    }
+    .preset-description {
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+    .slider-container {
+        margin: 15px 0;
+    }
+    .slider-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    .slider {
+        width: 100%;
+    }
+    .danger-zone {
+        border: 2px solid #dc3545;
+    }
+    .danger-zone h3 {
+        color: #dc3545;
+    }
+    .btn-danger-confirm {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-danger-confirm:hover {
+        background: #c82333;
+    }
+    .btn-primary {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1.1em;
+    }
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .status-active {
+        background: #28a745;
+    }
+    .status-suspended {
+        background: #dc3545;
+    }
+</style>
+
+<div class="settings-container">
+    <h1>Face Clustering Settings</h1>
+
+    <form method="post" action="/settings/update" id="settingsForm">
+        <!-- Preset Selection -->
+        <div class="settings-section">
+            <h2>Clustering Profile</h2>
+            <p>Choose a preset or customize your own settings</p>
+
+            <div class="preset-option @(Model.Preset == Models.ClusteringPreset.Conservative ? "selected" : "")" onclick="selectPreset('Conservative')">
+                <label>
+                    <input type="radio" name="preset" value="Conservative" @(Model.Preset == Models.ClusteringPreset.Conservative ? "checked" : "")>
+                    <strong>Conservative</strong> - High accuracy, may split same person
+                </label>
+                <div class="preset-description">
+                    Best for: Professional photos, known subjects. Creates more persons to avoid mistakes.
+                </div>
+            </div>
+
+            <div class="preset-option @(Model.Preset == Models.ClusteringPreset.Balanced ? "selected" : "")" onclick="selectPreset('Balanced')">
+                <label>
+                    <input type="radio" name="preset" value="Balanced" @(Model.Preset == Models.ClusteringPreset.Balanced ? "checked" : "")>
+                    <strong>Balanced</strong> - Recommended for most users (Default)
+                </label>
+                <div class="preset-description">
+                    Best for: General use, family photos. Good balance of accuracy and grouping.
+                </div>
+            </div>
+
+            <div class="preset-option @(Model.Preset == Models.ClusteringPreset.Aggressive ? "selected" : "")" onclick="selectPreset('Aggressive')">
+                <label>
+                    <input type="radio" name="preset" value="Aggressive" @(Model.Preset == Models.ClusteringPreset.Aggressive ? "checked" : "")>
+                    <strong>Aggressive</strong> - Groups similar faces, may merge different people
+                </label>
+                <div class="preset-description">
+                    Best for: Large collections, quick organization. Merges aggressively, you can split later.
+                </div>
+            </div>
+
+            <div class="preset-option @(Model.Preset == Models.ClusteringPreset.NoiseTolerant ? "selected" : "")" onclick="selectPreset('NoiseTolerant')">
+                <label>
+                    <input type="radio" name="preset" value="NoiseTolerant" @(Model.Preset == Models.ClusteringPreset.NoiseTolerant ? "checked" : "")>
+                    <strong>Noise-Tolerant</strong> - Good for mixed quality photos
+                </label>
+                <div class="preset-description">
+                    Best for: Events with strangers, crowd photos. Filters out small/blurry background faces.
+                </div>
+            </div>
+
+            <div class="preset-option @(Model.Preset == Models.ClusteringPreset.Custom ? "selected" : "")" onclick="selectPreset('Custom')">
+                <label>
+                    <input type="radio" name="preset" value="Custom" @(Model.Preset == Models.ClusteringPreset.Custom ? "checked" : "")>
+                    <strong>Custom</strong> - Manual configuration
+                </label>
+                <div class="preset-description">
+                    For advanced users who want full control over clustering parameters.
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Parameters (shown when Custom is selected) -->
+        <div class="settings-section" id="customSettings" style="display: @(Model.Preset == Models.ClusteringPreset.Custom ? "block" : "none")">
+            <h2>Advanced Parameters</h2>
+            <p>Fine-tune clustering behavior (only active when Custom preset is selected)</p>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <label>Similarity Threshold (lower = more grouping)</label>
+                    <span id="thresholdValue">@Model.SimilarityThreshold.ToString("0.00")</span>
+                </div>
+                <input type="range" name="threshold" class="slider" min="0.10" max="0.50" step="0.01" value="@Model.SimilarityThreshold" oninput="updateValue('threshold', this.value)">
+                <small>Minimum similarity to add a face to an existing person (0.10 = very lenient, 0.50 = strict)</small>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <label>Min Faces Per Person</label>
+                    <span id="minFacesValue">@Model.MinFacesPerPerson</span>
+                </div>
+                <input type="range" name="minFaces" class="slider" min="1" max="5" step="1" value="@Model.MinFacesPerPerson" oninput="updateValue('minFaces', this.value)">
+                <small>Don't create a person unless they appear in at least this many photos (1-5)</small>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <label>Min Face Size (pixels)</label>
+                    <span id="minSizeValue">@Model.MinFaceSize</span>
+                </div>
+                <input type="range" name="minSize" class="slider" min="30" max="200" step="10" value="@Model.MinFaceSize" oninput="updateValue('minSize', this.value)">
+                <small>Ignore faces smaller than this (avoids background people)</small>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <label>Min Face Quality</label>
+                    <span id="minQualityValue">@Model.MinFaceQuality.ToString("0.00")</span>
+                </div>
+                <input type="range" name="minQuality" class="slider" min="0.0" max="1.0" step="0.05" value="@Model.MinFaceQuality" oninput="updateValue('minQuality', this.value)">
+                <small>Ignore blurry/dark faces below this quality score (0.0 = accept all, 1.0 = perfect only)</small>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <label>Auto-Merge Threshold</label>
+                    <span id="autoMergeValue">@Model.AutoMergeThreshold.ToString("0.00")</span>
+                </div>
+                <input type="range" name="autoMerge" class="slider" min="0.70" max="0.95" step="0.01" value="@Model.AutoMergeThreshold" oninput="updateValue('autoMerge', this.value)">
+                <small>Automatically merge persons above this similarity (0.0 = disabled, 0.95 = very strict)</small>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary">Save Settings & Apply</button>
+    </form>
+
+    <!-- Processing Control -->
+    <div class="settings-section">
+        <h2>Processing Control</h2>
+        <p>
+            <span class="status-indicator @(Model.IsFaceProcessingSuspended ? "status-suspended" : "status-active")"></span>
+            Face processing is currently <strong>@(Model.IsFaceProcessingSuspended ? "SUSPENDED" : "ACTIVE")</strong>
+        </p>
+        <button type="button" class="btn-primary" onclick="toggleProcessing()">
+            @(Model.IsFaceProcessingSuspended ? "Resume" : "Suspend") Face Processing
+        </button>
+        <p><small>Suspend processing to save resources or resume to start detecting faces again.</small></p>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="settings-section danger-zone">
+        <h3>⚠️ Danger Zone</h3>
+        <p><strong>Delete All Face Data</strong></p>
+        <p>This will permanently delete all face detections, encodings, and persons. Photos will remain intact. You can reprocess faces afterward.</p>
+        <button type="button" class="btn-danger-confirm" onclick="deleteAllFaces()">Delete All Face Data</button>
+    </div>
+</div>
+
+<script>
+function selectPreset(preset) {
+    document.querySelectorAll('.preset-option').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    document.querySelector(`input[value="${preset}"]`).checked = true;
+
+    // Show/hide custom settings
+    document.getElementById('customSettings').style.display = (preset === 'Custom') ? 'block' : 'none';
+}
+
+function updateValue(id, value) {
+    document.getElementById(id + 'Value').textContent = value;
+}
+
+async function toggleProcessing() {
+    if (!confirm('Are you sure you want to ' + (@Model.IsFaceProcessingSuspended ? 'resume' : 'suspend') + ' face processing?')) return;
+
+    const response = await fetch('/settings/toggle-processing', { method: 'POST' });
+    const data = await response.json();
+
+    if (data.suspended) {
+        alert('Face processing suspended');
+    } else {
+        alert('Face processing resumed');
+    }
+    location.reload();
+}
+
+async function deleteAllFaces() {
+    if (!confirm('⚠️ WARNING: This will delete ALL face data!\n\nThis action will:\n- Delete all face detections\n- Delete all face encodings\n- Delete all persons\n- Reset all shots for reprocessing\n\nPhotos will remain intact.\n\nAre you absolutely sure?')) return;
+
+    const response = await fetch('/settings/delete-all-faces', { method: 'POST' });
+    const data = await response.json();
+
+    if (data.success) {
+        alert(data.message);
+        location.reload();
+    } else {
+        alert('Error: ' + (data.message || 'Unknown error'));
+    }
+}
+</script>

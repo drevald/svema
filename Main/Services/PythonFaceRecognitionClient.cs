@@ -25,7 +25,7 @@ public class PythonFaceRecognitionClient
         _logger = logger;
         _serviceUrl = configuration.GetValue<string>("FaceRecognitionServiceUrl") ?? "http://localhost:5555";
         _faceDetectionModel = configuration.GetValue<string>("FaceDetectionModel") ?? "hog";
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        _httpClient.Timeout = TimeSpan.FromSeconds(120); // Increased timeout for face detection processing
     }
 
     public async Task<FaceDetectionResponse> DetectFacesAsync(byte[] imageData)

@@ -108,6 +108,11 @@ function playRandomSlideshow() {
         </div>
 
         <div class="col-sm-12">
+          <label class="form-label">Комментарий</label>
+          <input type="text" asp-for="CommentFilter" class="form-control" placeholder="Поиск по комментариям...">
+        </div>
+
+        <div class="col-sm-12">
           <label class="form-label">Место</label>
           <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 1)"
             required>
@@ -196,7 +201,7 @@ function playRandomSlideshow() {
                 backgroundStyle = "background-color: gray;";
             }
         }     
-        <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId'" style="@backgroundStyle">
+        <div class="card-body" onClick="location.href='/view_album?id=@album.AlbumId@(string.IsNullOrEmpty(Model.CommentFilter) ? "" : "&commentFilter=" + Uri.EscapeDataString(Model.CommentFilter))'" style="@backgroundStyle">
         </div>
       </div>
       }

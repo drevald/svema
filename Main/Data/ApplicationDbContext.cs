@@ -67,6 +67,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SharedLink> SharedLinks { get; set; }
     public DbSet<FaceDetection> FaceDetections { get; set; }
     public DbSet<FaceEncoding> FaceEncodings { get; set; }
+    public DbSet<Models.ClusteringSettings> ClusteringSettings { get; set; }
 
 }
 

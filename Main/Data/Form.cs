@@ -56,6 +56,7 @@ public class AlbumsListDTO
     public String DateEnd { get; set; }
     public int LocationId { get; set; }
     public string Camera { get; set; }
+    public string CommentFilter { get; set; }
     public ICollection<Location> Locations { get; set; }
     public List<AlbumCardDTO> Albums { get; set; }
     public ICollection<LocationDTO> Placemarks { get; set; }
@@ -147,6 +148,7 @@ public class AlbumDTO
     public double West { get; set; }
     public string Token { get; set; }
     public Boolean EditLocation { get; set; }
+    public string CommentFilter { get; set; }
     public AlbumDTO()
     {
         North = 90;

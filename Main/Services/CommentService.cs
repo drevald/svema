@@ -115,11 +115,17 @@ public class CommentService : Service
 
     public void AddShotCommentForApi(int userId, int shotId, string text)
     {
+        var user = dbContext.Users.FirstOrDefault(u => u.UserId == userId);
+        if (user == null)
+            return;
+
         var comment = new ShotComment
         {
+            Author = user,
+            AuthorId = userId,
+            AuthorUsername = user.Username,
             Text = text,
             ShotId = shotId,
-            AuthorId = userId,
             Timestamp = DateTime.Now
         };
         dbContext.ShotComments.Add(comment);

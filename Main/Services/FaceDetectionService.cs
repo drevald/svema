@@ -104,11 +104,11 @@ namespace Services
                 _context.FaceDetections.Add(detection);
                 await _context.SaveChangesAsync(); // Save to get ID
 
-                if (face.Encoding != null && face.Encoding.Length == 128)
+                if (face.Encoding != null && face.Encoding.Length == 512)
                 {
                     try
                     {
-                        // Convert float[] to byte array for storage (128 floats = 512 bytes)
+                        // Convert float[] to byte array for storage (512 floats = 2048 bytes)
                         var byteEncoding = new byte[face.Encoding.Length * 4];
                         Buffer.BlockCopy(face.Encoding, 0, byteEncoding, 0, byteEncoding.Length);
 
@@ -119,7 +119,7 @@ namespace Services
                         };
                         _context.FaceEncodings.Add(faceEncoding);
 
-                        _logger.LogDebug($"Generated 128D embedding for face detection {detection.FaceDetectionId}");
+                        _logger.LogDebug($"Generated 512D embedding for face detection {detection.FaceDetectionId}");
                     }
                     catch (Exception ex)
                     {

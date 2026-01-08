@@ -38,6 +38,15 @@
       </div>      
       <div class="col-sm-3">Название</div>
       <div class="col-sm-9">@Model.Name</div>
+      @if (!string.IsNullOrEmpty(Model.CommentFilter))
+      {
+      <div class="col-sm-12">
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+          <span><strong>Фильтр:</strong> "@Model.CommentFilter"</span>
+          <a href="/view_album?id=@Model.AlbumId@(string.IsNullOrEmpty(Model.Token) ? "" : "&token=" + Model.Token)" class="btn btn-sm btn-outline-secondary">Очистить</a>
+        </div>
+      </div>
+      }
       @if (@ViewBag.Locations != null) {
       @foreach(var location in @ViewBag.locations) {
       @* <div class="col-sm-12">@location.Name</div> *@

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using Form;
 using Data;
+using Models;
 using Utils;
 using Common;
 using Services;
@@ -353,7 +354,7 @@ public class MainController(
     [Authorize]
     [HttpGet("view_album")]
     public IActionResult ViewAlbum(
-    int id, string? token,
+    int id, string? token, string? commentFilter,
     double? north, double? south, double? west, double? east)
     {
         AlbumDTO dto = new();
@@ -362,6 +363,7 @@ public class MainController(
         dto.East = east ?? dto.East;
         dto.West = west ?? dto.West;
         dto.Token = token;
+        dto.CommentFilter = commentFilter;
 
         var album = albumService.GetAuthorizedAlbum(id, GetUserId(), token);
 
@@ -371,6 +373,17 @@ public class MainController(
         }
 
         dto.Shots = shotService.GetShotPreviews(id, dto.West, dto.East, dto.South, dto.North);
+
+        // Filter shots by comment if comment filter is provided
+        if (!string.IsNullOrEmpty(commentFilter))
+        {
+            var lowerFilter = commentFilter.ToLower();
+            var shotIdsWithMatchingComments = dbContext.ShotComments
+                .Where(c => c.Text.ToLower().Contains(lowerFilter))
+                .Select(c => c.ShotId)
+                .ToHashSet();
+            dto.Shots = dto.Shots.Where(s => shotIdsWithMatchingComments.Contains(s.ShotId)).ToList();
+        }
 
         dto.Placemarks = locationService.GetShotsForShots(dto.Shots);
         GeoRect rect = GeoRect.FromPlacemarks(dto.Placemarks, 0.1);
@@ -1182,6 +1195,118 @@ public class MainController(
     {
         var shots = shotService.GetSameDayShots(month, day, 1);
         return View(shots);
+    }
+
+    [Authorize]
+    [HttpGet("settings")]
+    public async Task<IActionResult> Settings()
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var settingsService = new ClusteringSettingsService(dbContext);
+        var settings = await settingsService.GetOrCreateSettingsAsync(userId.Value);
+
+        return View(settings);
+    }
+
+    [Authorize]
+    [HttpPost("settings/update")]
+    public async Task<IActionResult> UpdateSettings([FromForm] string preset, [FromForm] float? threshold, [FromForm] int? minFaces, [FromForm] int? minSize, [FromForm] float? minQuality, [FromForm] float? autoMerge)
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var settingsService = new ClusteringSettingsService(dbContext);
+        var presetEnum = Enum.Parse<ClusteringPreset>(preset);
+
+        await settingsService.UpdateSettingsAsync(userId.Value, presetEnum, threshold, minFaces, minSize, minQuality, autoMerge);
+
+        return RedirectToAction("Settings");
+    }
+
+    [Authorize]
+    [HttpPost("settings/toggle-processing")]
+    public async Task<IActionResult> ToggleProcessing()
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var settingsService = new ClusteringSettingsService(dbContext);
+        var isSuspended = await settingsService.ToggleProcessingSuspendedAsync(userId.Value);
+
+        return Json(new { suspended = isSuspended });
+    }
+
+    [Authorize]
+    [HttpPost("settings/delete-all-faces")]
+    public async Task<IActionResult> DeleteAllFaces()
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        // Delete all face data for this user
+        var userAlbums = await dbContext.Albums
+            .Where(a => a.User.UserId == userId.Value)
+            .Select(a => a.AlbumId)
+            .ToListAsync();
+
+        var shotIds = await dbContext.Shots
+            .Where(s => userAlbums.Contains(s.AlbumId))
+            .Select(s => s.ShotId)
+            .ToListAsync();
+
+        var faceDetectionIds = await dbContext.FaceDetections
+            .Where(fd => shotIds.Contains(fd.ShotId))
+            .Select(fd => fd.FaceDetectionId)
+            .ToListAsync();
+
+        // Delete encodings
+        var encodings = await dbContext.FaceEncodings
+            .Where(fe => faceDetectionIds.Contains(fe.FaceDetectionId))
+            .ToListAsync();
+        dbContext.FaceEncodings.RemoveRange(encodings);
+
+        // Delete detections
+        var detections = await dbContext.FaceDetections
+            .Where(fd => shotIds.Contains(fd.ShotId))
+            .ToListAsync();
+        dbContext.FaceDetections.RemoveRange(detections);
+
+        // Delete persons for this user (find persons via their face detections)
+        var personIds = detections.Where(fd => fd.PersonId.HasValue).Select(fd => fd.PersonId.Value).Distinct().ToList();
+        var persons = await dbContext.Persons
+            .Where(p => personIds.Contains(p.PersonId))
+            .ToListAsync();
+        dbContext.Persons.RemoveRange(persons);
+
+        // Reset face processing flag
+        var shots = await dbContext.Shots
+            .Where(s => shotIds.Contains(s.ShotId))
+            .ToListAsync();
+        foreach (var shot in shots)
+        {
+            shot.IsFaceProcessed = false;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { success = true, message = $"Deleted {detections.Count} face detections, {encodings.Count} encodings, and {persons.Count} persons. Shots reset for reprocessing." });
+    }
+
+    [Authorize]
+    [HttpPost("person/{personId}/remove-face/{faceId}")]
+    public async Task<IActionResult> RemoveFaceFromPerson(int personId, int faceId)
+    {
+        var face = await dbContext.FaceDetections.FindAsync(faceId);
+        if (face == null || face.PersonId != personId) return NotFound();
+
+        face.PersonId = null;
+        face.IsConfirmed = false;
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { success = true, message = "Face removed. Centroid will update on next clustering." });
     }
 
 }

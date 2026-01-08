@@ -541,6 +541,43 @@ namespace Svema.Migrations
                     b.ToTable("users");
                 });
 
+            modelBuilder.Entity("Models.ClusteringSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<float>("AutoMergeThreshold")
+                        .HasColumnType("real");
+
+                    b.Property<bool>("IsFaceProcessingSuspended")
+                        .HasColumnType("boolean");
+
+                    b.Property<float>("MinFaceQuality")
+                        .HasColumnType("real");
+
+                    b.Property<int>("MinFaceSize")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinFacesPerPerson")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Preset")
+                        .HasColumnType("integer");
+
+                    b.Property<float>("SimilarityThreshold")
+                        .HasColumnType("real");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClusteringSettings");
+                });
+
             modelBuilder.Entity("PersonShot", b =>
                 {
                     b.Property<int>("PersonsPersonId")

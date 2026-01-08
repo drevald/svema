@@ -21,6 +21,16 @@ public class FaceClusteringService
 
     public async Task<int> ClusterUnassignedFacesAsync(int userId)
     {
+        // Load user's clustering settings
+        var settings = await GetOrCreateSettingsAsync(userId);
+
+        // Check if processing is suspended
+        if (settings.IsFaceProcessingSuspended)
+        {
+            _logger.LogInformation($"Face processing is suspended for user {userId}");
+            return 0;
+        }
+
         // 1. Get unassigned faces
         var unassignedFaces = await _context.FaceDetections
             .Include(fd => fd.Shot)
@@ -31,7 +41,10 @@ public class FaceClusteringService
 
         if (!unassignedFaces.Any()) return 0;
 
-        _logger.LogInformation($"Starting clustering for {unassignedFaces.Count} unassigned faces.");
+        _logger.LogInformation($"Starting clustering for {unassignedFaces.Count} unassigned faces (Preset: {settings.Preset}, Threshold: {settings.SimilarityThreshold})");
+
+        // VALIDATE: All encodings must have same dimension
+        ValidateEncodingDimensions();
 
         // 2. Get existing persons and their confirmed faces (to build centroids)
         var existingPersons = await _context.Persons
@@ -54,16 +67,19 @@ public class FaceClusteringService
             }
         }
 
-        // 3. Prepare unassigned faces
+        // 3. Prepare unassigned faces (apply quality and size filters)
         var faceData = unassignedFaces.Select(fd => new
         {
             Detection = fd,
             Encoding = ByteArrayToFloatArray(fd.FaceEncoding.Encoding)
-        }).ToList();
+        })
+        .Where(f => f.Detection.Width >= settings.MinFaceSize && f.Detection.Height >= settings.MinFaceSize)
+        .ToList();
 
-        const float similarityThreshold = 0.85f; // Stricter threshold for higher accuracy
-        const float minSimilarityWeight = 0.6f; // Weight for minimum similarity in scoring
-        const float avgSimilarityWeight = 0.4f; // Weight for average similarity in scoring
+        _logger.LogInformation($"After size filter ({settings.MinFaceSize}px): {faceData.Count} faces remaining");
+
+        float similarityThreshold = settings.SimilarityThreshold;
+        int minFacesPerPerson = settings.MinFacesPerPerson;
         int newClustersCount = 0;
 
         // New clusters: store ALL face encodings, not just centroid
@@ -75,7 +91,7 @@ public class FaceClusteringService
             int? bestClusterIndex = null;
             float bestScore = -1f;
 
-            // A. Try to match with existing persons - use weighted scoring (min + avg similarity)
+            // A. Try to match with existing persons - use centroid similarity
             foreach (var person in existingPersons)
             {
                 // SAME-SHOT CONSTRAINT: Skip if this person already has a face from the same shot
@@ -85,35 +101,20 @@ public class FaceClusteringService
                     continue;
                 }
 
-                var personEncodings = person.FaceDetections
-                    .Where(fd => fd.FaceEncoding != null)
-                    .Select(fd => ByteArrayToFloatArray(fd.FaceEncoding.Encoding))
-                    .ToList();
+                // Use pre-calculated centroid
+                if (!personCentroids.ContainsKey(person.PersonId))
+                    continue;
 
-                // Calculate both minimum and average similarity
-                float minSimilarity = 1.0f;
-                float totalSimilarity = 0f;
-                int count = 0;
+                float similarity = CosineSimilarity(face.Encoding, personCentroids[person.PersonId]);
 
-                foreach (var encoding in personEncodings)
+                if (similarity > bestScore && similarity >= similarityThreshold)
                 {
-                    var sim = CosineSimilarity(face.Encoding, encoding);
-                    if (sim < minSimilarity) minSimilarity = sim;
-                    totalSimilarity += sim;
-                    count++;
-                }
-
-                float avgSimilarity = count > 0 ? totalSimilarity / count : 0f;
-                float score = (minSimilarity * minSimilarityWeight) + (avgSimilarity * avgSimilarityWeight);
-
-                if (score > bestScore && minSimilarity >= similarityThreshold)
-                {
-                    bestScore = score;
+                    bestScore = similarity;
                     bestPersonId = person.PersonId;
                 }
             }
 
-            // B. Try to match with new clusters - use same weighted scoring
+            // B. Try to match with new clusters - use centroid similarity
             for (int i = 0; i < newClusters.Count; i++)
             {
                 // SAME-SHOT CONSTRAINT: Skip if this cluster already has a face from the same shot
@@ -123,24 +124,13 @@ public class FaceClusteringService
                     continue;
                 }
 
-                float minSimilarity = 1.0f;
-                float totalSimilarity = 0f;
-                int count = 0;
+                // Calculate centroid for this cluster
+                var clusterCentroid = CalculateCentroid(newClusters[i].Encodings);
+                float similarity = CosineSimilarity(face.Encoding, clusterCentroid);
 
-                foreach (var encoding in newClusters[i].Encodings)
+                if (similarity > bestScore && similarity >= similarityThreshold)
                 {
-                    var sim = CosineSimilarity(face.Encoding, encoding);
-                    if (sim < minSimilarity) minSimilarity = sim;
-                    totalSimilarity += sim;
-                    count++;
-                }
-
-                float avgSimilarity = count > 0 ? totalSimilarity / count : 0f;
-                float score = (minSimilarity * minSimilarityWeight) + (avgSimilarity * avgSimilarityWeight);
-
-                if (score > bestScore && minSimilarity >= similarityThreshold)
-                {
-                    bestScore = score;
+                    bestScore = similarity;
                     bestClusterIndex = i;
                     bestPersonId = null; // Reset person match if cluster is better
                 }
@@ -150,7 +140,7 @@ public class FaceClusteringService
             {
                 // Assign to existing person
                 face.Detection.PersonId = bestPersonId.Value;
-                _logger.LogInformation($"Assigned face {face.Detection.FaceDetectionId} to existing Person {bestPersonId.Value} (score: {bestScore:F3})");
+                _logger.LogInformation($"Assigned face {face.Detection.FaceDetectionId} to existing Person {bestPersonId.Value} (similarity: {bestScore:F3})");
             }
             else if (bestClusterIndex.HasValue)
             {
@@ -159,22 +149,30 @@ public class FaceClusteringService
                 cluster.Faces.Add(face.Detection);
                 cluster.Encodings.Add(face.Encoding);
                 newClusters[bestClusterIndex.Value] = cluster;
-                _logger.LogInformation($"Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (score: {bestScore:F3})");
+                _logger.LogInformation($"Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (similarity: {bestScore:F3})");
             }
             else
             {
                 // Create new cluster
                 newClusters.Add((new List<FaceDetection> { face.Detection }, new List<float[]> { face.Encoding }));
                 newClustersCount++;
-                _logger.LogInformation($"Created new cluster for face {face.Detection.FaceDetectionId} (best score was {bestScore:F3}, threshold: {similarityThreshold})");
+                _logger.LogInformation($"Created new cluster for face {face.Detection.FaceDetectionId} (best similarity was {bestScore:F3}, threshold: {similarityThreshold})");
             }
         }
 
         // 4. Save changes for assigned faces (PersonId was set in the loop)
         await _context.SaveChangesAsync();
 
-        // 5. Create new persons for new clusters
-        foreach (var cluster in newClusters)
+        // 5. Create new persons for new clusters (only if >= minFacesPerPerson)
+        var validClusters = newClusters.Where(c => c.Faces.Count >= minFacesPerPerson).ToList();
+        var skippedFaces = newClusters.Where(c => c.Faces.Count < minFacesPerPerson).Sum(c => c.Faces.Count);
+
+        if (skippedFaces > 0)
+        {
+            _logger.LogInformation($"Skipped creating persons for {skippedFaces} faces (< {minFacesPerPerson} faces per cluster)");
+        }
+
+        foreach (var cluster in validClusters)
         {
             var person = new Person
             {
@@ -198,6 +196,25 @@ public class FaceClusteringService
         await _context.SaveChangesAsync();
         _logger.LogInformation($"Clustering complete. Created {newClustersCount} new person(s) for user {userId}.");
         return newClustersCount;
+    }
+
+    private void ValidateEncodingDimensions()
+    {
+        var dimensions = _context.FaceEncodings
+            .Select(fe => fe.Encoding.Length / 4) // 4 bytes per float
+            .Distinct()
+            .ToList();
+
+        if (dimensions.Count > 1)
+        {
+            _logger.LogError($"FATAL: Multiple encoding dimensions detected: {string.Join(", ", dimensions)}. Clustering is invalid!");
+            throw new InvalidOperationException($"Cannot cluster faces with different embedding dimensions: {string.Join(", ", dimensions)}. All faces must use the same model.");
+        }
+
+        if (dimensions.Any())
+        {
+            _logger.LogInformation($"All encodings validated: {dimensions[0]} dimensions");
+        }
     }
 
     private float[] CalculateCentroid(List<float[]> vectors)
@@ -285,5 +302,31 @@ public class FaceClusteringService
            .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId == null)
            .OrderByDescending(fd => fd.DetectedAt)
            .ToListAsync();
+    }
+
+    private async Task<Models.ClusteringSettings> GetOrCreateSettingsAsync(int userId)
+    {
+        var settings = await _context.ClusteringSettings
+            .FirstOrDefaultAsync(s => s.UserId == userId);
+
+        if (settings == null)
+        {
+            // Create default settings
+            settings = new Models.ClusteringSettings
+            {
+                UserId = userId,
+                Preset = Models.ClusteringPreset.Balanced,
+                SimilarityThreshold = 0.23f,
+                MinFacesPerPerson = 2,
+                MinFaceSize = 80,
+                MinFaceQuality = 0.3f,
+                AutoMergeThreshold = 0.80f,
+                IsFaceProcessingSuspended = false
+            };
+            _context.ClusteringSettings.Add(settings);
+            await _context.SaveChangesAsync();
+        }
+
+        return settings;
     }
 }

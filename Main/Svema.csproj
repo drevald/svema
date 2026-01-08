@@ -29,4 +29,9 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="FaceDetectionDiagnostic.cs" />
+    <Compile Remove="FaceDiagnostic\**\*.cs" />
+  </ItemGroup>
+
 </Project>

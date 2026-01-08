@@ -191,10 +191,15 @@ public class AlbumService : Service
             Locations = locations,
             DateStart = dto.DateStart,
             DateEnd = dto.DateEnd,
-            // North = rect.North,
-            // South = rect.South,
-            // West = rect.West,
-            // East = rect.East,
+            CommentFilter = dto.CommentFilter,
+            Camera = dto.Camera,
+            LocationId = dto.LocationId,
+            SortBy = dto.SortBy,
+            SortDirection = dto.SortDirection,
+            North = dto.North,
+            South = dto.South,
+            West = dto.West,
+            East = dto.East,
             EditLocation = dto.EditLocation,
             Cameras = cameras,
             // Placemarks = placemarks,
@@ -247,6 +252,13 @@ public class AlbumService : Service
         if (!string.IsNullOrEmpty(dto.Camera))
         {
             query = query.Where(s => s.CameraModel == dto.Camera);
+        }
+
+        if (!string.IsNullOrEmpty(dto.CommentFilter))
+        {
+            var lowerFilter = dto.CommentFilter.ToLower();
+            query = query.Where(s => dbContext.ShotComments
+                .Any(c => c.ShotId == s.ShotId && c.Text.ToLower().Contains(lowerFilter)));
         }
 
         if (onlyMine)

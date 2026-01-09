@@ -1060,12 +1060,25 @@ public class MainController(
     [HttpGet("person/{id}")]
     public async Task<IActionResult> Person(int id)
     {
-        var shots = await personService.GetShotsForPersonAsync(id);
-        var person = await dbContext.Persons.FindAsync(id);
+        var person = await dbContext.Persons
+            .Include(p => p.FaceDetections)
+            .ThenInclude(fd => fd.Shot)
+            .FirstOrDefaultAsync(p => p.PersonId == id);
+
         if (person == null) return NotFound();
 
+        // Get all persons for reassignment dropdown
+        var allPersons = await dbContext.Persons
+            .Where(p => p.PersonId != id)
+            .OrderBy(p => p.FirstName)
+            .ThenBy(p => p.LastName)
+            .ToListAsync();
+
         ViewBag.Person = person;
-        return View(shots);
+        ViewBag.AllPersons = allPersons;
+        ViewBag.FaceCount = person.FaceDetections.Count;
+
+        return View(person.FaceDetections.OrderBy(fd => fd.ShotId).ToList());
     }
 
     [Authorize]
@@ -1307,6 +1320,54 @@ public class MainController(
         await dbContext.SaveChangesAsync();
 
         return Json(new { success = true, message = "Face removed. Centroid will update on next clustering." });
+    }
+
+    [Authorize]
+    [HttpPost("person/{personId}/reassign-face/{faceId}")]
+    public async Task<IActionResult> ReassignFace(int personId, int faceId, [FromBody] ReassignFaceDTO dto)
+    {
+        var face = await dbContext.FaceDetections.FindAsync(faceId);
+        if (face == null || face.PersonId != personId) return NotFound();
+
+        // Reassign to new person or make unassigned
+        face.PersonId = dto.NewPersonId == 0 ? null : dto.NewPersonId;
+        face.IsConfirmed = dto.NewPersonId.HasValue;
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { success = true, message = "Face reassigned successfully." });
+    }
+
+    public class ReassignFaceDTO
+    {
+        public int? NewPersonId { get; set; }
+    }
+
+    [Authorize]
+    [HttpPost("person/{personId}/reassign-faces-batch")]
+    public async Task<IActionResult> ReassignFacesBatch(int personId, [FromBody] ReassignFacesBatchDTO dto)
+    {
+        var faces = await dbContext.FaceDetections
+            .Where(fd => dto.FaceIds.Contains(fd.FaceDetectionId) && fd.PersonId == personId)
+            .ToListAsync();
+
+        if (!faces.Any()) return NotFound();
+
+        foreach (var face in faces)
+        {
+            face.PersonId = dto.NewPersonId == 0 ? null : dto.NewPersonId;
+            face.IsConfirmed = dto.NewPersonId.HasValue;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { success = true, message = $"Reassigned {faces.Count} faces successfully." });
+    }
+
+    public class ReassignFacesBatchDTO
+    {
+        public List<int> FaceIds { get; set; } = new List<int>();
+        public int? NewPersonId { get; set; }
     }
 
 }

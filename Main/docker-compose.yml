@@ -22,7 +22,7 @@ services:
       - PORT=7777
       - STORAGE_DIR=/storage/svema
       - FaceRecognitionServiceUrl=http://svema-face-recognition:5555
-      - CaptionService__Url=http://192.168.0.189:11434
+      - CaptionService__Url=http://192.168.0.134:11434
       - CaptionService__ModelName=qwen2.5vl:7b
       - FaceDetectionModel=hog
     ports:

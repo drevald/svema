@@ -1,7 +1,9 @@
-@model IEnumerable<Data.Shot>
+@model IEnumerable<Data.FaceDetection>
 @{
     Layout = "_Layout";
     var person = ViewBag.Person as Data.Person;
+    var allPersons = ViewBag.AllPersons as List<Data.Person>;
+    var faceCount = ViewBag.FaceCount;
 }
 
 <div class="container p-5">
@@ -16,7 +18,7 @@
                 <label class="form-label">Last Name</label>
                 <input type="text" class="form-control" id="lastName" value="@person?.LastName" placeholder="Last Name">
             </div>
-            <p class="text-muted">@Model.Count() shots</p>
+            <p class="text-muted">@faceCount faces</p>
             <a href="/persons" class="btn btn-secondary">Back to People</a>
             <button type="button" class="btn btn-primary ms-2" id="saveNameBtn">Save Name</button>
             <a href="/delete_person/@person?.PersonId" class="btn btn-danger ms-2"
@@ -25,15 +27,50 @@
         </div>
     </div>
 
+    <!-- Batch Actions Bar -->
+    <div class="row mb-3" id="batchActionsBar" style="display: none;">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center justify-content-between">
+                <div>
+                    <strong id="selectedCount">0</strong> faces selected
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" id="targetPersonSelect" style="width: 200px;">
+                        <option value="0">Unassigned (Unknown)</option>
+                        @foreach (var p in allPersons ?? new List<Data.Person>())
+                        {
+                            <option value="@p.PersonId">@(string.IsNullOrEmpty(p.FirstName) && string.IsNullOrEmpty(p.LastName) ? $"Person {p.PersonId}" : $"{p.FirstName} {p.LastName}".Trim())</option>
+                        }
+                    </select>
+                    <button type="button" class="btn btn-primary btn-sm" id="reassignSelectedBtn">Reassign Selected</button>
+                    <button type="button" class="btn btn-warning btn-sm" id="removeSelectedBtn">Remove Selected</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="clearSelectionBtn">Clear Selection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">Select All</button>
+        </div>
+    </div>
+
     <div class="row">
         <div class="d-flex p-0 flex-wrap overflow-auto">
-            @foreach (var shot in Model)
+            @foreach (var face in Model)
             {
-                <div class="card text-bg-secondary mb-5 me-5 shadow" style="width: 16rem; height: 16rem;">
-                    <div class="card-body"
-                        style="background-image: url('/preview?id=@shot.ShotId&flip=@shot.Flip&rotate=@shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+                <div class="face-card-wrapper me-3 mb-3" data-face-id="@face.FaceDetectionId">
+                    <div class="card text-bg-secondary shadow" style="width: 16rem; height: 16rem; position: relative;">
+                        <input type="checkbox" class="face-checkbox" style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px;" data-face-id="@face.FaceDetectionId">
+                        <div class="card-body"
+                            style="background-image: url('/preview?id=@face.Shot.ShotId&flip=@face.Shot.Flip&rotate=@face.Shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+                        </div>
+                        <div class="card-footer text-center" style="background: rgba(0,0,0,0.7);">
+                            <button type="button" class="btn btn-danger btn-sm remove-face-btn" data-face-id="@face.FaceDetectionId">Remove</button>
+                            <a href="/view_shot?id=@face.Shot.ShotId" class="btn btn-info btn-sm">View Shot</a>
+                        </div>
                     </div>
-                    <a href="/view_shot?id=@shot.ShotId" class="stretched-link"></a>
                 </div>
             }
         </div>
@@ -41,10 +78,13 @@
 </div>
 
 <script>
+    const personId = @person?.PersonId;
+    let selectedFaces = new Set();
+
+    // Save name button
     document.getElementById('saveNameBtn').addEventListener('click', function () {
         const firstName = document.getElementById('firstName').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
-        const personId = @person?.PersonId;
 
         fetch(`/update_person_name/${personId}`, {
             method: 'POST',
@@ -73,5 +113,191 @@
                 console.error('Error:', error);
                 alert('Error saving name');
             });
+    });
+
+    // Face checkbox handling
+    document.querySelectorAll('.face-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            const faceId = parseInt(this.dataset.faceId);
+            const wrapper = this.closest('.face-card-wrapper');
+
+            if (this.checked) {
+                selectedFaces.add(faceId);
+                wrapper.style.outline = '3px solid #0d6efd';
+            } else {
+                selectedFaces.delete(faceId);
+                wrapper.style.outline = '';
+            }
+
+            updateBatchActionsBar();
+        });
+    });
+
+    // Select All / Deselect All toggle
+    document.getElementById('selectAllBtn').addEventListener('click', function () {
+        const allCheckboxes = document.querySelectorAll('.face-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+
+        if (allChecked) {
+            // Deselect all
+            allCheckboxes.forEach(cb => {
+                cb.checked = false;
+                const faceId = parseInt(cb.dataset.faceId);
+                selectedFaces.delete(faceId);
+                cb.closest('.face-card-wrapper').style.outline = '';
+            });
+            this.textContent = 'Select All';
+        } else {
+            // Select all
+            allCheckboxes.forEach(cb => {
+                cb.checked = true;
+                const faceId = parseInt(cb.dataset.faceId);
+                selectedFaces.add(faceId);
+                cb.closest('.face-card-wrapper').style.outline = '3px solid #0d6efd';
+            });
+            this.textContent = 'Deselect All';
+        }
+
+        updateBatchActionsBar();
+    });
+
+    // Update batch actions bar visibility
+    function updateBatchActionsBar() {
+        const bar = document.getElementById('batchActionsBar');
+        const count = document.getElementById('selectedCount');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+
+        if (selectedFaces.size > 0) {
+            bar.style.display = 'block';
+            count.textContent = selectedFaces.size;
+        } else {
+            bar.style.display = 'none';
+        }
+
+        // Update Select All button text
+        const allCheckboxes = document.querySelectorAll('.face-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        selectAllBtn.textContent = allChecked ? 'Deselect All' : 'Select All';
+    }
+
+    // Clear selection
+    document.getElementById('clearSelectionBtn').addEventListener('click', function () {
+        document.querySelectorAll('.face-checkbox').forEach(cb => {
+            cb.checked = false;
+            cb.closest('.face-card-wrapper').style.outline = '';
+        });
+        selectedFaces.clear();
+        updateBatchActionsBar();
+    });
+
+    // Reassign selected faces
+    document.getElementById('reassignSelectedBtn').addEventListener('click', function () {
+        if (selectedFaces.size === 0) {
+            alert('No faces selected');
+            return;
+        }
+
+        const targetPersonId = parseInt(document.getElementById('targetPersonSelect').value);
+        const targetName = document.getElementById('targetPersonSelect').selectedOptions[0].text;
+
+        if (!confirm(`Reassign ${selectedFaces.size} face(s) to "${targetName}"?`)) {
+            return;
+        }
+
+        fetch(`/person/${personId}/reassign-faces-batch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                faceIds: Array.from(selectedFaces),
+                newPersonId: targetPersonId === 0 ? null : targetPersonId
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Failed to reassign faces');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error reassigning faces');
+            });
+    });
+
+    // Remove selected faces (reassign to null)
+    document.getElementById('removeSelectedBtn').addEventListener('click', function () {
+        if (selectedFaces.size === 0) {
+            alert('No faces selected');
+            return;
+        }
+
+        if (!confirm(`Remove ${selectedFaces.size} face(s) from this person? They will become unassigned.`)) {
+            return;
+        }
+
+        fetch(`/person/${personId}/reassign-faces-batch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                faceIds: Array.from(selectedFaces),
+                newPersonId: null
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Failed to remove faces');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error removing faces');
+            });
+    });
+
+    // Individual face remove button
+    document.querySelectorAll('.remove-face-btn').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const faceId = parseInt(this.dataset.faceId);
+
+            if (!confirm('Remove this face from the person? It will become unassigned.')) {
+                return;
+            }
+
+            fetch(`/person/${personId}/reassign-face/${faceId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    newPersonId: null
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to remove face');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error removing face');
+                });
+        });
     });
 </script>

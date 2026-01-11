@@ -232,6 +232,10 @@ namespace Svema.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("profile_photo_id");
 
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
                     b.HasKey("PersonId");
 
                     b.ToTable("persons");
@@ -399,6 +403,10 @@ namespace Svema.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<bool>("NoFaces")
+                        .HasColumnType("boolean")
+                        .HasColumnName("no_faces");
 
                     b.Property<string>("OrigPath")
                         .HasColumnType("text")

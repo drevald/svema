@@ -153,6 +153,8 @@ public class Shot
     public string CameraModel { get; set; }
     [Column("is_face_processed")]
     public bool IsFaceProcessed { get; set; }
+    [Column("no_faces")]
+    public bool NoFaces { get; set; }
 
 }
 
@@ -187,6 +189,8 @@ public class Person
     public ICollection<FaceDetection> FaceDetections { get; set; }
     [Column("preview")]
     public byte[] Preview { get; set; }
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
 }
 
 [Table("users")]

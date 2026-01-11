@@ -61,6 +61,7 @@
                     <a class="btn btn-primary btn-sm" href="/edit_shot?id=@Model.ShotId">Ред</a>
                     <a class="btn btn-primary btn-sm" href="/orig?id=@Model.ShotId&token=@Model.Token">Ориг</a>
                     <button type="button" class="btn btn-info btn-sm" id="toggleFacesBtn">Toggle Faces</button>
+                    <button type="button" class="btn btn-warning btn-sm" id="noFacesBtn">No Faces</button>
                 </div>
                 <div>
                     <a class="btn btn-primary btn-sm"
@@ -150,9 +151,52 @@
     let facesVisible = false;
     let faceData = null;
     const shotId = @Model.ShotId;
+    const flip = @Model.Flip.ToString().ToLower();
+    const rotate = @Model.Rotate;
     const canvas = document.getElementById('faceCanvas');
     const ctx = canvas.getContext('2d');
     const photoView = document.querySelector('.photo-view');
+
+    // Transform face coordinates based on rotation and flip
+    function transformFaceCoordinates(face, imageWidth, imageHeight, rotate, flip) {
+        let x = face.x;
+        let y = face.y;
+        let width = face.width;
+        let height = face.height;
+        let currentWidth = imageWidth;
+        let currentHeight = imageHeight;
+
+        // Apply rotation first (same order as ImageUtils.GetTransformedImage)
+        if (rotate === 90) {
+            const newX = currentHeight - y - height;
+            const newY = x;
+            x = newX;
+            y = newY;
+            // Swap width and height
+            [width, height] = [height, width];
+            // Swap image dimensions
+            [currentWidth, currentHeight] = [currentHeight, currentWidth];
+        } else if (rotate === 180) {
+            x = currentWidth - x - width;
+            y = currentHeight - y - height;
+        } else if (rotate === 270) {
+            const newX = y;
+            const newY = currentWidth - x - width;
+            x = newX;
+            y = newY;
+            // Swap width and height
+            [width, height] = [height, width];
+            // Swap image dimensions
+            [currentWidth, currentHeight] = [currentHeight, currentWidth];
+        }
+
+        // Apply flip after rotation (same order as ImageUtils.GetTransformedImage)
+        if (flip) {
+            x = currentWidth - x - width;
+        }
+
+        return { x, y, width, height, transformedImageWidth: currentWidth, transformedImageHeight: currentHeight };
+    }
 
     // Fetch face detections
     async function loadFaceDetections() {
@@ -182,13 +226,18 @@
         const imageWidth = faceData[0].imageWidth;
         const imageHeight = faceData[0].imageHeight;
 
+        // Transform first face to get the transformed image dimensions
+        const firstTransformed = transformFaceCoordinates(faceData[0], imageWidth, imageHeight, rotate, flip);
+        const transformedImageWidth = firstTransformed.transformedImageWidth;
+        const transformedImageHeight = firstTransformed.transformedImageHeight;
+
         const containerWidth = photoView.clientWidth;
         const containerHeight = photoView.clientHeight;
 
-        // Calculate scale to fit image in container (same logic as background-size: contain)
-        const scale = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
-        const scaledWidth = imageWidth * scale;
-        const scaledHeight = imageHeight * scale;
+        // Calculate scale to fit transformed image in container (same logic as background-size: contain)
+        const scale = Math.min(containerWidth / transformedImageWidth, containerHeight / transformedImageHeight);
+        const scaledWidth = transformedImageWidth * scale;
+        const scaledHeight = transformedImageHeight * scale;
 
         // Calculate offset to center image (same logic as background-position: center)
         const offsetX = (containerWidth - scaledWidth) / 2;
@@ -203,11 +252,14 @@
 
         // Draw each face rectangle
         faceData.forEach(face => {
-            // Coordinates are in absolute pixels, scale them to match display
-            const x = offsetX + (face.x * scale);
-            const y = offsetY + (face.y * scale);
-            const width = face.width * scale;
-            const height = face.height * scale;
+            // Transform face coordinates based on rotation and flip
+            const transformed = transformFaceCoordinates(face, imageWidth, imageHeight, rotate, flip);
+
+            // Scale transformed coordinates to match display
+            const x = offsetX + (transformed.x * scale);
+            const y = offsetY + (transformed.y * scale);
+            const width = transformed.width * scale;
+            const height = transformed.height * scale;
 
             // Draw rectangle
             ctx.strokeStyle = '#00ff00';
@@ -252,6 +304,30 @@
     window.addEventListener('resize', () => {
         if (facesVisible) {
             drawFaces();
+        }
+    });
+
+    // No Faces button handler
+    document.getElementById('noFacesBtn').addEventListener('click', async function () {
+        if (confirm('Mark this shot as "No Faces"? This will remove all face detections and exclude it from future face detection.')) {
+            try {
+                const response = await fetch(`/shot/${shotId}/exclude-from-face-detection`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Failed to mark shot as no faces');
+                }
+            } catch (error) {
+                console.error('Error marking shot as no faces:', error);
+                alert('Error marking shot as no faces');
+            }
         }
     });
 </script>

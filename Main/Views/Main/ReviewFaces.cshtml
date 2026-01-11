@@ -6,7 +6,7 @@
 <div class="container p-5">
     <h2>Review Faces</h2>
 
-    <h3>Unconfirmed Faces</h3>
+    <h3>Unconfirmed Faces (@Model.UnconfirmedTotalCount total)</h3>
     <div class="row" id="unconfirmed-faces">
         @foreach (var face in Model.Unconfirmed)
         {
@@ -34,7 +34,65 @@
         }
     </div>
 
-    <h3>Unassigned Faces</h3>
+    @if (Model.UnconfirmedTotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center flex-wrap">
+                @if (Model.UnconfirmedCurrentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/faces/review?unconfirmedPage=@(Model.UnconfirmedCurrentPage - 1)&unassignedPage=@Model.UnassignedCurrentPage&pageSize=@Model.PageSize">Previous</a>
+                    </li>
+                }
+
+                @{
+                    var startPage = Math.Max(1, Model.UnconfirmedCurrentPage - 2);
+                    var endPage = Math.Min(Model.UnconfirmedTotalPages, Model.UnconfirmedCurrentPage + 2);
+
+                    // Always show first page
+                    if (startPage > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=1&unassignedPage=@Model.UnassignedCurrentPage&pageSize=@Model.PageSize">1</a>
+                        </li>
+                        if (startPage > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                    }
+
+                    // Show pages around current
+                    for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="page-item @(i == Model.UnconfirmedCurrentPage ? "active" : "")">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=@i&unassignedPage=@Model.UnassignedCurrentPage&pageSize=@Model.PageSize">@i</a>
+                        </li>
+                    }
+
+                    // Always show last page
+                    if (endPage < Model.UnconfirmedTotalPages)
+                    {
+                        if (endPage < Model.UnconfirmedTotalPages - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        <li class="page-item">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedTotalPages&unassignedPage=@Model.UnassignedCurrentPage&pageSize=@Model.PageSize">@Model.UnconfirmedTotalPages</a>
+                        </li>
+                    }
+                }
+
+                @if (Model.UnconfirmedCurrentPage < Model.UnconfirmedTotalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/faces/review?unconfirmedPage=@(Model.UnconfirmedCurrentPage + 1)&unassignedPage=@Model.UnassignedCurrentPage&pageSize=@Model.PageSize">Next</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+
+    <h3>Unassigned Faces (@Model.UnassignedTotalCount total)</h3>
     <div class="row" id="unassigned-faces">
         @foreach (var face in Model.Unassigned)
         {
@@ -64,6 +122,64 @@
             </div>
         }
     </div>
+
+    @if (Model.UnassignedTotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center flex-wrap">
+                @if (Model.UnassignedCurrentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedCurrentPage&unassignedPage=@(Model.UnassignedCurrentPage - 1)&pageSize=@Model.PageSize">Previous</a>
+                    </li>
+                }
+
+                @{
+                    var startPageUnassigned = Math.Max(1, Model.UnassignedCurrentPage - 2);
+                    var endPageUnassigned = Math.Min(Model.UnassignedTotalPages, Model.UnassignedCurrentPage + 2);
+
+                    // Always show first page
+                    if (startPageUnassigned > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedCurrentPage&unassignedPage=1&pageSize=@Model.PageSize">1</a>
+                        </li>
+                        if (startPageUnassigned > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                    }
+
+                    // Show pages around current
+                    for (int i = startPageUnassigned; i <= endPageUnassigned; i++)
+                    {
+                        <li class="page-item @(i == Model.UnassignedCurrentPage ? "active" : "")">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedCurrentPage&unassignedPage=@i&pageSize=@Model.PageSize">@i</a>
+                        </li>
+                    }
+
+                    // Always show last page
+                    if (endPageUnassigned < Model.UnassignedTotalPages)
+                    {
+                        if (endPageUnassigned < Model.UnassignedTotalPages - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        <li class="page-item">
+                            <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedCurrentPage&unassignedPage=@Model.UnassignedTotalPages&pageSize=@Model.PageSize">@Model.UnassignedTotalPages</a>
+                        </li>
+                    }
+                }
+
+                @if (Model.UnassignedCurrentPage < Model.UnassignedTotalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/faces/review?unconfirmedPage=@Model.UnconfirmedCurrentPage&unassignedPage=@(Model.UnassignedCurrentPage + 1)&pageSize=@Model.PageSize">Next</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
 </div>
 
 <script>

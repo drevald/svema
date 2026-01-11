@@ -68,6 +68,7 @@ builder.Services.AddHttpClient<PythonFaceRecognitionClient>();
 // Add HttpClientFactory for Caption Service
 builder.Services.AddHttpClient();
 
+builder.Services.AddScoped<PersonDetectionService>();
 builder.Services.AddScoped<FaceDetectionService>();
 builder.Services.AddScoped<FaceClusteringService>();
 builder.Services.AddScoped<PersonService>();

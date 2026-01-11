@@ -17,6 +17,7 @@ namespace Services
         private readonly ApplicationDbContext _context;
         private readonly ILogger<FaceDetectionService> _logger;
         private readonly PythonFaceRecognitionClient _pythonClient;
+        private readonly PersonDetectionService _personDetectionService;
 
         // Configurable thresholds
         private const double IoUThreshold = 0.25;      // overlap threshold to consider same face
@@ -25,11 +26,13 @@ namespace Services
         public FaceDetectionService(
             ApplicationDbContext context,
             ILogger<FaceDetectionService> logger,
-            PythonFaceRecognitionClient pythonClient)
+            PythonFaceRecognitionClient pythonClient,
+            PersonDetectionService personDetectionService)
         {
             _context = context;
             _logger = logger;
             _pythonClient = pythonClient;
+            _personDetectionService = personDetectionService;
         }
 
         public async Task<List<FaceRectangle>> DetectFacesAsync(byte[] imageData)
@@ -55,10 +58,12 @@ namespace Services
 
         public async Task<int> DetectAndStoreFacesAsync(int shotId)
         {
+            _logger.LogInformation($"[Face Detection] Start processing shot {shotId}");
+
             var shot = await _context.Shots.FindAsync(shotId);
             if (shot == null)
             {
-                _logger.LogWarning($"Shot {shotId} not found");
+                _logger.LogWarning($"[Face Detection] Shot {shotId} not found");
                 return 0;
             }
 
@@ -66,21 +71,47 @@ namespace Services
 
             if (imageData == null || imageData.Length == 0)
             {
-                _logger.LogWarning($"Shot {shotId} has no fullscreen image data");
+                _logger.LogWarning($"[Face Detection] Shot {shotId} has no fullscreen image data");
                 return 0;
             }
 
-            // Call Python service to detect faces and get encodings in one call (on fullscreen)
-            var response = await _pythonClient.DetectFacesAsync(imageData);
+            // Apply rotation and flip transformations to match displayed orientation
+            if (shot.Rotate != 0 || shot.Flip)
+            {
+                _logger.LogInformation($"[Face Detection] Shot {shotId}: Applying rotation={shot.Rotate}, flip={shot.Flip} before face detection");
+                imageData = ApplyImageTransformations(imageData, shot.Rotate, shot.Flip);
+            }
 
-            _logger.LogInformation($"Shot {shotId}: Detected {response.Count} face(s).");
+            // Pre-screen with AI vision to check if image contains live persons
+            if (_personDetectionService.IsEnabled)
+            {
+                _logger.LogInformation($"[Face Detection] Shot {shotId}: Pre-screening for live persons...");
+                bool hasLivePersons = await _personDetectionService.ContainsLivePersonsAsync(imageData);
+
+                if (!hasLivePersons)
+                {
+                    _logger.LogInformation($"[Face Detection] Shot {shotId} has no faces (pre-screening)");
+                    shot.NoFaces = true;
+                    shot.IsFaceProcessed = true;
+                    await _context.SaveChangesAsync();
+                    return 0;
+                }
+
+                _logger.LogInformation($"[Face Detection] Shot {shotId}: Live persons detected. Proceeding with face detection.");
+            }
+
+            // Call Python service to detect faces and get encodings in one call (on fullscreen)
+            var response = await _pythonClient.DetectFacesAsync(imageData, shotId);
 
             if (response.Count == 0)
             {
+                _logger.LogInformation($"[Face Detection] Shot {shotId} has no faces");
                 shot.IsFaceProcessed = true;
                 await _context.SaveChangesAsync();
                 return 0;
             }
+
+            _logger.LogInformation($"[Face Detection] Shot {shotId} has {response.Count} face(s) detected");
 
             var existingDetections = await _context.FaceDetections
                 .Where(fd => fd.ShotId == shotId)
@@ -104,6 +135,8 @@ namespace Services
                 _context.FaceDetections.Add(detection);
                 await _context.SaveChangesAsync(); // Save to get ID
 
+                _logger.LogInformation($"[Face Detection] Face {detection.FaceDetectionId} detected from shot {shotId}");
+
                 if (face.Encoding != null && face.Encoding.Length == 512)
                 {
                     try
@@ -119,11 +152,11 @@ namespace Services
                         };
                         _context.FaceEncodings.Add(faceEncoding);
 
-                        _logger.LogDebug($"Generated 512D embedding for face detection {detection.FaceDetectionId}");
+                        _logger.LogDebug($"[Face Detection] Generated 512D embedding for face {detection.FaceDetectionId}");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Failed to store encoding for face detection {detection.FaceDetectionId}");
+                        _logger.LogError(ex, $"[Face Detection] Failed to store encoding for face {detection.FaceDetectionId}");
                     }
                 }
             }
@@ -219,6 +252,40 @@ namespace Services
             await File.WriteAllBytesAsync(cachePath, bytes);
             return bytes;
         }
+        private byte[] ApplyImageTransformations(byte[] imageData, int rotate, bool flip)
+        {
+            using var image = Image.Load(imageData);
+
+            // Apply horizontal flip if needed
+            if (flip)
+            {
+                image.Mutate(x => x.Flip(FlipMode.Horizontal));
+            }
+
+            // Apply rotation if needed
+            if (rotate != 0)
+            {
+                var rotateMode = rotate switch
+                {
+                    90 => RotateMode.Rotate90,
+                    180 => RotateMode.Rotate180,
+                    270 => RotateMode.Rotate270,
+                    _ => RotateMode.None
+                };
+
+                if (rotateMode != RotateMode.None)
+                {
+                    image.Mutate(x => x.Rotate(rotateMode));
+                }
+            }
+
+            // Convert back to byte array
+            using var ms = new MemoryStream();
+            image.SaveAsJpeg(ms, new JpegEncoder { Quality = 95 });
+            return ms.ToArray();
+        }
+
+
 
 
         private Rectangle ClampRect(Rectangle rect, int maxWidth, int maxHeight)
@@ -272,7 +339,7 @@ namespace Services
                 );
 
                 // Run python detection on fullscreen image bytes
-                var response = await _pythonClient.DetectFacesAsync(imageBytes);
+                var response = await _pythonClient.DetectFacesAsync(imageBytes, detection.Shot.ShotId);
                 if (response == null || response.Faces == null || response.Faces.Count == 0)
                 {
                     _logger.LogWarning($"Re-detection found no faces for faceDetection {faceDetectionId}");

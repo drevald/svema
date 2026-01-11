@@ -51,10 +51,10 @@ public class BackgroundFaceDetectionService : BackgroundService
             var faceDetectionService = scope.ServiceProvider.GetRequiredService<FaceDetectionService>();
             var faceClusteringService = scope.ServiceProvider.GetRequiredService<FaceClusteringService>();
 
-            _logger.LogDebug("Checking for shots to process...");
+            _logger.LogDebug("[Background Service] Checking for shots to process...");
 
             var shotsToProcess = await context.Shots
-                .Where(s => !s.IsFaceProcessed)
+                .Where(s => !s.IsFaceProcessed && !s.NoFaces)
                 .OrderByDescending(s => s.DateUploaded)
                 .Take(10)
                 .Select(s => s.ShotId)
@@ -62,7 +62,7 @@ public class BackgroundFaceDetectionService : BackgroundService
 
             if (shotsToProcess.Any())
             {
-                _logger.LogInformation($"Found {shotsToProcess.Count} shots to process for face detection.");
+                _logger.LogInformation($"[Background Service] Found {shotsToProcess.Count} shot(s) to process for face detection");
 
                 foreach (var shotId in shotsToProcess)
                 {
@@ -74,13 +74,12 @@ public class BackgroundFaceDetectionService : BackgroundService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Failed to process face detection for shot {shotId}");
+                        _logger.LogError(ex, $"[Background Service] Failed to process face detection for shot {shotId}");
                     }
                 }
             }
 
             // Trigger clustering for all users (runs even if no new shots were processed)
-            // _logger.LogInformation("Face detection batch complete. Running clustering...");
             var users = await context.Users.ToListAsync(stoppingToken);
 
             foreach (var user in users)
@@ -89,17 +88,17 @@ public class BackgroundFaceDetectionService : BackgroundService
 
                 try
                 {
-                    // We can optimize this by checking if there are unassigned faces first, 
+                    // We can optimize this by checking if there are unassigned faces first,
                     // but the service method does that internally too.
                     var clustersCreated = await faceClusteringService.ClusterUnassignedFacesAsync(user.UserId);
                     if (clustersCreated > 0)
                     {
-                        _logger.LogInformation($"Created {clustersCreated} new person cluster(s) for user {user.Username}");
+                        _logger.LogInformation($"[Background Service] Created {clustersCreated} new person cluster(s) for user {user.Username}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to cluster faces for user {user.Username}");
+                    _logger.LogError(ex, $"[Background Service] Failed to cluster faces for user {user.Username}");
                 }
             }
         }

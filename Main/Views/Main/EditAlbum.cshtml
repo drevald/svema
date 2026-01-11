@@ -135,6 +135,7 @@
                 <a class="btn btn-primary btn-sm px-3" href="upload_shots?id=@Model.AlbumId">Добавить</a>
                 <a class="btn btn-primary btn-sm px-3" href="javascript:selectAll()">Выбрать все</a>
                 <a class="btn btn-primary btn-sm px-3" href="javascript:deselectAll()">Снять выделение</a>
+                <button type="button" class="btn btn-warning btn-sm px-3" onclick="excludeSelectedFromFaceDetection()">No Faces</button>
                 <a class="btn btn-primary btn-sm px-3" href="/share_link?id=@Model.AlbumId&type=album">Поделится</a>
                 <input type="submit" class="btn btn-primary btn-sm px-3" value="Сохранить">
                 <a class="btn btn-secondary btn-sm ps-3" href="/view_album?id=@Model.AlbumId">Отменить</a>
@@ -201,4 +202,43 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+async function excludeSelectedFromFaceDetection() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name$=".IsChecked"]:checked');
+    const shotIds = [];
+
+    checkboxes.forEach(checkbox => {
+        const hiddenInput = checkbox.parentElement.querySelector('input[name$=".ShotId"]');
+        if (hiddenInput) {
+            shotIds.push(parseInt(hiddenInput.value));
+        }
+    });
+
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot');
+        return;
+    }
+
+    if (confirm(`Mark ${shotIds.length} shot(s) as "No Faces"? This will remove all face detections and exclude them from future face detection.`)) {
+        try {
+            const response = await fetch('/shots/exclude-batch-from-face-detection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ shotIds: shotIds })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                location.reload();
+            } else {
+                alert('Failed to mark shots as no faces');
+            }
+        } catch (error) {
+            console.error('Error marking shots as no faces:', error);
+            alert('Error marking shots as no faces');
+        }
+    }
+}
 </script>

@@ -44,6 +44,7 @@
                     </select>
                     <button type="button" class="btn btn-primary btn-sm" id="reassignSelectedBtn">Reassign Selected</button>
                     <button type="button" class="btn btn-warning btn-sm" id="removeSelectedBtn">Remove Selected</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="noFacesBatchBtn">No Faces (Exclude)</button>
                     <button type="button" class="btn btn-secondary btn-sm" id="clearSelectionBtn">Clear Selection</button>
                 </div>
             </div>
@@ -60,15 +61,22 @@
         <div class="d-flex p-0 flex-wrap overflow-auto">
             @foreach (var face in Model)
             {
-                <div class="face-card-wrapper me-3 mb-3" data-face-id="@face.FaceDetectionId">
+                var isProfilePhoto = person?.ProfilePhotoId == face.Shot.ShotId;
+                <div class="face-card-wrapper me-3 mb-3" data-face-id="@face.FaceDetectionId" data-shot-id="@face.Shot.ShotId">
                     <div class="card text-bg-secondary shadow" style="width: 16rem; height: 16rem; position: relative;">
                         <input type="checkbox" class="face-checkbox" style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px;" data-face-id="@face.FaceDetectionId">
+                        @if (isProfilePhoto)
+                        {
+                            <span style="position: absolute; top: 10px; right: 10px; z-index: 10; font-size: 24px; color: gold; text-shadow: 0 0 3px black;">⭐</span>
+                        }
                         <div class="card-body"
                             style="background-image: url('/preview?id=@face.Shot.ShotId&flip=@face.Shot.Flip&rotate=@face.Shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
                         </div>
-                        <div class="card-footer text-center" style="background: rgba(0,0,0,0.7);">
-                            <button type="button" class="btn btn-danger btn-sm remove-face-btn" data-face-id="@face.FaceDetectionId">Remove</button>
-                            <a href="/view_shot?id=@face.Shot.ShotId" class="btn btn-info btn-sm">View Shot</a>
+                        <div class="card-footer text-center p-1" style="background: rgba(0,0,0,0.7);">
+                            <button type="button" class="btn @(isProfilePhoto ? "btn-warning" : "btn-secondary") btn-sm px-2 py-1 set-profile-btn" data-shot-id="@face.Shot.ShotId" title="Set as profile photo">⭐</button>
+                            <button type="button" class="btn btn-danger btn-sm px-2 py-1 remove-face-btn" data-face-id="@face.FaceDetectionId" title="Remove face from person">✕</button>
+                            <button type="button" class="btn btn-warning btn-sm px-2 py-1 no-faces-btn" data-shot-id="@face.Shot.ShotId" title="Mark shot as having no faces">🚫</button>
+                            <a href="/view_shot?id=@face.Shot.ShotId" class="btn btn-info btn-sm px-2 py-1" title="View shot">👁</a>
                         </div>
                     </div>
                 </div>
@@ -297,6 +305,125 @@
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Error removing face');
+                });
+        });
+    });
+
+    // Individual "No Faces" button (mark shot as having no faces)
+    document.querySelectorAll('.no-faces-btn').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const shotId = parseInt(this.dataset.shotId);
+
+            if (!confirm('Mark this shot as "No Faces"? This will remove all face detections and exclude it from future face detection.')) {
+                return;
+            }
+
+            fetch(`/shot/${shotId}/exclude-from-face-detection`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Failed to mark shot as no faces');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error marking shot as no faces');
+                });
+        });
+    });
+
+    // Batch "No Faces" button (mark selected shots as having no faces)
+    document.getElementById('noFacesBatchBtn').addEventListener('click', function () {
+        if (selectedFaces.size === 0) {
+            alert('No faces selected');
+            return;
+        }
+
+        // Get unique shot IDs from selected faces
+        const shotIds = new Set();
+        selectedFaces.forEach(faceId => {
+            const faceCard = document.querySelector(`.face-card-wrapper[data-face-id="${faceId}"]`);
+            if (faceCard) {
+                const noFacesBtn = faceCard.querySelector('.no-faces-btn');
+                if (noFacesBtn) {
+                    shotIds.add(parseInt(noFacesBtn.dataset.shotId));
+                }
+            }
+        });
+
+        if (shotIds.size === 0) {
+            alert('No shots found for selected faces');
+            return;
+        }
+
+        if (!confirm(`Mark ${shotIds.size} shot(s) as "No Faces"? This will remove all face detections and exclude them from future face detection.`)) {
+            return;
+        }
+
+        fetch('/shots/exclude-batch-from-face-detection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                shotIds: Array.from(shotIds)
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Failed to mark shots as no faces');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error marking shots as no faces');
+            });
+    });
+
+    // Set profile photo button
+    document.querySelectorAll('.set-profile-btn').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const shotId = parseInt(this.dataset.shotId);
+
+            fetch(`/person/${personId}/set-profile-photo`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    shotId: shotId
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update UI to show this is now the profile photo
+                        location.reload();
+                    } else {
+                        alert('Failed to set profile photo');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error setting profile photo');
                 });
         });
     });

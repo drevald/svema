@@ -28,29 +28,68 @@ public class PythonFaceRecognitionClient
         _httpClient.Timeout = TimeSpan.FromSeconds(120); // Increased timeout for face detection processing
     }
 
-    public async Task<FaceDetectionResponse> DetectFacesAsync(byte[] imageData)
+    public async Task<FaceDetectionResponse> DetectFacesAsync(byte[] imageData, int? shotId = null)
     {
-        try
+        const int maxRetries = 3;
+        const int retryDelayMs = 5000;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            using var content = new MultipartFormDataContent();
-            var imageContent = new ByteArrayContent(imageData);
-            imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-            content.Add(imageContent, "image", "image.jpg");
-
-            var response = await _httpClient.PostAsync($"{_serviceUrl}/detect?model={_faceDetectionModel}", content);
-            response.EnsureSuccessStatusCode();
-
-            var jsonResponse = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<FaceDetectionResponse>(jsonResponse, new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            });
+                using var content = new MultipartFormDataContent();
+                var imageContent = new ByteArrayContent(imageData);
+                imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+                content.Add(imageContent, "image", "image.jpg");
+
+                // Add optional shot_id for logging
+                if (shotId.HasValue)
+                {
+                    content.Add(new StringContent(shotId.Value.ToString()), "shot_id");
+                }
+
+                var response = await _httpClient.PostAsync($"{_serviceUrl}/detect?model={_faceDetectionModel}", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"[Python Service] Face detection returned status code: {response.StatusCode}");
+
+                    if (attempt < maxRetries)
+                    {
+                        _logger.LogInformation($"[Python Service] Server does not respond. Retrying (attempt {attempt}/{maxRetries})...");
+                        await Task.Delay(retryDelayMs);
+                        continue;
+                    }
+
+                    return new FaceDetectionResponse { Faces = new List<DetectedFace>(), Count = 0 };
+                }
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<FaceDetectionResponse>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (HttpRequestException ex)
+            {
+                if (attempt < maxRetries)
+                {
+                    _logger.LogWarning($"[Python Service] Server does not respond. Waiting (attempt {attempt}/{maxRetries})... Error: {ex.Message}");
+                    await Task.Delay(retryDelayMs);
+                    continue;
+                }
+
+                _logger.LogError(ex, "[Python Service] Server does not respond after {MaxRetries} attempts", maxRetries);
+                return new FaceDetectionResponse { Faces = new List<DetectedFace>(), Count = 0 };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Python Service] Error calling face detection service");
+                return new FaceDetectionResponse { Faces = new List<DetectedFace>(), Count = 0 };
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error calling Python face detection service");
-            return new FaceDetectionResponse { Faces = new List<DetectedFace>(), Count = 0 };
-        }
+
+        return new FaceDetectionResponse { Faces = new List<DetectedFace>(), Count = 0 };
     }
 
     public async Task<ClusteringResponse> ClusterFacesAsync(List<float[]> encodings)

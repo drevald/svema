@@ -1012,13 +1012,17 @@ public class MainController(
     [HttpGet("persons")]
     public async Task<IActionResult> PersonsList(int page = 1, int pageSize = 24)
     {
-        // Optimized query: only load what we need for display
+        // Optimized query: only load what we need for display, excluding faces from shots marked as "no faces"
         var personsQuery = dbContext.Persons
             .Select(p => new
             {
                 Person = p,
-                FirstFaceId = p.FaceDetections.OrderBy(fd => fd.DetectedAt).Select(fd => fd.FaceDetectionId).FirstOrDefault(),
-                FaceCount = p.FaceDetections.Count
+                FirstFaceId = p.FaceDetections
+                    .Where(fd => fd.Shot != null && !fd.Shot.NoFaces)
+                    .OrderBy(fd => fd.DetectedAt)
+                    .Select(fd => fd.FaceDetectionId)
+                    .FirstOrDefault(),
+                FaceCount = p.FaceDetections.Count(fd => fd.Shot != null && !fd.Shot.NoFaces)
             })
             .OrderByDescending(x => x.FaceCount)
             .ThenBy(x => x.Person.FirstName)
@@ -1067,6 +1071,12 @@ public class MainController(
 
         if (person == null) return NotFound();
 
+        // Filter out face detections from shots marked as "no faces"
+        var validFaceDetections = person.FaceDetections
+            .Where(fd => fd.Shot != null && !fd.Shot.NoFaces)
+            .OrderBy(fd => fd.ShotId)
+            .ToList();
+
         // Get all persons for reassignment dropdown
         var allPersons = await dbContext.Persons
             .Where(p => p.PersonId != id)
@@ -1076,9 +1086,9 @@ public class MainController(
 
         ViewBag.Person = person;
         ViewBag.AllPersons = allPersons;
-        ViewBag.FaceCount = person.FaceDetections.Count;
+        ViewBag.FaceCount = validFaceDetections.Count;
 
-        return View(person.FaceDetections.OrderBy(fd => fd.ShotId).ToList());
+        return View(validFaceDetections);
     }
 
     [Authorize]
@@ -1152,18 +1162,25 @@ public class MainController(
 
     [Authorize]
     [HttpGet("faces/review")]
-    public async Task<IActionResult> ReviewFaces()
+    public async Task<IActionResult> ReviewFaces(int unconfirmedPage = 1, int unassignedPage = 1, int pageSize = 24)
     {
         var userId = GetUserId();
         if (userId == null) return Unauthorized();
 
-        var unconfirmed = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value);
-        var unassigned = await faceClusteringService.GetUnassignedFacesAsync(userId.Value);
+        var (unconfirmedFaces, unconfirmedTotal) = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value, unconfirmedPage, pageSize);
+        var (unassignedFaces, unassignedTotal) = await faceClusteringService.GetUnassignedFacesAsync(userId.Value, unassignedPage, pageSize);
 
         var model = new FaceReviewViewModel
         {
-            Unconfirmed = unconfirmed,
-            Unassigned = unassigned,
+            Unconfirmed = unconfirmedFaces,
+            UnconfirmedTotalCount = unconfirmedTotal,
+            UnconfirmedCurrentPage = unconfirmedPage,
+            UnconfirmedTotalPages = (int)Math.Ceiling(unconfirmedTotal / (double)pageSize),
+            Unassigned = unassignedFaces,
+            UnassignedTotalCount = unassignedTotal,
+            UnassignedCurrentPage = unassignedPage,
+            UnassignedTotalPages = (int)Math.Ceiling(unassignedTotal / (double)pageSize),
+            PageSize = pageSize,
             Persons = await personService.GetAllPersonsAsync()
         };
 
@@ -1173,7 +1190,14 @@ public class MainController(
     public class FaceReviewViewModel
     {
         public List<FaceDetection> Unconfirmed { get; set; }
+        public int UnconfirmedTotalCount { get; set; }
+        public int UnconfirmedCurrentPage { get; set; }
+        public int UnconfirmedTotalPages { get; set; }
         public List<FaceDetection> Unassigned { get; set; }
+        public int UnassignedTotalCount { get; set; }
+        public int UnassignedCurrentPage { get; set; }
+        public int UnassignedTotalPages { get; set; }
+        public int PageSize { get; set; }
         public List<Person> Persons { get; set; }
     }
 
@@ -1206,7 +1230,7 @@ public class MainController(
     [HttpGet("same_day")]
     public IActionResult SameDay(int month, int day)
     {
-        var shots = shotService.GetSameDayShots(month, day, 1);
+        var shots = shotService.GetSameDayShots(month, day, 0);
         return View(shots);
     }
 
@@ -1368,6 +1392,170 @@ public class MainController(
     {
         public List<int> FaceIds { get; set; } = new List<int>();
         public int? NewPersonId { get; set; }
+    }
+
+    [Authorize]
+    [HttpPost("person/{personId}/set-profile-photo")]
+    public async Task<IActionResult> SetPersonProfilePhoto(int personId, [FromBody] SetProfilePhotoDTO dto)
+    {
+        var person = await dbContext.Persons.FindAsync(personId);
+        if (person == null) return NotFound();
+
+        var shot = await dbContext.Shots.FindAsync(dto.ShotId);
+        if (shot == null) return NotFound(new { message = "Shot not found" });
+
+        await personService.SetProfilePhotoAsync(personId, dto.ShotId);
+
+        return Json(new { success = true, message = "Profile photo set successfully." });
+    }
+
+    public class SetProfilePhotoDTO
+    {
+        public int ShotId { get; set; }
+    }
+
+
+    [Authorize]
+    [HttpPost("shot/{shotId}/exclude-from-face-detection")]
+    public async Task<IActionResult> ExcludeFromFaceDetection(int shotId)
+    {
+        var shot = await dbContext.Shots.FindAsync(shotId);
+        if (shot == null) return NotFound();
+
+        // Remove all face detections for this shot
+        var faceDetections = await dbContext.FaceDetections
+            .Where(fd => fd.ShotId == shotId)
+            .ToListAsync();
+
+        if (faceDetections.Any())
+        {
+            // Get face detection IDs
+            var faceDetectionIds = faceDetections.Select(fd => fd.FaceDetectionId).ToList();
+
+            // Remove encodings first
+            var encodings = await dbContext.FaceEncodings
+                .Where(fe => faceDetectionIds.Contains(fe.FaceDetectionId))
+                .ToListAsync();
+            dbContext.FaceEncodings.RemoveRange(encodings);
+
+            // Remove face detections
+            dbContext.FaceDetections.RemoveRange(faceDetections);
+        }
+
+        // Mark as no faces and processed to exclude from future processing
+        shot.NoFaces = true;
+        shot.IsFaceProcessed = true;
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new {
+            success = true,
+            message = $"Shot excluded from face detection. Removed {faceDetections.Count} face detection(s)."
+        });
+    }
+
+    [Authorize]
+    [HttpPost("shot/{shotId}/include-in-face-detection")]
+    public async Task<IActionResult> IncludeInFaceDetection(int shotId)
+    {
+        var shot = await dbContext.Shots.FindAsync(shotId);
+        if (shot == null) return NotFound();
+
+        // Mark as not processed and clear no_faces flag so it will be picked up by background service
+        shot.NoFaces = false;
+        shot.IsFaceProcessed = false;
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new {
+            success = true,
+            message = "Shot will be processed for face detection."
+        });
+    }
+
+    [Authorize]
+    [HttpPost("shots/exclude-batch-from-face-detection")]
+    public async Task<IActionResult> ExcludeBatchFromFaceDetection([FromBody] ExcludeBatchDTO dto)
+    {
+        if (dto.ShotIds == null || !dto.ShotIds.Any())
+        {
+            return BadRequest(new { message = "No shot IDs provided" });
+        }
+
+        var shots = await dbContext.Shots
+            .Where(s => dto.ShotIds.Contains(s.ShotId))
+            .ToListAsync();
+
+        if (!shots.Any()) return NotFound();
+
+        // Remove all face detections for these shots
+        var faceDetections = await dbContext.FaceDetections
+            .Where(fd => dto.ShotIds.Contains(fd.ShotId))
+            .ToListAsync();
+
+        if (faceDetections.Any())
+        {
+            // Get face detection IDs
+            var faceDetectionIds = faceDetections.Select(fd => fd.FaceDetectionId).ToList();
+
+            // Remove encodings first
+            var encodings = await dbContext.FaceEncodings
+                .Where(fe => faceDetectionIds.Contains(fe.FaceDetectionId))
+                .ToListAsync();
+            dbContext.FaceEncodings.RemoveRange(encodings);
+
+            // Remove face detections
+            dbContext.FaceDetections.RemoveRange(faceDetections);
+        }
+
+        // Mark all as no faces and processed to exclude from future processing
+        foreach (var shot in shots)
+        {
+            shot.NoFaces = true;
+            shot.IsFaceProcessed = true;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new {
+            success = true,
+            message = $"Excluded {shots.Count} shot(s) from face detection. Removed {faceDetections.Count} face detection(s)."
+        });
+    }
+
+    [Authorize]
+    [HttpPost("shots/include-batch-in-face-detection")]
+    public async Task<IActionResult> IncludeBatchInFaceDetection([FromBody] ExcludeBatchDTO dto)
+    {
+        if (dto.ShotIds == null || !dto.ShotIds.Any())
+        {
+            return BadRequest(new { message = "No shot IDs provided" });
+        }
+
+        var shots = await dbContext.Shots
+            .Where(s => dto.ShotIds.Contains(s.ShotId))
+            .ToListAsync();
+
+        if (!shots.Any()) return NotFound();
+
+        // Mark all as not processed and clear no_faces flag so they will be picked up by background service
+        foreach (var shot in shots)
+        {
+            shot.NoFaces = false;
+            shot.IsFaceProcessed = false;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return Json(new {
+            success = true,
+            message = $"{shots.Count} shot(s) will be processed for face detection."
+        });
+    }
+
+    public class ExcludeBatchDTO
+    {
+        public List<int> ShotIds { get; set; } = new List<int>();
     }
 
 }

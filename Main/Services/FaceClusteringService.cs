@@ -27,7 +27,7 @@ public class FaceClusteringService
         // Check if processing is suspended
         if (settings.IsFaceProcessingSuspended)
         {
-            _logger.LogInformation($"Face processing is suspended for user {userId}");
+            _logger.LogDebug($"[Face Clustering] Face processing is suspended for user {userId}");
             return 0;
         }
 
@@ -41,7 +41,7 @@ public class FaceClusteringService
 
         if (!unassignedFaces.Any()) return 0;
 
-        _logger.LogInformation($"Starting clustering for {unassignedFaces.Count} unassigned faces (Preset: {settings.Preset}, Threshold: {settings.SimilarityThreshold})");
+        _logger.LogInformation($"[Face Clustering] Starting clustering for {unassignedFaces.Count} unassigned faces (Preset: {settings.Preset}, Threshold: {settings.SimilarityThreshold})");
 
         // VALIDATE: All encodings must have same dimension
         ValidateEncodingDimensions();
@@ -140,7 +140,7 @@ public class FaceClusteringService
             {
                 // Assign to existing person
                 face.Detection.PersonId = bestPersonId.Value;
-                _logger.LogInformation($"Assigned face {face.Detection.FaceDetectionId} to existing Person {bestPersonId.Value} (similarity: {bestScore:F3})");
+                _logger.LogInformation($"[Face Clustering] Face {face.Detection.FaceDetectionId} from shot {face.Detection.ShotId} assigned to person {bestPersonId.Value}");
             }
             else if (bestClusterIndex.HasValue)
             {
@@ -149,14 +149,14 @@ public class FaceClusteringService
                 cluster.Faces.Add(face.Detection);
                 cluster.Encodings.Add(face.Encoding);
                 newClusters[bestClusterIndex.Value] = cluster;
-                _logger.LogInformation($"Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (similarity: {bestScore:F3})");
+                _logger.LogDebug($"[Face Clustering] Added face {face.Detection.FaceDetectionId} to new cluster {bestClusterIndex.Value} (similarity: {bestScore:F3})");
             }
             else
             {
                 // Create new cluster
                 newClusters.Add((new List<FaceDetection> { face.Detection }, new List<float[]> { face.Encoding }));
                 newClustersCount++;
-                _logger.LogInformation($"Created new cluster for face {face.Detection.FaceDetectionId} (best similarity was {bestScore:F3}, threshold: {similarityThreshold})");
+                _logger.LogDebug($"[Face Clustering] Created new cluster for face {face.Detection.FaceDetectionId} (best similarity was {bestScore:F3}, threshold: {similarityThreshold})");
             }
         }
 
@@ -177,7 +177,8 @@ public class FaceClusteringService
             var person = new Person
             {
                 FirstName = "Person",
-                LastName = $"#{DateTime.UtcNow.Ticks % 100000}" // Temporary placeholder
+                LastName = $"#{DateTime.UtcNow.Ticks % 100000}", // Temporary placeholder
+                CreatedAt = DateTime.UtcNow
             };
             _context.Persons.Add(person);
             await _context.SaveChangesAsync(); // Save to get PersonId
@@ -190,12 +191,12 @@ public class FaceClusteringService
             // Update name with actual ID for cleanliness
             person.LastName = $"#{person.PersonId}";
 
-            _logger.LogInformation($"Created Person #{person.PersonId} with {cluster.Faces.Count} face(s).");
+            _logger.LogInformation($"[Face Clustering] Person {person.PersonId} created");
         }
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation($"Clustering complete. Created {newClustersCount} new person(s) for user {userId}.");
-        return newClustersCount;
+        _logger.LogInformation($"[Face Clustering] Clustering complete. Created {validClusters.Count} new person(s) for user {userId}");
+        return validClusters.Count;
     }
 
     private void ValidateEncodingDimensions()
@@ -290,7 +291,7 @@ public class FaceClusteringService
         return await _context.FaceDetections
             .Include(fd => fd.Shot)
             .Include(fd => fd.Person)
-            .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId != null && !fd.IsConfirmed)
+            .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId != null && !fd.IsConfirmed && !fd.Shot.NoFaces)
             .OrderByDescending(fd => fd.DetectedAt)
             .ToListAsync();
     }
@@ -299,9 +300,42 @@ public class FaceClusteringService
     {
         return await _context.FaceDetections
            .Include(fd => fd.Shot)
-           .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId == null)
+           .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId == null && !fd.Shot.NoFaces)
            .OrderByDescending(fd => fd.DetectedAt)
            .ToListAsync();
+    }
+
+    public async Task<(List<FaceDetection> Faces, int TotalCount)> GetUnconfirmedFacesAsync(int userId, int page, int pageSize)
+    {
+        var query = _context.FaceDetections
+            .Include(fd => fd.Shot)
+            .Include(fd => fd.Person)
+            .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId != null && !fd.IsConfirmed && !fd.Shot.NoFaces)
+            .OrderByDescending(fd => fd.DetectedAt);
+
+        var totalCount = await query.CountAsync();
+        var faces = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (faces, totalCount);
+    }
+
+    public async Task<(List<FaceDetection> Faces, int TotalCount)> GetUnassignedFacesAsync(int userId, int page, int pageSize)
+    {
+        var query = _context.FaceDetections
+            .Include(fd => fd.Shot)
+            .Where(fd => fd.Shot.Album.User.UserId == userId && fd.PersonId == null && !fd.Shot.NoFaces)
+            .OrderByDescending(fd => fd.DetectedAt);
+
+        var totalCount = await query.CountAsync();
+        var faces = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (faces, totalCount);
     }
 
     private async Task<Models.ClusteringSettings> GetOrCreateSettingsAsync(int userId)

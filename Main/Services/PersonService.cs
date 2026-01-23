@@ -27,17 +27,37 @@ public class PersonService
     {
         var person = await _context.Persons
             .Include(p => p.FaceDetections)
+                .ThenInclude(fd => fd.Shot)
             .FirstOrDefaultAsync(p => p.PersonId == personId);
 
         if (person == null) return null;
 
-        // Return cached preview if available
+        // If ProfilePhotoId is set, use that shot
+        if (person.ProfilePhotoId.HasValue)
+        {
+            var profileFace = person.FaceDetections
+                .FirstOrDefault(fd => fd.ShotId == person.ProfilePhotoId.Value);
+
+            if (profileFace != null)
+            {
+                var image = await _faceDetectionService.GetFaceImageAsync(profileFace.FaceDetectionId);
+                if (image != null)
+                {
+                    // Update cached preview
+                    person.Preview = image;
+                    await _context.SaveChangesAsync();
+                    return image;
+                }
+            }
+        }
+
+        // Return cached preview if available (and ProfilePhotoId is not set)
         if (person.Preview != null && person.Preview.Length > 0)
         {
             return person.Preview;
         }
 
-        // Generate preview from first face
+        // Generate preview from first face (fallback)
         var face = person.FaceDetections.OrderBy(fd => fd.DetectedAt).FirstOrDefault();
         if (face != null)
         {
@@ -90,6 +110,21 @@ public class PersonService
         }
     }
 
+    public async Task<int> ConfirmFacesAsync(List<int> faceDetectionIds)
+    {
+        var detections = await _context.FaceDetections
+            .Where(f => faceDetectionIds.Contains(f.FaceDetectionId))
+            .ToListAsync();
+
+        foreach (var detection in detections)
+        {
+            detection.IsConfirmed = true;
+        }
+
+        await _context.SaveChangesAsync();
+        return detections.Count;
+    }
+
     public async Task ReassignFaceAsync(int faceDetectionId, int newPersonId)
     {
         var detection = await _context.FaceDetections.FindAsync(faceDetectionId);
@@ -97,6 +132,25 @@ public class PersonService
         {
             detection.PersonId = newPersonId;
             detection.IsConfirmed = true; // Manual assignment implies confirmation
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task DeleteFaceAsync(int faceDetectionId)
+    {
+        var detection = await _context.FaceDetections.FindAsync(faceDetectionId);
+        if (detection != null)
+        {
+            // Delete associated face encoding first
+            var encoding = await _context.FaceEncodings
+                .FirstOrDefaultAsync(e => e.FaceDetectionId == faceDetectionId);
+            if (encoding != null)
+            {
+                _context.FaceEncodings.Remove(encoding);
+            }
+
+            // Delete the face detection
+            _context.FaceDetections.Remove(detection);
             await _context.SaveChangesAsync();
         }
     }
@@ -160,11 +214,196 @@ public class PersonService
 
     public async Task SetProfilePhotoAsync(int personId, int shotId)
     {
+        _logger.LogInformation($"[SetProfilePhotoAsync] Setting profile photo for person {personId} to shot {shotId}");
         var person = await _context.Persons.FindAsync(personId);
         if (person != null)
         {
+            _logger.LogInformation($"[SetProfilePhotoAsync] Found person {personId}, current ProfilePhotoId: {person.ProfilePhotoId}");
             person.ProfilePhotoId = shotId;
-            await _context.SaveChangesAsync();
+            _logger.LogInformation($"[SetProfilePhotoAsync] Updated ProfilePhotoId to: {person.ProfilePhotoId}");
+            var changes = await _context.SaveChangesAsync();
+            _logger.LogInformation($"[SetProfilePhotoAsync] SaveChanges returned {changes} modified entities");
+        }
+        else
+        {
+            _logger.LogWarning($"[SetProfilePhotoAsync] Person {personId} not found in context");
         }
     }
+
+    /// <summary>
+    /// Calculates quality metrics for a person's cluster
+    /// </summary>
+    public async Task<PersonQualityMetrics> GetPersonQualityMetricsAsync(int personId, int maxSampleSize = 50)
+    {
+        // Optimized query: only load FaceDetectionId and Encoding bytes, skip full entity loading
+        var encodingsQuery = _context.FaceEncodings
+            .AsNoTracking()
+            .Where(fe => fe.FaceDetection.PersonId == personId);
+
+        var totalCount = await encodingsQuery.CountAsync();
+
+        if (totalCount == 0)
+        {
+            return null;
+        }
+
+        // Sample if too many faces (for performance)
+        List<FaceEncodingDto> encodingData;
+        if (totalCount > maxSampleSize)
+        {
+            // Take evenly distributed sample by selecting every Nth face
+            var allIds = await encodingsQuery.Select(e => e.FaceDetectionId).ToListAsync();
+            var step = Math.Max(1, totalCount / maxSampleSize);
+            var sampledIds = allIds.Where((id, index) => index % step == 0).Take(maxSampleSize).ToHashSet();
+
+            encodingData = await encodingsQuery
+                .Where(e => sampledIds.Contains(e.FaceDetectionId))
+                .Select(fe => new FaceEncodingDto { FaceDetectionId = fe.FaceDetectionId, Encoding = fe.Encoding })
+                .ToListAsync();
+        }
+        else
+        {
+            encodingData = await encodingsQuery
+                .Select(fe => new FaceEncodingDto { FaceDetectionId = fe.FaceDetectionId, Encoding = fe.Encoding })
+                .ToListAsync();
+        }
+
+        var encodings = encodingData
+            .Select(e => new
+            {
+                FaceDetectionId = e.FaceDetectionId,
+                Encoding = ByteArrayToFloatArray(e.Encoding)
+            })
+            .ToList();
+
+        if (encodings.Count < 2)
+        {
+            return new PersonQualityMetrics
+            {
+                PersonId = personId,
+                FaceCount = encodings.Count,
+                MinPairwiseSimilarity = 1.0f,
+                AvgPairwiseSimilarity = 1.0f,
+                Dispersion = 0.0f,
+                StdDevPairwise = 0.0f,
+                OutlierFaceIds = new List<int>()
+            };
+        }
+
+        // Calculate centroid
+        var centroid = CalculateCentroid(encodings.Select(e => e.Encoding).ToList());
+
+        // Calculate all pairwise similarities
+        var pairwiseSimilarities = new List<float>();
+        for (int i = 0; i < encodings.Count; i++)
+        {
+            for (int j = i + 1; j < encodings.Count; j++)
+            {
+                pairwiseSimilarities.Add(CosineSimilarity(encodings[i].Encoding, encodings[j].Encoding));
+            }
+        }
+
+        // Calculate dispersion (average distance from centroid)
+        float sumDist = 0;
+        var distancesFromCentroid = new Dictionary<int, float>();
+        foreach (var enc in encodings)
+        {
+            float similarity = CosineSimilarity(enc.Encoding, centroid);
+            float dist = 1 - similarity;
+            sumDist += dist;
+            distancesFromCentroid[enc.FaceDetectionId] = dist;
+        }
+        float dispersion = sumDist / encodings.Count;
+
+        // Calculate standard deviation
+        float avgPairwise = pairwiseSimilarities.Average();
+        float sumSquaredDiff = pairwiseSimilarities.Sum(v => (v - avgPairwise) * (v - avgPairwise));
+        float stdDev = (float)Math.Sqrt(sumSquaredDiff / pairwiseSimilarities.Count);
+
+        // Identify outliers (faces far from centroid)
+        // Outlier threshold: distance > mean + 1.5 * std_dev
+        float avgDistance = distancesFromCentroid.Values.Average();
+        float distStdDev = (float)Math.Sqrt(distancesFromCentroid.Values.Sum(d => (d - avgDistance) * (d - avgDistance)) / distancesFromCentroid.Count);
+        float outlierThreshold = avgDistance + 1.5f * distStdDev;
+
+        var outlierFaceIds = distancesFromCentroid
+            .Where(kvp => kvp.Value > outlierThreshold)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        return new PersonQualityMetrics
+        {
+            PersonId = personId,
+            FaceCount = encodings.Count,
+            MinPairwiseSimilarity = pairwiseSimilarities.Min(),
+            AvgPairwiseSimilarity = avgPairwise,
+            Dispersion = dispersion,
+            StdDevPairwise = stdDev,
+            OutlierFaceIds = outlierFaceIds
+        };
+    }
+
+    private float[] ByteArrayToFloatArray(byte[] bytes)
+    {
+        var floats = new float[bytes.Length / 4];
+        Buffer.BlockCopy(bytes, 0, floats, 0, bytes.Length);
+        return floats;
+    }
+
+    private float[] CalculateCentroid(List<float[]> vectors)
+    {
+        if (!vectors.Any()) return null;
+
+        int dim = vectors[0].Length;
+        var centroid = new float[dim];
+        foreach (var v in vectors)
+        {
+            for (int i = 0; i < dim; i++) centroid[i] += v[i];
+        }
+
+        for (int i = 0; i < dim; i++) centroid[i] /= vectors.Count;
+        return centroid;
+    }
+
+    private float CosineSimilarity(float[] a, float[] b)
+    {
+        if (a.Length != b.Length)
+            return 0;
+
+        float dotProduct = 0;
+        float magnitudeA = 0;
+        float magnitudeB = 0;
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            dotProduct += a[i] * b[i];
+            magnitudeA += a[i] * a[i];
+            magnitudeB += b[i] * b[i];
+        }
+
+        magnitudeA = (float)Math.Sqrt(magnitudeA);
+        magnitudeB = (float)Math.Sqrt(magnitudeB);
+
+        if (magnitudeA == 0 || magnitudeB == 0)
+            return 0;
+
+        return dotProduct / (magnitudeA * magnitudeB);
+    }
+}
+
+public class PersonQualityMetrics
+{
+    public int PersonId { get; set; }
+    public int FaceCount { get; set; }
+    public float MinPairwiseSimilarity { get; set; }
+    public float AvgPairwiseSimilarity { get; set; }
+    public float Dispersion { get; set; }
+    public float StdDevPairwise { get; set; }
+    public List<int> OutlierFaceIds { get; set; }
+}
+
+internal class FaceEncodingDto
+{
+    public int FaceDetectionId { get; set; }
+    public byte[] Encoding { get; set; }
 }

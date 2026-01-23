@@ -341,6 +341,7 @@ public class ShotService : Service
             Rotate = s.Rotate,
             DateStart = s.DateStart
         })
+        .OrderBy(s => s.DateStart)
         .ToList();
 
         return shots;

@@ -137,6 +137,7 @@ public class FaceLocation
     public int Left { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+    public float Quality { get; set; } = 0.5f; // Blur/sharpness quality score (0-1)
 }
 
 public class ClusteringResponse

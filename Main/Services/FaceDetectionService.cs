@@ -75,13 +75,6 @@ namespace Services
                 return 0;
             }
 
-            // Apply rotation and flip transformations to match displayed orientation
-            if (shot.Rotate != 0 || shot.Flip)
-            {
-                _logger.LogInformation($"[Face Detection] Shot {shotId}: Applying rotation={shot.Rotate}, flip={shot.Flip} before face detection");
-                imageData = ApplyImageTransformations(imageData, shot.Rotate, shot.Flip);
-            }
-
             // Pre-screen with AI vision to check if image contains live persons
             if (_personDetectionService.IsEnabled)
             {
@@ -111,7 +104,7 @@ namespace Services
                 return 0;
             }
 
-            _logger.LogInformation($"[Face Detection] Shot {shotId} has {response.Count} face(s) detected");
+            _logger.LogInformation($"[Person] shot {shotId} processing {response.Count} faces found");
 
             var existingDetections = await _context.FaceDetections
                 .Where(fd => fd.ShotId == shotId)
@@ -130,7 +123,8 @@ namespace Services
                     Width = face.Location.Width,
                     Height = face.Location.Height,
                     DetectedAt = DateTime.UtcNow,
-                    IsConfirmed = false
+                    IsConfirmed = false,
+                    Quality = face.Location.Quality
                 };
                 _context.FaceDetections.Add(detection);
                 await _context.SaveChangesAsync(); // Save to get ID
@@ -235,6 +229,16 @@ namespace Services
 
             fullImage.Mutate(img => img.Crop(cropRect));
 
+            // Apply rotation and flip to match the shot's display orientation
+            if (detection.Shot.Rotate != 0)
+            {
+                fullImage.Mutate(img => img.Rotate(detection.Shot.Rotate));
+            }
+            if (detection.Shot.Flip)
+            {
+                fullImage.Mutate(img => img.Flip(FlipMode.Horizontal));
+            }
+
             // Resize to max 300x300 keeping aspect ratio
             int targetSize = 300;
             if (fullImage.Width > targetSize || fullImage.Height > targetSize)
@@ -252,41 +256,6 @@ namespace Services
             await File.WriteAllBytesAsync(cachePath, bytes);
             return bytes;
         }
-        private byte[] ApplyImageTransformations(byte[] imageData, int rotate, bool flip)
-        {
-            using var image = Image.Load(imageData);
-
-            // Apply horizontal flip if needed
-            if (flip)
-            {
-                image.Mutate(x => x.Flip(FlipMode.Horizontal));
-            }
-
-            // Apply rotation if needed
-            if (rotate != 0)
-            {
-                var rotateMode = rotate switch
-                {
-                    90 => RotateMode.Rotate90,
-                    180 => RotateMode.Rotate180,
-                    270 => RotateMode.Rotate270,
-                    _ => RotateMode.None
-                };
-
-                if (rotateMode != RotateMode.None)
-                {
-                    image.Mutate(x => x.Rotate(rotateMode));
-                }
-            }
-
-            // Convert back to byte array
-            using var ms = new MemoryStream();
-            image.SaveAsJpeg(ms, new JpegEncoder { Quality = 95 });
-            return ms.ToArray();
-        }
-
-
-
 
         private Rectangle ClampRect(Rectangle rect, int maxWidth, int maxHeight)
         {

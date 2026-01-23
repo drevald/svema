@@ -35,6 +35,7 @@
       <div class="col-sm-8 text-end">
         <a class="btn btn-primary" href="#" onclick="startSlideshow(jsModel.Shots, jsModel.Token); return false;">Слайдшоу</a>&nbsp;
         <a class="btn btn-primary" href="/edit_album?id=@Model.AlbumId">Ред</a>&nbsp;
+        <a class="btn btn-success" href="/detect_persons_album?id=@Model.AlbumId" title="Распознать лица на всех фото в альбоме">Найти лица</a>&nbsp;
       </div>      
       <div class="col-sm-3">Название</div>
       <div class="col-sm-9">@Model.Name</div>

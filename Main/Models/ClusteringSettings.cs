@@ -16,9 +16,13 @@ public class ClusteringSettings
     // Core clustering parameters
     public float SimilarityThreshold { get; set; } = 0.23f;
     public int MinFacesPerPerson { get; set; } = 2;
-    public int MinFaceSize { get; set; } = 80;
+    public int MinFaceSize { get; set; } = 40;
     public float MinFaceQuality { get; set; } = 0.3f;
     public float AutoMergeThreshold { get; set; } = 0.80f;
+
+    // Cluster quality control (prevents bloated persons)
+    public float MaxDispersion { get; set; } = 0.50f; // Maximum allowed cluster spread
+    public float MinPairwiseSimilarity { get; set; } = 0.08f; // Min similarity between any two faces in cluster
 
     // Processing control
     public bool IsFaceProcessingSuspended { get; set; } = false;

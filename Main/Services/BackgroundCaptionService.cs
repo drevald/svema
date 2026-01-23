@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -58,7 +59,7 @@ public class BackgroundCaptionService : BackgroundService
                 _logger.LogError(ex, "Error occurred executing background caption generation.");
             }
 
-            // Wait 60 seconds before checking again (captions are slower than face detection)
+            // Wait 60 seconds before checking again
             await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
         }
 
@@ -72,7 +73,6 @@ public class BackgroundCaptionService : BackgroundService
 
         try
         {
-            // Get or create bot user
             var botUser = await GetOrCreateBotUserAsync(dbContext, stoppingToken);
             if (botUser == null)
             {
@@ -80,7 +80,6 @@ public class BackgroundCaptionService : BackgroundService
                 return;
             }
 
-            // Find shots without captions from this bot (limit to 5 per batch)
             var shotsToCaption = await dbContext.Shots
                 .Where(s => !dbContext.ShotComments.Any(sc => sc.ShotId == s.ShotId && sc.AuthorId == botUser.UserId))
                 .Where(s => s.FullScreen != null || s.Preview != null)
@@ -106,7 +105,6 @@ public class BackgroundCaptionService : BackgroundService
 
                 try
                 {
-                    // Get image bytes (prefer FullScreen over Preview)
                     var imageBytes = shot.FullScreen ?? shot.Preview;
                     if (imageBytes == null)
                     {
@@ -115,7 +113,6 @@ public class BackgroundCaptionService : BackgroundService
                         continue;
                     }
 
-                    // Call caption service
                     var caption = await CallCaptionServiceAsync(imageBytes, stoppingToken);
                     if (string.IsNullOrEmpty(caption))
                     {
@@ -124,7 +121,15 @@ public class BackgroundCaptionService : BackgroundService
                         continue;
                     }
 
-                    // Create comment
+                    // --- удаляем лишние вступления с помощью регулярки ---
+                    caption = Regex.Replace(
+                        caption,
+                        @"^(Хорошо[,]?|Начну с того, что|Мне нужно|Сначала посмотрю на (картинку|изображение))[^:]*[\.\n]*\s*",
+                        "",
+                        RegexOptions.IgnoreCase
+                    ).Trim();
+                    // --------------------------------------------------------
+
                     var comment = new ShotComment
                     {
                         AuthorId = botUser.UserId,
@@ -135,6 +140,14 @@ public class BackgroundCaptionService : BackgroundService
                     };
 
                     dbContext.ShotComments.Add(comment);
+
+                    // Detect artwork from caption and mark as no_faces to skip face detection
+                    if (IsArtwork(caption))
+                    {
+                        shot.NoFaces = true;
+                        _logger.LogInformation($"Shot {shot.ShotId}: Detected as artwork, marked as no_faces to skip face detection.");
+                    }
+
                     await dbContext.SaveChangesAsync(stoppingToken);
 
                     processed++;
@@ -157,14 +170,12 @@ public class BackgroundCaptionService : BackgroundService
 
     private async Task<User> GetOrCreateBotUserAsync(ApplicationDbContext dbContext, CancellationToken stoppingToken)
     {
-        // Check if bot user exists
         var botUser = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Username == _botUsername, stoppingToken);
 
         if (botUser != null)
             return botUser;
 
-        // Create bot user
         try
         {
             botUser = new User
@@ -194,42 +205,41 @@ public class BackgroundCaptionService : BackgroundService
             var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromMinutes(5);
 
-            // Convert image to base64
             var base64Image = Convert.ToBase64String(imageBytes);
             var imageDataUrl = $"data:image/jpeg;base64,{base64Image}";
 
-            // Create Ollama chat completion request (OpenAI-compatible API)
             var request = new
             {
                 model = _modelName,
-                messages = new[]
+                messages = new object[]
                 {
+                    new
+                    {
+                        role = "system",
+                        content = "Ты — система описания изображений.\n" +
+                                  "ЗАПРЕЩЕНО выводить рассуждения, мысли, планы.\n" +
+                                  "ЗАПРЕЩЕНО слова: \"хорошо\", \"мне нужно\", \"я\".\n" +
+                                  "Выводи ТОЛЬКО готовое описание изображения одним абзацем."                                
+                    },
                     new
                     {
                         role = "user",
                         content = new object[]
                         {
-                            new { type = "text", text = "Ты — помощник, который всегда отвечает по-русски.\nОпиши что ты видишь на этой фотографии.\nБудь фактическим и объективным. Будь кратким." },
+                            new { type = "text", text = "Опиши изображение по-русски. Кратко и фактически. /no_think" },
                             new { type = "image_url", image_url = new { url = imageDataUrl } }
                         }
                     }
                 },
-                max_tokens = 100
+                max_tokens = 300
             };
 
             var requestJson = JsonSerializer.Serialize(request);
             _logger.LogInformation($"Sending request to Ollama with model: {_modelName}");
 
-            var jsonContent = new StringContent(
-                requestJson,
-                Encoding.UTF8,
-                "application/json");
+            var jsonContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
-            // Call Ollama API
-            var response = await httpClient.PostAsync(
-                $"{_captionServiceUrl}/v1/chat/completions",
-                jsonContent,
-                stoppingToken);
+            var response = await httpClient.PostAsync($"{_captionServiceUrl}/v1/chat/completions", jsonContent, stoppingToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -242,9 +252,14 @@ public class BackgroundCaptionService : BackgroundService
             _logger.LogInformation($"Ollama raw response: {result?.Substring(0, Math.Min(500, result?.Length ?? 0))}");
 
             var ollamaResponse = JsonSerializer.Deserialize<OllamaResponse>(result);
-            var caption = ollamaResponse?.Choices?[0]?.Message?.Content?.Trim();
+            var message = ollamaResponse?.Choices?[0]?.Message;
 
-            _logger.LogInformation($"Parsed caption - Choices count: {ollamaResponse?.Choices?.Length ?? 0}, Content: '{caption}'");
+            // Use content if available, otherwise fallback to reasoning (for models that use OpenAI reasoning format)
+            var caption = !string.IsNullOrWhiteSpace(message?.Content)
+                ? message.Content.Trim()
+                : message?.Reasoning?.Trim();
+
+            _logger.LogInformation($"Parsed caption - Choices count: {ollamaResponse?.Choices?.Length ?? 0}, Content: '{message?.Content}', Reasoning: '{message?.Reasoning?.Substring(0, Math.Min(50, message?.Reasoning?.Length ?? 0))}', Final: '{caption?.Substring(0, Math.Min(100, caption?.Length ?? 0))}'");
 
             return caption;
         }
@@ -265,6 +280,41 @@ public class BackgroundCaptionService : BackgroundService
         }
     }
 
+    private bool IsArtwork(string caption)
+    {
+        if (string.IsNullOrWhiteSpace(caption))
+            return false;
+
+        var lowerCaption = caption.ToLower();
+
+        // English keywords
+        var englishArtworkKeywords = new[]
+        {
+            "painting", "portrait", "sculpture", "statue", "canvas",
+            "artwork", "masterpiece", "fresco", "mural", "drawing",
+            "museum", "gallery", "exhibit", "art collection"
+        };
+
+        // Russian keywords (картина, скульптура, портрет, музей, галерея, etc.)
+        var russianArtworkKeywords = new[]
+        {
+            "картин", "скульптур", "портрет", "статуя", "полотн",
+            "шедевр", "фреск", "музе", "галере", "выставк",
+            "произведение искусства", "живопис", "холст"
+        };
+
+        // Check if caption contains artwork indicators
+        foreach (var keyword in englishArtworkKeywords.Concat(russianArtworkKeywords))
+        {
+            if (lowerCaption.Contains(keyword))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private class OllamaResponse
     {
         [System.Text.Json.Serialization.JsonPropertyName("choices")]
@@ -281,5 +331,8 @@ public class BackgroundCaptionService : BackgroundService
     {
         [System.Text.Json.Serialization.JsonPropertyName("content")]
         public string Content { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasoning")]
+        public string Reasoning { get; set; }
     }
 }

@@ -330,6 +330,72 @@ public class MainController(
     }
 
     [Authorize]
+    [HttpGet("detect_persons_album")]
+    public async Task<IActionResult> DetectPersonsInAlbum(int id)
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var album = albumService.GetAuthorizedAlbum(id, userId.Value, null);
+        if (album == null) return NotFound();
+
+        // Get all unprocessed shots in this album
+        var shots = await dbContext.Shots
+            .Where(s => s.AlbumId == id && !s.IsFaceProcessed && !s.NoFaces)
+            .ToListAsync();
+
+        int totalShots = shots.Count;
+        int facesDetected = 0;
+        int shotsWithFaces = 0;
+        int shotsWithoutFaces = 0;
+
+        foreach (var shot in shots)
+        {
+            try
+            {
+                int detected = await faceDetectionService.DetectAndStoreFacesAsync(shot.ShotId);
+                facesDetected += detected;
+                if (detected > 0)
+                    shotsWithFaces++;
+                else
+                    shotsWithoutFaces++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Error detecting faces in shot {shot.ShotId}");
+            }
+        }
+
+        // Run clustering for this user
+        int newPersons = await faceClusteringService.ClusterUnassignedFacesAsync(userId.Value);
+
+        return RedirectToAction("DetectPersonsResult", new
+        {
+            albumId = id,
+            albumName = album.Name,
+            totalShots,
+            facesDetected,
+            shotsWithFaces,
+            shotsWithoutFaces,
+            newPersons
+        });
+    }
+
+    [Authorize]
+    [HttpGet("detect_persons_result")]
+    public IActionResult DetectPersonsResult(int albumId, string albumName, int totalShots, int facesDetected, int shotsWithFaces, int shotsWithoutFaces, int newPersons)
+    {
+        ViewBag.AlbumId = albumId;
+        ViewBag.AlbumName = albumName;
+        ViewBag.TotalShots = totalShots;
+        ViewBag.FacesDetected = facesDetected;
+        ViewBag.ShotsWithFaces = shotsWithFaces;
+        ViewBag.ShotsWithoutFaces = shotsWithoutFaces;
+        ViewBag.NewPersons = newPersons;
+        return View();
+    }
+
+    [Authorize]
     [HttpPost("view_album")]
     public IActionResult ReloadAlbum(AlbumDTO dto, string? comment, string text, int id, int commentId)
     {
@@ -915,10 +981,26 @@ public class MainController(
     }
 
     [Authorize]
+    [HttpPost("api/faces/confirm-batch")]
+    public async Task<IActionResult> ConfirmFacesBatch([FromBody] List<int> faceIds)
+    {
+        var confirmed = await personService.ConfirmFacesAsync(faceIds);
+        return Ok(new { success = true, message = $"Confirmed {confirmed} face(s)" });
+    }
+
+    [Authorize]
     [HttpPost("api/faces/reassign/{faceId}")]
     public async Task<IActionResult> ReassignFace(int faceId, [FromBody] int newPersonId)
     {
         await personService.ReassignFaceAsync(faceId, newPersonId);
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpPost("api/faces/delete/{faceId}")]
+    public async Task<IActionResult> DeleteFace(int faceId)
+    {
+        await personService.DeleteFaceAsync(faceId);
         return Ok();
     }
 
@@ -971,7 +1053,7 @@ public class MainController(
         var shot = await dbContext.Shots.FindAsync(shotId);
         if (shot?.FullScreen == null) return NotFound();
 
-        // Load image to get dimensions
+        // Load ORIGINAL image to get dimensions (face coordinates are in original space)
         using var image = SixLabors.ImageSharp.Image.Load(shot.FullScreen);
         int imageWidth = image.Width;
         int imageHeight = image.Height;
@@ -985,8 +1067,8 @@ public class MainController(
                 y = fd.Y,
                 width = fd.Width,
                 height = fd.Height,
-                imageWidth = imageWidth,
-                imageHeight = imageHeight,
+                imageWidth = imageWidth,  // ORIGINAL image dimensions
+                imageHeight = imageHeight, // ORIGINAL image dimensions
                 personName = fd.Person != null ? (fd.Person.FirstName + " " + fd.Person.LastName).Trim() : null
             })
             .ToListAsync();
@@ -1009,11 +1091,79 @@ public class MainController(
     }
 
     [Authorize]
+    [HttpGet("api/album/{albumId}/face-similarities")]
+    public async Task<IActionResult> GetAlbumFaceSimilarities(int albumId)
+    {
+        var faces = await dbContext.FaceDetections
+            .Include(fd => fd.FaceEncoding)
+            .Where(fd => fd.Shot.AlbumId == albumId && fd.FaceEncoding != null)
+            .Select(fd => new { fd.FaceDetectionId, fd.ShotId, fd.Width, fd.Height, fd.FaceEncoding.Encoding })
+            .ToListAsync();
+
+        var results = new List<object>();
+
+        for (int i = 0; i < faces.Count; i++)
+        {
+            for (int j = i + 1; j < faces.Count; j++)
+            {
+                var enc1 = BytesToFloats(faces[i].Encoding);
+                var enc2 = BytesToFloats(faces[j].Encoding);
+                var similarity = CosineSimilarity(enc1, enc2);
+
+                results.Add(new {
+                    face1 = faces[i].FaceDetectionId,
+                    shot1 = faces[i].ShotId,
+                    size1 = $"{faces[i].Width}x{faces[i].Height}",
+                    face2 = faces[j].FaceDetectionId,
+                    shot2 = faces[j].ShotId,
+                    size2 = $"{faces[j].Width}x{faces[j].Height}",
+                    similarity = Math.Round(similarity, 4)
+                });
+            }
+        }
+
+        return Ok(results.OrderByDescending(r => ((dynamic)r).similarity));
+    }
+
+    private static float[] BytesToFloats(byte[] bytes)
+    {
+        var floats = new float[bytes.Length / 4];
+        Buffer.BlockCopy(bytes, 0, floats, 0, bytes.Length);
+        return floats;
+    }
+
+    private static float CosineSimilarity(float[] a, float[] b)
+    {
+        float dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.Length; i++)
+        {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dot / (MathF.Sqrt(normA) * MathF.Sqrt(normB));
+    }
+
+    [Authorize]
+    [HttpGet("persons/bloated")]
+    public async Task<IActionResult> BloatedPersons()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var bloatedPersons = await faceClusteringService.FindBloatedPersonsAsync(userId.Value);
+
+        ViewBag.TotalBloated = bloatedPersons.Count;
+        return View(bloatedPersons);
+    }
+
+    [Authorize]
     [HttpGet("persons")]
     public async Task<IActionResult> PersonsList(int page = 1, int pageSize = 24)
     {
         // Optimized query: only load what we need for display, excluding faces from shots marked as "no faces"
         var personsQuery = dbContext.Persons
+            .AsNoTracking()
             .Select(p => new
             {
                 Person = p,
@@ -1062,31 +1212,53 @@ public class MainController(
 
     [Authorize]
     [HttpGet("person/{id}")]
-    public async Task<IActionResult> Person(int id)
+    public async Task<IActionResult> Person(int id, int page = 1, int pageSize = 48)
     {
-        var person = await dbContext.Persons
-            .Include(p => p.FaceDetections)
-            .ThenInclude(fd => fd.Shot)
-            .FirstOrDefaultAsync(p => p.PersonId == id);
-
+        var person = await dbContext.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.PersonId == id);
         if (person == null) return NotFound();
 
-        // Filter out face detections from shots marked as "no faces"
-        var validFaceDetections = person.FaceDetections
-            .Where(fd => fd.Shot != null && !fd.Shot.NoFaces)
-            .OrderBy(fd => fd.ShotId)
-            .ToList();
+        // Calculate quality metrics first to get outlier IDs for sorting
+        var qualityMetrics = await personService.GetPersonQualityMetricsAsync(id);
+        var outlierIds = qualityMetrics?.OutlierFaceIds ?? new List<int>();
 
-        // Get all persons for reassignment dropdown
+        // Base query for counting
+        var baseQuery = dbContext.FaceDetections
+            .AsNoTracking()
+            .Include(fd => fd.Shot)
+            .Where(fd => fd.PersonId == id && fd.Shot != null && !fd.Shot.NoFaces);
+
+        var totalCount = await baseQuery.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        // Ensure page is within valid range
+        page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
+
+        // Query with outliers first, then chronologically - sorting BEFORE pagination
+        var validFaceDetections = await baseQuery
+            .OrderByDescending(fd => outlierIds.Contains(fd.FaceDetectionId))
+            .ThenBy(fd => fd.Shot.DateStart)
+            .ThenBy(fd => fd.ShotId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // Get all persons for reassignment dropdown (exclude Person# unnamed persons)
         var allPersons = await dbContext.Persons
-            .Where(p => p.PersonId != id)
+            .AsNoTracking()
+            .Where(p => p.PersonId != id
+                && !((p.FirstName == null || p.FirstName == "Person" || p.FirstName == "")
+                    && (p.LastName ?? "").StartsWith("#")))
             .OrderBy(p => p.FirstName)
             .ThenBy(p => p.LastName)
             .ToListAsync();
 
         ViewBag.Person = person;
         ViewBag.AllPersons = allPersons;
-        ViewBag.FaceCount = validFaceDetections.Count;
+        ViewBag.FaceCount = totalCount;
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.PageSize = pageSize;
+        ViewBag.QualityMetrics = qualityMetrics;
 
         return View(validFaceDetections);
     }
@@ -1102,9 +1274,22 @@ public class MainController(
                 return BadRequest("Please select at least 2 persons to merge.");
             }
 
-            // Merge all selected persons into the first one
-            var targetPersonId = selectedPersons[0];
-            foreach (var personId in selectedPersons.Skip(1))
+            // Load all selected persons
+            var persons = await dbContext.Persons
+                .Where(p => selectedPersons.Contains(p.PersonId))
+                .ToListAsync();
+
+            // Find the person with a real name (not "Person #...")
+            var personWithRealName = persons.FirstOrDefault(p =>
+                !string.IsNullOrWhiteSpace(p.FirstName) &&
+                !p.FirstName.Equals("Person", StringComparison.OrdinalIgnoreCase) &&
+                !p.LastName.StartsWith("#"));
+
+            // If no one has a real name, use the first one
+            var targetPersonId = personWithRealName?.PersonId ?? selectedPersons[0];
+
+            // Merge all others into the target
+            foreach (var personId in selectedPersons.Where(id => id != targetPersonId))
             {
                 await personService.MergePeopleAsync(personId, targetPersonId);
             }
@@ -1170,6 +1355,9 @@ public class MainController(
         var (unconfirmedFaces, unconfirmedTotal) = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value, unconfirmedPage, pageSize);
         var (unassignedFaces, unassignedTotal) = await faceClusteringService.GetUnassignedFacesAsync(userId.Value, unassignedPage, pageSize);
 
+        var allPersons = await personService.GetAllPersonsAsync();
+        var filteredPersons = allPersons.Where(p => !p.LastName.StartsWith("#")).ToList();
+
         var model = new FaceReviewViewModel
         {
             Unconfirmed = unconfirmedFaces,
@@ -1181,7 +1369,7 @@ public class MainController(
             UnassignedCurrentPage = unassignedPage,
             UnassignedTotalPages = (int)Math.Ceiling(unassignedTotal / (double)pageSize),
             PageSize = pageSize,
-            Persons = await personService.GetAllPersonsAsync()
+            Persons = filteredPersons
         };
 
         return View(model);
@@ -1398,13 +1586,28 @@ public class MainController(
     [HttpPost("person/{personId}/set-profile-photo")]
     public async Task<IActionResult> SetPersonProfilePhoto(int personId, [FromBody] SetProfilePhotoDTO dto)
     {
+        logger.LogInformation($"[SetProfilePhoto] Setting profile photo for person {personId} to shot {dto.ShotId}");
+
         var person = await dbContext.Persons.FindAsync(personId);
-        if (person == null) return NotFound();
+        if (person == null)
+        {
+            logger.LogWarning($"[SetProfilePhoto] Person {personId} not found");
+            return NotFound();
+        }
 
         var shot = await dbContext.Shots.FindAsync(dto.ShotId);
-        if (shot == null) return NotFound(new { message = "Shot not found" });
+        if (shot == null)
+        {
+            logger.LogWarning($"[SetProfilePhoto] Shot {dto.ShotId} not found");
+            return NotFound(new { message = "Shot not found" });
+        }
 
+        logger.LogInformation($"[SetProfilePhoto] Person before update: ProfilePhotoId = {person.ProfilePhotoId}");
         await personService.SetProfilePhotoAsync(personId, dto.ShotId);
+
+        // Re-query to verify the change was saved
+        var updatedPerson = await dbContext.Persons.FindAsync(personId);
+        logger.LogInformation($"[SetProfilePhoto] Person after update: ProfilePhotoId = {updatedPerson?.ProfilePhotoId}");
 
         return Json(new { success = true, message = "Profile photo set successfully." });
     }

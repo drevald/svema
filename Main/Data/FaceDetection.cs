@@ -42,6 +42,9 @@ public class FaceDetection
     [Column("detected_at")]
     public DateTime DetectedAt { get; set; }
 
+    [Column("quality")]
+    public float Quality { get; set; } = 0.5f; // Blur/sharpness quality score (0-1, higher is better)
+
     [JsonIgnore]
     public FaceEncoding? FaceEncoding { get; set; }
 }

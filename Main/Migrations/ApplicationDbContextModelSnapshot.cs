@@ -127,6 +127,10 @@ namespace Svema.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("person_id");
 
+                    b.Property<float>("Quality")
+                        .HasColumnType("real")
+                        .HasColumnName("quality");
+
                     b.Property<int>("ShotId")
                         .HasColumnType("integer")
                         .HasColumnName("shot_id");
@@ -216,6 +220,10 @@ namespace Svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PersonId"));
 
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("FirstName")
                         .HasColumnType("text")
                         .HasColumnName("first_name");
@@ -231,10 +239,6 @@ namespace Svema.Migrations
                     b.Property<int?>("ProfilePhotoId")
                         .HasColumnType("integer")
                         .HasColumnName("profile_photo_id");
-
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("created_at");
 
                     b.HasKey("PersonId");
 
@@ -563,6 +567,9 @@ namespace Svema.Migrations
                     b.Property<bool>("IsFaceProcessingSuspended")
                         .HasColumnType("boolean");
 
+                    b.Property<float>("MaxDispersion")
+                        .HasColumnType("real");
+
                     b.Property<float>("MinFaceQuality")
                         .HasColumnType("real");
 
@@ -571,6 +578,9 @@ namespace Svema.Migrations
 
                     b.Property<int>("MinFacesPerPerson")
                         .HasColumnType("integer");
+
+                    b.Property<float>("MinPairwiseSimilarity")
+                        .HasColumnType("real");
 
                     b.Property<int>("Preset")
                         .HasColumnType("integer");

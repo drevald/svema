@@ -151,7 +151,7 @@
     let facesVisible = false;
     let faceData = null;
     const shotId = @Model.ShotId;
-    const flip = @Model.Flip.ToString().ToLower();
+    const flip = @(Model.Flip ? "true" : "false");
     const rotate = @Model.Rotate;
     const canvas = document.getElementById('faceCanvas');
     const ctx = canvas.getContext('2d');
@@ -167,27 +167,35 @@
         let currentHeight = imageHeight;
 
         // Apply rotation first (same order as ImageUtils.GetTransformedImage)
+        // Rotation transformation for bounding boxes
         if (rotate === 90) {
-            const newX = currentHeight - y - height;
+            // 90° clockwise: (x,y) in WxH -> (H-y-height, x) in HxW
+            const newX = imageHeight - y - height;
             const newY = x;
             x = newX;
             y = newY;
             // Swap width and height
             [width, height] = [height, width];
             // Swap image dimensions
-            [currentWidth, currentHeight] = [currentHeight, currentWidth];
+            [currentWidth, currentHeight] = [imageHeight, imageWidth];
         } else if (rotate === 180) {
-            x = currentWidth - x - width;
-            y = currentHeight - y - height;
+            // 180°: (x,y) in WxH -> (W-x-width, H-y-height) in WxH
+            x = imageWidth - x - width;
+            y = imageHeight - y - height;
+            [currentWidth, currentHeight] = [imageWidth, imageHeight];
         } else if (rotate === 270) {
+            // 270° clockwise (or 90° counter-clockwise): (x,y) in WxH -> (y, W-x-width) in HxW
             const newX = y;
-            const newY = currentWidth - x - width;
+            const newY = imageWidth - x - width;
             x = newX;
             y = newY;
             // Swap width and height
             [width, height] = [height, width];
             // Swap image dimensions
-            [currentWidth, currentHeight] = [currentHeight, currentWidth];
+            [currentWidth, currentHeight] = [imageHeight, imageWidth];
+        } else {
+            // No rotation
+            [currentWidth, currentHeight] = [imageWidth, imageHeight];
         }
 
         // Apply flip after rotation (same order as ImageUtils.GetTransformedImage)

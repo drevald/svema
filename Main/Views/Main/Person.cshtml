@@ -4,6 +4,10 @@
     var person = ViewBag.Person as Data.Person;
     var allPersons = ViewBag.AllPersons as List<Data.Person>;
     var faceCount = ViewBag.FaceCount;
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var totalPages = ViewBag.TotalPages ?? 1;
+    var pageSize = ViewBag.PageSize ?? 48;
+    var qualityMetrics = ViewBag.QualityMetrics as Services.PersonQualityMetrics;
 }
 
 <div class="container p-5">
@@ -18,7 +22,49 @@
                 <label class="form-label">Last Name</label>
                 <input type="text" class="form-control" id="lastName" value="@person?.LastName" placeholder="Last Name">
             </div>
-            <p class="text-muted">@faceCount faces</p>
+            <p class="text-muted mb-2">@faceCount faces</p>
+
+            @if (qualityMetrics != null && qualityMetrics.FaceCount >= 2)
+            {
+                <div class="card mb-3" style="font-size: 0.85rem;">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-2">Cluster Quality Metrics</h6>
+                        <div class="row g-1">
+                            <div class="col-6 col-md-3">
+                                <strong>Min Pairwise Sim:</strong><br/>
+                                <span class="@(qualityMetrics.MinPairwiseSimilarity < 0.05f ? "text-danger" : qualityMetrics.MinPairwiseSimilarity < 0.12f ? "text-warning" : "text-success")">
+                                    @qualityMetrics.MinPairwiseSimilarity.ToString("F3")
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>Avg Pairwise Sim:</strong><br/>
+                                <span class="@(qualityMetrics.AvgPairwiseSimilarity < 0.12f ? "text-danger" : qualityMetrics.AvgPairwiseSimilarity < 0.20f ? "text-warning" : "text-success")">
+                                    @qualityMetrics.AvgPairwiseSimilarity.ToString("F3")
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>Dispersion:</strong><br/>
+                                <span class="@(qualityMetrics.Dispersion > 0.60f ? "text-danger" : qualityMetrics.Dispersion > 0.45f ? "text-warning" : "text-success")">
+                                    @qualityMetrics.Dispersion.ToString("F3")
+                                </span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>Std Deviation:</strong><br/>
+                                <span class="@(qualityMetrics.StdDevPairwise > 0.30f ? "text-danger" : qualityMetrics.StdDevPairwise > 0.20f ? "text-warning" : "text-success")">
+                                    @qualityMetrics.StdDevPairwise.ToString("F3")
+                                </span>
+                            </div>
+                        </div>
+                        @if (qualityMetrics.OutlierFaceIds.Any())
+                        {
+                            <div class="mt-2">
+                                <small class="text-warning">⚠️ @qualityMetrics.OutlierFaceIds.Count outlier(s) detected (marked with orange border)</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             <a href="/persons" class="btn btn-secondary">Back to People</a>
             <button type="button" class="btn btn-primary ms-2" id="saveNameBtn">Save Name</button>
             <a href="/delete_person/@person?.PersonId" class="btn btn-danger ms-2"
@@ -35,6 +81,7 @@
                     <strong id="selectedCount">0</strong> faces selected
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-success btn-sm" id="confirmSelectedBtn">Confirm</button>
                     <select class="form-select form-select-sm" id="targetPersonSelect" style="width: 200px;">
                         <option value="0">Unassigned (Unknown)</option>
                         @foreach (var p in allPersons ?? new List<Data.Person>())
@@ -53,21 +100,56 @@
 
     <div class="row mb-3">
         <div class="col-12">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">Select All</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">
+                @if (totalPages > 1)
+                {
+                    <text>Select All on This Page</text>
+                }
+                else
+                {
+                    <text>Select All</text>
+                }
+            </button>
+            @if (totalPages > 1)
+            {
+                <small class="text-muted ms-2">Page @currentPage of @totalPages (@faceCount total faces)</small>
+            }
         </div>
     </div>
 
     <div class="row">
         <div class="d-flex p-0 flex-wrap overflow-auto">
+            @{
+                var outlierIds = qualityMetrics?.OutlierFaceIds ?? new List<int>();
+                DateTime? lastDate = null;
+            }
             @foreach (var face in Model)
             {
                 var isProfilePhoto = person?.ProfilePhotoId == face.Shot.ShotId;
+                var isOutlier = outlierIds.Contains(face.FaceDetectionId);
+                var cardBorderStyle = isOutlier ? "border: 3px solid #ff8c00;" : "";
+
+                // Check if we need to add a date header
+                DateTime? currentDate = face.Shot != null ? face.Shot.DateStart.Date : (DateTime?)null;
+                var showDateHeader = currentDate.HasValue && currentDate != lastDate;
+                if (showDateHeader)
+                {
+                    lastDate = currentDate;
+                    <div class="w-100 mb-2 mt-3">
+                        <h5 class="text-muted border-bottom pb-2">@currentDate.Value.ToString("dddd, MMMM dd, yyyy")</h5>
+                    </div>
+                }
+
                 <div class="face-card-wrapper me-3 mb-3" data-face-id="@face.FaceDetectionId" data-shot-id="@face.Shot.ShotId">
-                    <div class="card text-bg-secondary shadow" style="width: 16rem; height: 16rem; position: relative;">
+                    <div class="card text-bg-secondary shadow" style="width: 16rem; height: 16rem; position: relative; @cardBorderStyle">
                         <input type="checkbox" class="face-checkbox" style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px;" data-face-id="@face.FaceDetectionId">
                         @if (isProfilePhoto)
                         {
                             <span style="position: absolute; top: 10px; right: 10px; z-index: 10; font-size: 24px; color: gold; text-shadow: 0 0 3px black;">⭐</span>
+                        }
+                        @if (isOutlier)
+                        {
+                            <span style="position: absolute; top: 10px; right: @(isProfilePhoto ? "45" : "10")px; z-index: 10; font-size: 20px; color: #ff8c00; text-shadow: 0 0 3px black;" title="Outlier: far from cluster centroid">⚠️</span>
                         }
                         <div class="card-body"
                             style="background-image: url('/preview?id=@face.Shot.ShotId&flip=@face.Shot.Flip&rotate=@face.Shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
@@ -83,11 +165,92 @@
             }
         </div>
     </div>
+
+    @if (totalPages > 1)
+    {
+        <nav aria-label="Face pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                @if (currentPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/person/@person.PersonId?page=@(currentPage - 1)&pageSize=@pageSize">Previous</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                }
+
+                @{
+                    var startPage = Math.Max(1, currentPage - 2);
+                    var endPage = Math.Min(totalPages, currentPage + 2);
+
+                    if (startPage > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="/person/@person.PersonId?page=1&pageSize=@pageSize">1</a>
+                        </li>
+                        if (startPage > 2)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                    }
+
+                    for (var i = startPage; i <= endPage; i++)
+                    {
+                        if (i == currentPage)
+                        {
+                            <li class="page-item active">
+                                <span class="page-link">@i</span>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="/person/@person.PersonId?page=@i&pageSize=@pageSize">@i</a>
+                            </li>
+                        }
+                    }
+
+                    if (endPage < totalPages)
+                    {
+                        if (endPage < totalPages - 1)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                        <li class="page-item">
+                            <a class="page-link" href="/person/@person.PersonId?page=@totalPages&pageSize=@pageSize">@totalPages</a>
+                        </li>
+                    }
+                }
+
+                @if (currentPage < totalPages)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="/person/@person.PersonId?page=@(currentPage + 1)&pageSize=@pageSize">Next</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
 </div>
 
 <script>
     const personId = @person?.PersonId;
     let selectedFaces = new Set();
+    let lastCheckedIndex = null;
 
     // Save name button
     document.getElementById('saveNameBtn').addEventListener('click', function () {
@@ -123,25 +286,49 @@
             });
     });
 
-    // Face checkbox handling
-    document.querySelectorAll('.face-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-            const faceId = parseInt(this.dataset.faceId);
-            const wrapper = this.closest('.face-card-wrapper');
+    // Face checkbox handling with shift+click support
+    const allCheckboxes = Array.from(document.querySelectorAll('.face-checkbox'));
 
-            if (this.checked) {
-                selectedFaces.add(faceId);
-                wrapper.style.outline = '3px solid #0d6efd';
+    function setCheckboxState(checkbox, checked) {
+        checkbox.checked = checked;
+        const faceId = parseInt(checkbox.dataset.faceId);
+        const wrapper = checkbox.closest('.face-card-wrapper');
+
+        if (checked) {
+            selectedFaces.add(faceId);
+            wrapper.style.outline = '3px solid #0d6efd';
+        } else {
+            selectedFaces.delete(faceId);
+            wrapper.style.outline = '';
+        }
+    }
+
+    allCheckboxes.forEach((checkbox, index) => {
+        checkbox.addEventListener('click', function (e) {
+            if (e.shiftKey && lastCheckedIndex !== null) {
+                // Shift+click: select range
+                const start = Math.min(lastCheckedIndex, index);
+                const end = Math.max(lastCheckedIndex, index);
+                const targetState = this.checked;
+
+                for (let i = start; i <= end; i++) {
+                    setCheckboxState(allCheckboxes[i], targetState);
+                }
             } else {
-                selectedFaces.delete(faceId);
-                wrapper.style.outline = '';
+                // Normal click
+                setCheckboxState(this, this.checked);
             }
 
+            lastCheckedIndex = index;
             updateBatchActionsBar();
         });
     });
 
     // Select All / Deselect All toggle
+    const hasPagination = @(totalPages > 1 ? "true" : "false");
+    const selectAllText = hasPagination ? 'Select All on This Page' : 'Select All';
+    const deselectAllText = hasPagination ? 'Deselect All on This Page' : 'Deselect All';
+
     document.getElementById('selectAllBtn').addEventListener('click', function () {
         const allCheckboxes = document.querySelectorAll('.face-checkbox');
         const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
@@ -154,7 +341,7 @@
                 selectedFaces.delete(faceId);
                 cb.closest('.face-card-wrapper').style.outline = '';
             });
-            this.textContent = 'Select All';
+            this.textContent = selectAllText;
         } else {
             // Select all
             allCheckboxes.forEach(cb => {
@@ -163,7 +350,7 @@
                 selectedFaces.add(faceId);
                 cb.closest('.face-card-wrapper').style.outline = '3px solid #0d6efd';
             });
-            this.textContent = 'Deselect All';
+            this.textContent = deselectAllText;
         }
 
         updateBatchActionsBar();
@@ -185,7 +372,7 @@
         // Update Select All button text
         const allCheckboxes = document.querySelectorAll('.face-checkbox');
         const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-        selectAllBtn.textContent = allChecked ? 'Deselect All' : 'Select All';
+        selectAllBtn.textContent = allChecked ? deselectAllText : selectAllText;
     }
 
     // Clear selection
@@ -196,6 +383,41 @@
         });
         selectedFaces.clear();
         updateBatchActionsBar();
+    });
+
+    // Confirm selected faces
+    document.getElementById('confirmSelectedBtn').addEventListener('click', function () {
+        if (selectedFaces.size === 0) {
+            alert('No faces selected');
+            return;
+        }
+
+        fetch('/api/faces/confirm-batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(Array.from(selectedFaces))
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear selection and update UI
+                    document.querySelectorAll('.face-checkbox').forEach(cb => {
+                        cb.checked = false;
+                        cb.closest('.face-card-wrapper').style.outline = '';
+                    });
+                    selectedFaces.clear();
+                    updateBatchActionsBar();
+                    alert(data.message);
+                } else {
+                    alert('Failed to confirm faces');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error confirming faces');
+            });
     });
 
     // Reassign selected faces
@@ -402,6 +624,7 @@
             e.stopPropagation();
 
             const shotId = parseInt(this.dataset.shotId);
+            console.log('Setting profile photo for person', personId, 'with shotId', shotId);
 
             fetch(`/person/${personId}/set-profile-photo`, {
                 method: 'POST',
@@ -412,18 +635,26 @@
                     shotId: shotId
                 })
             })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Response data:', data);
                     if (data.success) {
+                        console.log('Profile photo set successfully, reloading page...');
                         // Update UI to show this is now the profile photo
                         location.reload();
                     } else {
-                        alert('Failed to set profile photo');
+                        alert('Failed to set profile photo: ' + (data.message || 'Unknown error'));
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error setting profile photo');
+                    console.error('Error setting profile photo:', error);
+                    alert('Error setting profile photo: ' + error.message);
                 });
         });
     });

@@ -74,33 +74,41 @@ public class ClusteringSettingsService
             case ClusteringPreset.Conservative:
                 settings.SimilarityThreshold = 0.30f;
                 settings.MinFacesPerPerson = 3;
-                settings.MinFaceSize = 100;
+                settings.MinFaceSize = 60;
                 settings.MinFaceQuality = 0.4f;
                 settings.AutoMergeThreshold = 0.85f;
+                settings.MaxDispersion = 0.40f;
+                settings.MinPairwiseSimilarity = 0.12f;
                 break;
 
             case ClusteringPreset.Balanced:
                 settings.SimilarityThreshold = 0.23f;
                 settings.MinFacesPerPerson = 2;
-                settings.MinFaceSize = 80;
+                settings.MinFaceSize = 40;
                 settings.MinFaceQuality = 0.3f;
                 settings.AutoMergeThreshold = 0.80f;
+                settings.MaxDispersion = 0.50f;
+                settings.MinPairwiseSimilarity = 0.08f;
                 break;
 
             case ClusteringPreset.Aggressive:
                 settings.SimilarityThreshold = 0.15f;
                 settings.MinFacesPerPerson = 1;
-                settings.MinFaceSize = 60;
+                settings.MinFaceSize = 30;
                 settings.MinFaceQuality = 0.2f;
                 settings.AutoMergeThreshold = 0.75f;
+                settings.MaxDispersion = 0.65f;
+                settings.MinPairwiseSimilarity = 0.05f;
                 break;
 
             case ClusteringPreset.NoiseTolerant:
                 settings.SimilarityThreshold = 0.25f;
                 settings.MinFacesPerPerson = 2;
-                settings.MinFaceSize = 100;
+                settings.MinFaceSize = 50;
                 settings.MinFaceQuality = 0.5f;
                 settings.AutoMergeThreshold = 0.82f;
+                settings.MaxDispersion = 0.45f;
+                settings.MinPairwiseSimilarity = 0.10f;
                 break;
 
             case ClusteringPreset.Custom:

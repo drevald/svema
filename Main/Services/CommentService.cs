@@ -32,6 +32,7 @@ public class CommentService : Service
     public void AddComment(string username, string text, int id, int commentId)
     {
         var user = dbContext.Users.FirstOrDefault(u => u.Username == username);
+        if (user == null) return;
 
         if (commentId == 0)
         {

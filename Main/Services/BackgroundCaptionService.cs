@@ -59,8 +59,8 @@ public class BackgroundCaptionService : BackgroundService
                 _logger.LogError(ex, "Error occurred executing background caption generation.");
             }
 
-            // Wait 60 seconds before checking again
-            await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+            // Wait 10 seconds before checking again
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
 
         _logger.LogInformation("Background Caption Service is stopping.");
@@ -84,7 +84,7 @@ public class BackgroundCaptionService : BackgroundService
                 .Where(s => !dbContext.ShotComments.Any(sc => sc.ShotId == s.ShotId && sc.AuthorId == botUser.UserId))
                 .Where(s => s.FullScreen != null || s.Preview != null)
                 .OrderByDescending(s => s.ShotId)
-                .Take(5)
+                .Take(20)
                 .ToListAsync(stoppingToken);
 
             if (!shotsToCaption.Any())
@@ -121,13 +121,8 @@ public class BackgroundCaptionService : BackgroundService
                         continue;
                     }
 
-                    // --- удаляем лишние вступления с помощью регулярки ---
-                    caption = Regex.Replace(
-                        caption,
-                        @"^(Хорошо[,]?|Начну с того, что|Мне нужно|Сначала посмотрю на (картинку|изображение))[^:]*[\.\n]*\s*",
-                        "",
-                        RegexOptions.IgnoreCase
-                    ).Trim();
+                    // --- Clean up model reasoning/thinking output ---
+                    caption = CleanModelReasoning(caption);
                     // --------------------------------------------------------
 
                     var comment = new ShotComment
@@ -278,6 +273,60 @@ public class BackgroundCaptionService : BackgroundService
             _logger.LogError(ex, "Unexpected error calling Ollama service.");
             return null;
         }
+    }
+
+    private string CleanModelReasoning(string caption)
+    {
+        if (string.IsNullOrWhiteSpace(caption))
+            return caption;
+
+        // Remove <think>...</think> blocks (some models use this format)
+        caption = Regex.Replace(caption, @"<think>[\s\S]*?</think>", "", RegexOptions.IgnoreCase).Trim();
+
+        // Remove lines that start with ":" (reasoning fragments)
+        caption = Regex.Replace(caption, @"^:.*$", "", RegexOptions.Multiline).Trim();
+
+        // Remove common reasoning patterns in Russian
+        var reasoningPatterns = new[]
+        {
+            @"^(Хорошо[,.]?)\s*",
+            @"^(Начну с того, что|Мне нужно|Сначала посмотрю)[^.]*\.\s*",
+            @"^(Проверяю|Собираю|Уточню|Надо|Важно|Видимо)[^.]*\.\s*",
+            @"(ЗАПРЕЩЕНО|Запрещено)[^.]*\.\s*",
+            @"Должен быть только[^.]*\.\s*",
+            @"Не использую[^.]*\.\s*",
+            @"В описании их нет[^.]*\.\s*",
+            @"Нужно убедиться[^.]*\.\s*",
+            @"^Зап\s*$",  // Truncated "Запрещено"
+        };
+
+        foreach (var pattern in reasoningPatterns)
+        {
+            caption = Regex.Replace(caption, pattern, "", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        }
+
+        // Remove multiple newlines and clean up
+        caption = Regex.Replace(caption, @"\n{2,}", "\n").Trim();
+
+        // If result is too short or looks like garbage, return empty
+        if (caption.Length < 20)
+            return string.Empty;
+
+        // Take only the last paragraph if there are multiple (often the final one is the actual description)
+        var paragraphs = caption.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+        if (paragraphs.Length > 1)
+        {
+            // Find the longest paragraph that looks like a description (not reasoning)
+            var bestParagraph = paragraphs
+                .Where(p => p.Length > 30 && !p.StartsWith("Проверяю") && !p.StartsWith(":"))
+                .OrderByDescending(p => p.Length)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(bestParagraph))
+                caption = bestParagraph.Trim();
+        }
+
+        return caption.Trim();
     }
 
     private bool IsArtwork(string caption)

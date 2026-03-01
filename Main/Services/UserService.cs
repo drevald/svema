@@ -73,4 +73,78 @@ public class UserService : Service
         dbContext.SaveChanges();
     }
 
+    // Shared Users methods
+    public List<SharedUser> GetSharedUsers(int hostUserId)
+    {
+        return dbContext.SharedUsers
+            .Include(su => su.GuestUser)
+            .Where(su => su.HostUserId == hostUserId)
+            .ToList();
+    }
+
+    public List<SharedUser> GetHostsWhoSharedWithMe(int guestUserId)
+    {
+        return dbContext.SharedUsers
+            .Include(su => su.HostUser)
+            .Where(su => su.GuestUserId == guestUserId)
+            .ToList();
+    }
+
+    public SharedUser AddSharedUser(int hostUserId, int guestUserId)
+    {
+        var existing = dbContext.SharedUsers
+            .FirstOrDefault(su => su.HostUserId == hostUserId && su.GuestUserId == guestUserId);
+
+        if (existing != null)
+            return existing;
+
+        var sharedUser = new SharedUser
+        {
+            HostUserId = hostUserId,
+            GuestUserId = guestUserId
+        };
+        dbContext.SharedUsers.Add(sharedUser);
+        dbContext.SaveChanges();
+        return sharedUser;
+    }
+
+    public bool RemoveSharedUser(int sharedUserId, int hostUserId)
+    {
+        var sharedUser = dbContext.SharedUsers
+            .FirstOrDefault(su => su.Id == sharedUserId && su.HostUserId == hostUserId);
+
+        if (sharedUser == null)
+            return false;
+
+        dbContext.SharedUsers.Remove(sharedUser);
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public bool? ToggleSharedUserDisabled(int sharedUserId, int guestUserId)
+    {
+        var sharedUser = dbContext.SharedUsers
+            .FirstOrDefault(su => su.Id == sharedUserId && su.GuestUserId == guestUserId);
+
+        if (sharedUser == null)
+            return null;
+
+        sharedUser.DisabledByGuest = !sharedUser.DisabledByGuest;
+        dbContext.SaveChanges();
+        return sharedUser.DisabledByGuest;
+    }
+
+    public List<User> SearchUsers(string query, int excludeUserId)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return new List<User>();
+
+        return dbContext.Users
+            .Where(u => u.UserId != excludeUserId &&
+                       (u.Username.ToLower().Contains(query.ToLower()) ||
+                        (u.Email != null && u.Email.ToLower().Contains(query.ToLower()))))
+            .Take(10)
+            .ToList();
+    }
+
 }

@@ -7,7 +7,6 @@
     var currentPage = ViewBag.CurrentPage ?? 1;
     var totalPages = ViewBag.TotalPages ?? 1;
     var pageSize = ViewBag.PageSize ?? 48;
-    var qualityMetrics = ViewBag.QualityMetrics as Services.PersonQualityMetrics;
 }
 
 <div class="container p-5">
@@ -24,46 +23,32 @@
             </div>
             <p class="text-muted mb-2">@faceCount faces</p>
 
-            @if (qualityMetrics != null && qualityMetrics.FaceCount >= 2)
-            {
-                <div class="card mb-3" style="font-size: 0.85rem;">
-                    <div class="card-body p-2">
-                        <h6 class="card-title mb-2">Cluster Quality Metrics</h6>
-                        <div class="row g-1">
-                            <div class="col-6 col-md-3">
-                                <strong>Min Pairwise Sim:</strong><br/>
-                                <span class="@(qualityMetrics.MinPairwiseSimilarity < 0.05f ? "text-danger" : qualityMetrics.MinPairwiseSimilarity < 0.12f ? "text-warning" : "text-success")">
-                                    @qualityMetrics.MinPairwiseSimilarity.ToString("F3")
-                                </span>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <strong>Avg Pairwise Sim:</strong><br/>
-                                <span class="@(qualityMetrics.AvgPairwiseSimilarity < 0.12f ? "text-danger" : qualityMetrics.AvgPairwiseSimilarity < 0.20f ? "text-warning" : "text-success")">
-                                    @qualityMetrics.AvgPairwiseSimilarity.ToString("F3")
-                                </span>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <strong>Dispersion:</strong><br/>
-                                <span class="@(qualityMetrics.Dispersion > 0.60f ? "text-danger" : qualityMetrics.Dispersion > 0.45f ? "text-warning" : "text-success")">
-                                    @qualityMetrics.Dispersion.ToString("F3")
-                                </span>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <strong>Std Deviation:</strong><br/>
-                                <span class="@(qualityMetrics.StdDevPairwise > 0.30f ? "text-danger" : qualityMetrics.StdDevPairwise > 0.20f ? "text-warning" : "text-success")">
-                                    @qualityMetrics.StdDevPairwise.ToString("F3")
-                                </span>
-                            </div>
+            <div id="qualityMetricsSection" class="card mb-3" style="font-size: 0.85rem; display: none;">
+                <div class="card-body p-2">
+                    <h6 class="card-title mb-2">Cluster Quality Metrics <small class="text-muted" id="metricsLoading">(loading...)</small></h6>
+                    <div class="row g-1" id="metricsContent" style="display: none;">
+                        <div class="col-6 col-md-3">
+                            <strong>Min Pairwise Sim:</strong><br/>
+                            <span id="minPairwiseSim">-</span>
                         </div>
-                        @if (qualityMetrics.OutlierFaceIds.Any())
-                        {
-                            <div class="mt-2">
-                                <small class="text-warning">⚠️ @qualityMetrics.OutlierFaceIds.Count outlier(s) detected (marked with orange border)</small>
-                            </div>
-                        }
+                        <div class="col-6 col-md-3">
+                            <strong>Avg Pairwise Sim:</strong><br/>
+                            <span id="avgPairwiseSim">-</span>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <strong>Dispersion:</strong><br/>
+                            <span id="dispersion">-</span>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <strong>Std Deviation:</strong><br/>
+                            <span id="stdDev">-</span>
+                        </div>
+                    </div>
+                    <div class="mt-2" id="outlierWarning" style="display: none;">
+                        <small class="text-warning">⚠️ <span id="outlierCount">0</span> outlier(s) detected (marked with orange border)</small>
                     </div>
                 </div>
-            }
+            </div>
 
             <a href="/persons" class="btn btn-secondary">Back to People</a>
             <button type="button" class="btn btn-primary ms-2" id="saveNameBtn">Save Name</button>
@@ -84,7 +69,7 @@
                     <button type="button" class="btn btn-success btn-sm" id="confirmSelectedBtn">Confirm</button>
                     <select class="form-select form-select-sm" id="targetPersonSelect" style="width: 200px;">
                         <option value="0">Unassigned (Unknown)</option>
-                        @foreach (var p in allPersons ?? new List<Data.Person>())
+                        @foreach (var p in (allPersons ?? new List<Data.Person>()).OrderBy(p => p.FirstName).ThenBy(p => p.LastName))
                         {
                             <option value="@p.PersonId">@(string.IsNullOrEmpty(p.FirstName) && string.IsNullOrEmpty(p.LastName) ? $"Person {p.PersonId}" : $"{p.FirstName} {p.LastName}".Trim())</option>
                         }
@@ -120,14 +105,12 @@
     <div class="row">
         <div class="d-flex p-0 flex-wrap overflow-auto">
             @{
-                var outlierIds = qualityMetrics?.OutlierFaceIds ?? new List<int>();
                 DateTime? lastDate = null;
             }
             @foreach (var face in Model)
             {
                 var isProfilePhoto = person?.ProfilePhotoId == face.Shot.ShotId;
-                var isOutlier = outlierIds.Contains(face.FaceDetectionId);
-                var cardBorderStyle = isOutlier ? "border: 3px solid #ff8c00;" : "";
+                var cardBorderStyle = "";
 
                 // Check if we need to add a date header
                 DateTime? currentDate = face.Shot != null ? face.Shot.DateStart.Date : (DateTime?)null;
@@ -141,18 +124,16 @@
                 }
 
                 <div class="face-card-wrapper me-3 mb-3" data-face-id="@face.FaceDetectionId" data-shot-id="@face.Shot.ShotId">
-                    <div class="card text-bg-secondary shadow" style="width: 16rem; height: 16rem; position: relative; @cardBorderStyle">
+                    <div class="card text-bg-secondary shadow face-card" style="width: 16rem; height: 16rem; position: relative; @cardBorderStyle">
                         <input type="checkbox" class="face-checkbox" style="position: absolute; top: 10px; left: 10px; z-index: 10; width: 20px; height: 20px;" data-face-id="@face.FaceDetectionId">
                         @if (isProfilePhoto)
                         {
                             <span style="position: absolute; top: 10px; right: 10px; z-index: 10; font-size: 24px; color: gold; text-shadow: 0 0 3px black;">⭐</span>
                         }
-                        @if (isOutlier)
-                        {
-                            <span style="position: absolute; top: 10px; right: @(isProfilePhoto ? "45" : "10")px; z-index: 10; font-size: 20px; color: #ff8c00; text-shadow: 0 0 3px black;" title="Outlier: far from cluster centroid">⚠️</span>
-                        }
-                        <div class="card-body"
-                            style="background-image: url('/preview?id=@face.Shot.ShotId&flip=@face.Shot.Flip&rotate=@face.Shot.Rotate'); background-repeat: no-repeat; background-size: cover;">
+                        <span class="outlier-badge" style="display: none; position: absolute; top: 10px; right: @(isProfilePhoto ? "45" : "10")px; z-index: 10; font-size: 20px; color: #ff8c00; text-shadow: 0 0 3px black;" title="Outlier: far from cluster centroid">⚠️</span>
+                        <div class="card-body lazy-shot-preview"
+                            data-preview-url="/preview?id=@face.Shot.ShotId&flip=@face.Shot.Flip&rotate=@face.Shot.Rotate"
+                            style="background-color: #6c757d; background-repeat: no-repeat; background-size: cover;">
                         </div>
                         <div class="card-footer text-center p-1" style="background: rgba(0,0,0,0.7);">
                             <button type="button" class="btn @(isProfilePhoto ? "btn-warning" : "btn-secondary") btn-sm px-2 py-1 set-profile-btn" data-shot-id="@face.Shot.ShotId" title="Set as profile photo">⭐</button>
@@ -617,6 +598,70 @@
             });
     });
 
+    // Load quality metrics asynchronously
+    function loadQualityMetrics() {
+        const section = document.getElementById('qualityMetricsSection');
+        const faceCount = @faceCount;
+
+        if (faceCount < 2) return; // Don't show metrics for single faces
+
+        section.style.display = 'block';
+
+        fetch(`/api/persons/${personId}/quality-metrics`)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load metrics');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('metricsLoading').style.display = 'none';
+                document.getElementById('metricsContent').style.display = 'flex';
+
+                // Update values with color coding
+                const minSim = document.getElementById('minPairwiseSim');
+                minSim.textContent = data.minPairwiseSimilarity.toFixed(3);
+                minSim.className = data.minPairwiseSimilarity < 0.05 ? 'text-danger' :
+                                   data.minPairwiseSimilarity < 0.12 ? 'text-warning' : 'text-success';
+
+                const avgSim = document.getElementById('avgPairwiseSim');
+                avgSim.textContent = data.avgPairwiseSimilarity.toFixed(3);
+                avgSim.className = data.avgPairwiseSimilarity < 0.12 ? 'text-danger' :
+                                   data.avgPairwiseSimilarity < 0.20 ? 'text-warning' : 'text-success';
+
+                const disp = document.getElementById('dispersion');
+                disp.textContent = data.dispersion.toFixed(3);
+                disp.className = data.dispersion > 0.60 ? 'text-danger' :
+                                 data.dispersion > 0.45 ? 'text-warning' : 'text-success';
+
+                const std = document.getElementById('stdDev');
+                std.textContent = data.stdDevPairwise.toFixed(3);
+                std.className = data.stdDevPairwise > 0.30 ? 'text-danger' :
+                                data.stdDevPairwise > 0.20 ? 'text-warning' : 'text-success';
+
+                // Mark outliers
+                if (data.outlierFaceIds && data.outlierFaceIds.length > 0) {
+                    document.getElementById('outlierWarning').style.display = 'block';
+                    document.getElementById('outlierCount').textContent = data.outlierFaceIds.length;
+
+                    data.outlierFaceIds.forEach(faceId => {
+                        const wrapper = document.querySelector(`.face-card-wrapper[data-face-id="${faceId}"]`);
+                        if (wrapper) {
+                            const card = wrapper.querySelector('.face-card');
+                            if (card) card.style.border = '3px solid #ff8c00';
+                            const badge = wrapper.querySelector('.outlier-badge');
+                            if (badge) badge.style.display = 'inline';
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading quality metrics:', error);
+                document.getElementById('metricsLoading').textContent = '(failed to load)';
+            });
+    }
+
+    // Load metrics after page renders
+    setTimeout(loadQualityMetrics, 100);
+
     // Set profile photo button
     document.querySelectorAll('.set-profile-btn').forEach(btn => {
         btn.addEventListener('click', function (e) {
@@ -658,4 +703,22 @@
                 });
         });
     });
+
+    // Lazy load shot preview images - only load when visible
+    const lazyShotPreviews = document.querySelectorAll('.lazy-shot-preview');
+    const shotPreviewObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const el = entry.target;
+                const url = el.dataset.previewUrl;
+                if (url && !el.dataset.loaded) {
+                    el.dataset.loaded = 'true';
+                    el.style.backgroundImage = `url('${url}')`;
+                }
+                shotPreviewObserver.unobserve(el);
+            }
+        });
+    }, { rootMargin: '200px' }); // Load 200px before visible
+
+    lazyShotPreviews.forEach(el => shotPreviewObserver.observe(el));
 </script>

@@ -25,47 +25,67 @@ public class PersonService
 
     public async Task<byte[]> GetPersonPreviewAsync(int personId)
     {
-        var person = await _context.Persons
-            .Include(p => p.FaceDetections)
-                .ThenInclude(fd => fd.Shot)
-            .FirstOrDefaultAsync(p => p.PersonId == personId);
+        // First, try to get cached preview without loading FaceDetections
+        var personData = await _context.Persons
+            .AsNoTracking()
+            .Where(p => p.PersonId == personId)
+            .Select(p => new { p.PersonId, p.Preview, p.ProfilePhotoId })
+            .FirstOrDefaultAsync();
 
-        if (person == null) return null;
+        if (personData == null) return null;
 
-        // If ProfilePhotoId is set, use that shot
-        if (person.ProfilePhotoId.HasValue)
+        // Return cached preview if available and no profile photo override
+        if (!personData.ProfilePhotoId.HasValue && personData.Preview != null && personData.Preview.Length > 0)
         {
-            var profileFace = person.FaceDetections
-                .FirstOrDefault(fd => fd.ShotId == person.ProfilePhotoId.Value);
+            return personData.Preview;
+        }
 
-            if (profileFace != null)
+        // If ProfilePhotoId is set, get that specific face
+        if (personData.ProfilePhotoId.HasValue)
+        {
+            var profileFaceId = await _context.FaceDetections
+                .AsNoTracking()
+                .Where(fd => fd.PersonId == personId && fd.ShotId == personData.ProfilePhotoId.Value)
+                .Select(fd => fd.FaceDetectionId)
+                .FirstOrDefaultAsync();
+
+            if (profileFaceId > 0)
             {
-                var image = await _faceDetectionService.GetFaceImageAsync(profileFace.FaceDetectionId);
+                var image = await _faceDetectionService.GetFaceImageAsync(profileFaceId);
                 if (image != null)
                 {
-                    // Update cached preview
-                    person.Preview = image;
-                    await _context.SaveChangesAsync();
+                    // Update cached preview (fetch entity for update)
+                    var personToUpdate = await _context.Persons.FindAsync(personId);
+                    if (personToUpdate != null)
+                    {
+                        personToUpdate.Preview = image;
+                        await _context.SaveChangesAsync();
+                    }
                     return image;
                 }
             }
         }
 
-        // Return cached preview if available (and ProfilePhotoId is not set)
-        if (person.Preview != null && person.Preview.Length > 0)
-        {
-            return person.Preview;
-        }
+        // Generate preview from first face (fallback) - only get one face ID
+        var faceId = await _context.FaceDetections
+            .AsNoTracking()
+            .Where(fd => fd.PersonId == personId)
+            .OrderBy(fd => fd.DetectedAt)
+            .Select(fd => fd.FaceDetectionId)
+            .FirstOrDefaultAsync();
 
-        // Generate preview from first face (fallback)
-        var face = person.FaceDetections.OrderBy(fd => fd.DetectedAt).FirstOrDefault();
-        if (face != null)
+        if (faceId > 0)
         {
-            var image = await _faceDetectionService.GetFaceImageAsync(face.FaceDetectionId);
+            var image = await _faceDetectionService.GetFaceImageAsync(faceId);
             if (image != null)
             {
-                person.Preview = image;
-                await _context.SaveChangesAsync();
+                // Update cached preview (fetch entity for update)
+                var personToUpdate = await _context.Persons.FindAsync(personId);
+                if (personToUpdate != null)
+                {
+                    personToUpdate.Preview = image;
+                    await _context.SaveChangesAsync();
+                }
                 return image;
             }
         }
@@ -204,8 +224,9 @@ public class PersonService
 
     public async Task<List<Person>> GetAllPersonsAsync()
     {
+        // Optimized: Don't load all FaceDetections, just get count in subquery
         return await _context.Persons
-            .Include(p => p.FaceDetections)
+            .AsNoTracking()
             .OrderByDescending(p => p.FaceDetections.Count)
             .ThenBy(p => p.FirstName)
             .ThenBy(p => p.LastName)

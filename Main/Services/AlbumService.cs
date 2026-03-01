@@ -31,38 +31,46 @@ public class AlbumService : Service
 
     public Album GetAuthorizedAlbum(int id, int? currentUserId, string token)
     {
+        // Get list of host user IDs that shared their library with current user
+        var sharedHostIds = currentUserId.HasValue
+            ? dbContext.SharedUsers
+                .Where(su => su.GuestUserId == currentUserId.Value)
+                .Select(su => su.HostUserId)
+                .ToList()
+            : new List<int>();
+
+        // Get list of album IDs shared directly with current user
+        var sharedAlbumIds = currentUserId.HasValue
+            ? dbContext.SharedAlbums
+                .Where(sa => sa.GuestUserId == currentUserId.Value)
+                .Select(sa => sa.AlbumId)
+                .ToList()
+            : new List<int>();
+
         return dbContext.Albums
-        .Include(a => a.AlbumComments)
-        .FirstOrDefault(a =>
-            a.AlbumId == id &&
-            (
-                // 1️⃣ Owned by current user
-                a.User.UserId == currentUserId ||
+            .Include(a => a.AlbumComments)
+            .FirstOrDefault(a =>
+                a.AlbumId == id &&
+                (
+                    // 1️⃣ Owned by current user
+                    a.User.UserId == currentUserId ||
 
-                // 2️⃣ Shared directly to this user
-                dbContext.SharedAlbums.Any(sa =>
-                    sa.AlbumId == a.AlbumId &&
-                    sa.GuestUserId == currentUserId
-                ) ||
+                    // 2️⃣ Shared directly to this user
+                    sharedAlbumIds.Contains(a.AlbumId) ||
 
-                // 3️⃣ Shared via host-user relationship (shared user)
-                dbContext.SharedUsers.Any(su =>
-                    su.HostUserId == a.User.UserId &&
-                    su.GuestUserId == currentUserId
-                ) ||
+                    // 3️⃣ Shared via host-user relationship
+                    sharedHostIds.Contains(a.User.UserId) ||
 
-                // 4️⃣ Public shared link (still active)
-                dbContext.SharedLinks.Any(sl =>
-                    sl.ResourceType == "album" &&
-                    sl.ResourceId == a.AlbumId &&
-                    !sl.Revoked &&
-                    !sl.Revoked &&
-                    sl.Token == token &&
-                    (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
+                    // 4️⃣ Public shared link (still active)
+                    dbContext.SharedLinks.Any(sl =>
+                        sl.ResourceType == "album" &&
+                        sl.ResourceId == a.AlbumId &&
+                        !sl.Revoked &&
+                        sl.Token == token &&
+                        (sl.ExpiresAt == null || sl.ExpiresAt > DateTime.UtcNow)
+                    )
                 )
-            )
-        );
-
+            );
     }
 
     public void UpdateAlbums(AlbumsListDTO dto, List<int> shotsToChange)
@@ -267,16 +275,33 @@ public class AlbumService : Service
         }
         else
         {
-            query = query.Where(shot =>
-                    (shot.Album != null && shot.Album.User != null && shot.Album.User.Username == username)
-                    || dbContext.SharedUsers.Any(su =>
-                        su.GuestUser != null && su.GuestUser.Username == username &&
-                        su.HostUser != null && su.HostUser.UserId == (shot.Album != null && shot.Album.User != null ? shot.Album.User.UserId : -1))
-                    || dbContext.SharedAlbums.Any(sa =>
-                        sa.GuestUser != null && sa.GuestUser.Username == username &&
-                        sa.Album != null && sa.Album.AlbumId == (shot.Album != null ? shot.Album.AlbumId : -1)));
-        }
+            // Get current user's ID
+            var currentUser = dbContext.Users.FirstOrDefault(u => u.Username == username);
+            if (currentUser == null)
+            {
+                return query.Where(s => false); // No user found, return empty
+            }
 
+            // Pre-fetch host user IDs that shared with current user (excluding disabled ones)
+            var sharedHostIds = dbContext.SharedUsers
+                .Where(su => su.GuestUserId == currentUser.UserId && !su.DisabledByGuest)
+                .Select(su => su.HostUserId)
+                .ToList();
+
+            // Pre-fetch album IDs shared directly with current user
+            var sharedAlbumIds = dbContext.SharedAlbums
+                .Where(sa => sa.GuestUserId == currentUser.UserId)
+                .Select(sa => sa.AlbumId)
+                .ToList();
+
+            query = query.Where(shot =>
+                // Owned by current user
+                (shot.Album != null && shot.Album.User != null && shot.Album.User.UserId == currentUser.UserId)
+                // Or album belongs to a host who shared their library
+                || (shot.Album != null && shot.Album.User != null && sharedHostIds.Contains(shot.Album.User.UserId))
+                // Or album is directly shared
+                || (shot.Album != null && sharedAlbumIds.Contains(shot.Album.AlbumId)));
+        }
 
         return query;
     }
@@ -446,6 +471,29 @@ public class AlbumService : Service
         return dbContext.Albums
             .Include(a => a.User)
             .FirstOrDefault(a => a.Name == name && a.User.UserId == userId);
+    }
+
+    public (int? PrevId, int? NextId) GetAdjacentAlbumIds(int albumId)
+    {
+        var ownerUserId = dbContext.Albums
+            .Where(a => a.AlbumId == albumId)
+            .Select(a => a.User.UserId)
+            .FirstOrDefault();
+
+        if (ownerUserId == 0) return (null, null);
+
+        var albums = dbContext.Albums
+            .Where(a => a.User.UserId == ownerUserId)
+            .OrderBy(a => a.Name)
+            .Select(a => a.AlbumId)
+            .ToList();
+
+        var index = albums.IndexOf(albumId);
+        if (index < 0) return (null, null);
+
+        int? prevId = index > 0 ? albums[index - 1] : null;
+        int? nextId = index < albums.Count - 1 ? albums[index + 1] : null;
+        return (prevId, nextId);
     }
 
 }

@@ -47,7 +47,7 @@
                 <div class="card-body photo-view position-relative p-0"
                     style="background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate&token=@Model.Token'); background-size: contain; background-repeat: no-repeat; background-position: center;">
                     <canvas id="faceCanvas"
-                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer;"></canvas>
                 </div>
             </div>
         </div>
@@ -126,11 +126,7 @@
                         }
                     }
 
-                    <form action="/add_shot_comment" method="post">
-                        <input type="hidden" id="North" name="North" />
-                        <input type="hidden" id="South" name="South" />
-                        <input type="hidden" id="East" name="East" />
-                        <input type="hidden" id="West" name="West" />
+                    <form action="/add_shot_comment@(string.IsNullOrEmpty(Model.Token) ? "" : "?token=" + Model.Token)" method="post">
                         <input type="hidden" id="id" name="id" value="@Model.ShotId" />
                         <input type="hidden" id="commentId" name="commentId" value="0" />
                         <div class="col-12">
@@ -150,6 +146,7 @@
 <script>
     let facesVisible = false;
     let faceData = null;
+    let faceRects = []; // Stores transformed face rectangles for click detection
     const shotId = @Model.ShotId;
     const flip = @(Model.Flip ? "true" : "false");
     const rotate = @Model.Rotate;
@@ -258,6 +255,9 @@
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Reset face rectangles for click detection
+        faceRects = [];
+
         // Draw each face rectangle
         faceData.forEach(face => {
             // Transform face coordinates based on rotation and flip
@@ -268,6 +268,14 @@
             const y = offsetY + (transformed.y * scale);
             const width = transformed.width * scale;
             const height = transformed.height * scale;
+
+            // Store for click detection
+            faceRects.push({
+                x, y, width, height,
+                personId: face.personId,
+                personName: face.personName,
+                area: width * height
+            });
 
             // Draw rectangle
             ctx.strokeStyle = '#00ff00';
@@ -313,6 +321,52 @@
         if (facesVisible) {
             drawFaces();
         }
+    });
+
+    // Click handler for face rectangles
+    canvas.addEventListener('click', (e) => {
+        if (!facesVisible || faceRects.length === 0) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Find all faces that contain the click point
+        const clickedFaces = faceRects.filter(face =>
+            clickX >= face.x && clickX <= face.x + face.width &&
+            clickY >= face.y && clickY <= face.y + face.height
+        );
+
+        if (clickedFaces.length === 0) return;
+
+        // If overlapping, pick the smallest (top) face
+        const topFace = clickedFaces.reduce((smallest, face) =>
+            face.area < smallest.area ? face : smallest
+        );
+
+        if (topFace.personId) {
+            window.location.href = `/person/${topFace.personId}`;
+        }
+    });
+
+    // Update cursor based on hover over faces
+    canvas.addEventListener('mousemove', (e) => {
+        if (!facesVisible || faceRects.length === 0) {
+            canvas.style.cursor = 'default';
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const isOverFace = faceRects.some(face =>
+            face.personId &&
+            mouseX >= face.x && mouseX <= face.x + face.width &&
+            mouseY >= face.y && mouseY <= face.y + face.height
+        );
+
+        canvas.style.cursor = isOverFace ? 'pointer' : 'default';
     });
 
     // No Faces button handler

@@ -149,6 +149,8 @@ public class AlbumDTO
     public string Token { get; set; }
     public Boolean EditLocation { get; set; }
     public string CommentFilter { get; set; }
+    public int? PrevAlbumId { get; set; }
+    public int? NextAlbumId { get; set; }
     public AlbumDTO()
     {
         North = 90;
@@ -303,6 +305,8 @@ public class ProfileDTO : DTO
 {
     public List<ShotStorage> Storages { get; set; }
     public User User { get; set; }
+    public List<SharedUser> SharedUsers { get; set; }
+    public List<SharedUser> SharedByUsers { get; set; }
 }
 
 public class StorageDTO : DTO

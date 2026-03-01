@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Common;
 using Data;
 using Form;
 
@@ -42,6 +43,15 @@ public class AccessController : Controller
             };
 
             dbContext.Add(user);
+            await dbContext.SaveChangesAsync();
+
+            var storage = new ShotStorage
+            {
+                UserId = user.UserId,
+                Provider = Provider.Local,
+                Root = Environment.GetEnvironmentVariable("STORAGE_DIR") ?? "/storage"
+            };
+            dbContext.Add(storage);
             await dbContext.SaveChangesAsync();
 
             return Redirect("/login");

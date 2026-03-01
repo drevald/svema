@@ -29,10 +29,22 @@
   <form method="post" style="display:contents">
   <div class="col-md-2 p-5" style="width:500px">
     <div class="row g-3">
-      <div class="col-sm-4">
-        <a class="btn btn-secondary" href="/">Вернуться</a>
+      <div class="col-sm-12 d-flex justify-content-between align-items-center">
+        <div>
+          @if (Model.PrevAlbumId.HasValue)
+          {
+          <a class="btn btn-outline-secondary btn-sm" href="/view_album?id=@Model.PrevAlbumId@(string.IsNullOrEmpty(Model.Token) ? "" : "&token=" + Model.Token)">&larr; Пред</a>
+          }
+        </div>
+        <a class="btn btn-secondary btn-sm" href="/">Вернуться</a>
+        <div>
+          @if (Model.NextAlbumId.HasValue)
+          {
+          <a class="btn btn-outline-secondary btn-sm" href="/view_album?id=@Model.NextAlbumId@(string.IsNullOrEmpty(Model.Token) ? "" : "&token=" + Model.Token)">След &rarr;</a>
+          }
+        </div>
       </div>
-      <div class="col-sm-8 text-end">
+      <div class="col-sm-12 text-end">
         <a class="btn btn-primary" href="#" onclick="startSlideshow(jsModel.Shots, jsModel.Token); return false;">Слайдшоу</a>&nbsp;
         <a class="btn btn-primary" href="/edit_album?id=@Model.AlbumId">Ред</a>&nbsp;
         <a class="btn btn-success" href="/detect_persons_album?id=@Model.AlbumId" title="Распознать лица на всех фото в альбоме">Найти лица</a>&nbsp;
@@ -83,6 +95,7 @@
         <input type="hidden" asp-for="East" />
         <input type="hidden" asp-for="West" />
         <input type="hidden" asp-for="AlbumId" />
+        <input type="hidden" asp-for="Token" />
         <input type="hidden" id="commentId" name="commentId" value="0">
         <div class="col-sm-12">
           <textarea class="form-control mb-3" rows=4 id="text" name="text"></textarea>

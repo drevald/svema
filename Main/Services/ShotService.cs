@@ -43,6 +43,22 @@ public class ShotService : Service
 
     public Shot GetAuthorizedShot(int id, int? currentUserId, string token)
     {
+        // Get list of host user IDs that shared their library with current user
+        var sharedHostIds = currentUserId.HasValue
+            ? dbContext.SharedUsers
+                .Where(su => su.GuestUserId == currentUserId.Value && !su.DisabledByGuest)
+                .Select(su => su.HostUserId)
+                .ToList()
+            : new List<int>();
+
+        // Get list of album IDs shared directly with current user
+        var sharedAlbumIds = currentUserId.HasValue
+            ? dbContext.SharedAlbums
+                .Where(sa => sa.GuestUserId == currentUserId.Value)
+                .Select(sa => sa.AlbumId)
+                .ToList()
+            : new List<int>();
+
         return dbContext.Shots
             .Include(s => s.ShotComments)
             .Include(s => s.Storage)
@@ -55,16 +71,10 @@ public class ShotService : Service
                     s.Album.User.UserId == currentUserId ||
 
                     // Album is shared directly to this user
-                    dbContext.SharedAlbums.Any(sa =>
-                        sa.AlbumId == s.Album.AlbumId &&
-                        sa.GuestUserId == currentUserId
-                    ) ||
+                    sharedAlbumIds.Contains(s.AlbumId) ||
 
                     // Album belongs to a host user who shared their library
-                    dbContext.SharedUsers.Any(su =>
-                        su.HostUserId == s.Album.User.UserId &&
-                        su.GuestUserId == currentUserId
-                    ) ||
+                    sharedHostIds.Contains(s.Album.User.UserId) ||
 
                     // Shot (or album) is shared via public link
                     dbContext.SharedLinks.Any(sl =>
@@ -290,7 +300,8 @@ public class ShotService : Service
                 (shot.Album.User.UserId == userId && shot.Album.User.Username == username) ||
                 dbContext.SharedUsers.Any(su =>
                     su.GuestUser.Username == username &&
-                    su.HostUser.UserId == shot.Album.User.UserId) ||
+                    su.HostUser.UserId == shot.Album.User.UserId &&
+                    !su.DisabledByGuest) ||
                 dbContext.SharedAlbums.Any(sa =>
                     sa.GuestUser.Username == username &&
                     sa.Album.AlbumId == shot.Album.AlbumId)

@@ -319,6 +319,10 @@ namespace Svema.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("DisabledByGuest")
+                        .HasColumnType("boolean")
+                        .HasColumnName("disabled_by_guest");
+
                     b.Property<int>("GuestUserId")
                         .HasColumnType("integer")
                         .HasColumnName("guest_user_id");

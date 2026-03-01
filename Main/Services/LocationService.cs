@@ -75,7 +75,12 @@ public class LocationService : Service
             {
                 command.CommandText = sql;
 
-                command.Parameters.Add(new NpgsqlParameter("@gridSize", (longitudeMax - longitudeMin) / 1000));
+                // Grid size targets ~50 clusters horizontally, with minimum 0.5 degree (~55km) for good grouping
+                var lonRange = longitudeMax - longitudeMin;
+                var latRange = latitudeMax - latitudeMin;
+                var range = Math.Max(lonRange, latRange);
+                var gridSize = Math.Max(range / 50.0, 0.5);
+                command.Parameters.Add(new NpgsqlParameter("@gridSize", gridSize));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
@@ -199,6 +204,86 @@ public class LocationService : Service
             dbContext.Locations.Add(location);
             dbContext.SaveChanges();
         }
+    }
+
+    /// <summary>
+    /// Get individual shot locations for client-side clustering with Yandex Maps Clusterer
+    /// </summary>
+    public List<LocationDTO> GetIndividualShotLocations(string username, bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
+    {
+        var filters = new List<string>();
+        filters.Add("s.longitude BETWEEN @longitudeMin AND @longitudeMax");
+        filters.Add("s.latitude BETWEEN @latitudeMin AND @latitudeMax");
+        filters.Add("s.longitude != 0 AND s.latitude != 0");
+
+        if (onlyMine)
+        {
+            filters.Add("u.username = @username");
+        }
+        else
+        {
+            filters.Add(@"(
+                u.username = @username
+                OR EXISTS (
+                    SELECT 1 FROM shared_users su
+                    WHERE su.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
+                    AND su.host_user_id = a.""UserId""
+                )
+                OR EXISTS (
+                    SELECT 1 FROM shared_albums sa
+                    JOIN albums shared_a ON sa.shared_album_id = shared_a.id
+                    WHERE sa.guest_user_id = (SELECT ""UserId"" FROM users WHERE username = @username)
+                    AND shared_a.id = a.id
+                )
+            )");
+        }
+
+        string whereClause = string.Join(" AND ", filters);
+
+        string sql = $@"
+        SELECT
+            s.id,
+            s.longitude AS lon,
+            s.latitude AS lat
+        FROM shots s
+        JOIN albums a ON s.album_id = a.id
+        JOIN users u ON a.""UserId"" = u.id
+        WHERE {whereClause}
+        ORDER BY s.id;
+        ";
+
+        var locationList = new List<LocationDTO>();
+
+        using (var connection = dbContext.Database.GetDbConnection())
+        {
+            connection.Open();
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = sql;
+
+                command.Parameters.Add(new NpgsqlParameter("@longitudeMin", longitudeMin));
+                command.Parameters.Add(new NpgsqlParameter("@longitudeMax", longitudeMax));
+                command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
+                command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
+                command.Parameters.Add(new NpgsqlParameter("@username", username));
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var location = new LocationDTO
+                        {
+                            Label = "1", // Each point represents 1 shot
+                            Longitude = reader.GetDouble(reader.GetOrdinal("lon")),
+                            Latitude = reader.GetDouble(reader.GetOrdinal("lat"))
+                        };
+                        locationList.Add(location);
+                    }
+                }
+            }
+        }
+        return locationList;
     }
 
 }

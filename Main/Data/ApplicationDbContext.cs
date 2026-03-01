@@ -257,6 +257,8 @@ public class SharedUser
     [Column("guest_user_id")]
     public int GuestUserId { get; set; }
     public User GuestUser { get; set; }
+    [Column("disabled_by_guest")]
+    public bool DisabledByGuest { get; set; }
 }
 
 [Table("shared_albums")]

@@ -178,6 +178,7 @@ public class MainController(
         var username = GetUsername() ?? string.Empty;
         var result = albumService.BuildAlbumsListAsync(dto, username, onlyMine);
 
+        // Use server-side PostGIS clustering for large datasets
         var placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North);
         var rect = GeoRect.FromPlacemarks(placemarks, 0.1);
         result.North = rect.North;
@@ -339,10 +340,39 @@ public class MainController(
         var album = albumService.GetAuthorizedAlbum(id, userId.Value, null);
         if (album == null) return NotFound();
 
-        // Get all unprocessed shots in this album
+        // Get all shots in this album and reset their face detection flags
         var shots = await dbContext.Shots
-            .Where(s => s.AlbumId == id && !s.IsFaceProcessed && !s.NoFaces)
+            .Where(s => s.AlbumId == id)
             .ToListAsync();
+
+        // Reset flags and clear existing face data for re-detection
+        var shotIds = shots.Select(s => s.ShotId).ToList();
+
+        // Delete existing face encodings and detections for these shots
+        var faceDetections = await dbContext.FaceDetections
+            .Where(fd => shotIds.Contains(fd.ShotId))
+            .Include(fd => fd.FaceEncoding)
+            .ToListAsync();
+
+        if (faceDetections.Any())
+        {
+            var faceEncodings = faceDetections
+                .Where(fd => fd.FaceEncoding != null)
+                .Select(fd => fd.FaceEncoding!)
+                .ToList();
+
+            dbContext.FaceEncodings.RemoveRange(faceEncodings);
+            dbContext.FaceDetections.RemoveRange(faceDetections);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Reset flags on all shots
+        foreach (var shot in shots)
+        {
+            shot.IsFaceProcessed = false;
+            shot.NoFaces = false;
+        }
+        await dbContext.SaveChangesAsync();
 
         int totalShots = shots.Count;
         int facesDetected = 0;
@@ -461,6 +491,10 @@ public class MainController(
         dto.Name = album.Name;
         dto.AlbumComments = album.AlbumComments ?? [];
         dto.Locations = locationService.GetLocations();
+
+        var (prevId, nextId) = albumService.GetAdjacentAlbumIds(album.AlbumId);
+        dto.PrevAlbumId = prevId;
+        dto.NextAlbumId = nextId;
 
         return View(dto);
 
@@ -858,7 +892,64 @@ public class MainController(
         dto.Storages = user != null
             ? userService.GetStoragesForUser(user.UserId)
             : [];
+        dto.SharedUsers = user != null
+            ? userService.GetSharedUsers(user.UserId)
+            : [];
+        dto.SharedByUsers = user != null
+            ? userService.GetHostsWhoSharedWithMe(user.UserId)
+            : [];
         return View(dto);
+    }
+
+    [Authorize]
+    [HttpGet("api/users/search")]
+    public IActionResult SearchUsers([FromQuery] string q)
+    {
+        var user = userService.GetUserByUsername(GetUsername());
+        if (user == null) return Unauthorized();
+
+        var users = userService.SearchUsers(q, user.UserId);
+        return Ok(users.Select(u => new { u.UserId, u.Username, u.Email }));
+    }
+
+    [Authorize]
+    [HttpPost("api/shared-users")]
+    public IActionResult AddSharedUser([FromBody] AddSharedUserDTO dto)
+    {
+        var user = userService.GetUserByUsername(GetUsername());
+        if (user == null) return Unauthorized();
+
+        var sharedUser = userService.AddSharedUser(user.UserId, dto.GuestUserId);
+        return Ok(new { sharedUser.Id, sharedUser.GuestUserId, GuestUsername = sharedUser.GuestUser?.Username });
+    }
+
+    [Authorize]
+    [HttpDelete("api/shared-users/{id}")]
+    public IActionResult RemoveSharedUser(int id)
+    {
+        var user = userService.GetUserByUsername(GetUsername());
+        if (user == null) return Unauthorized();
+
+        var result = userService.RemoveSharedUser(id, user.UserId);
+        if (!result) return NotFound();
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpPost("api/shared-users/{id}/toggle-disabled")]
+    public IActionResult ToggleSharedLibraryDisabled(int id)
+    {
+        var user = userService.GetUserByUsername(GetUsername());
+        if (user == null) return Unauthorized();
+
+        var disabled = userService.ToggleSharedUserDisabled(id, user.UserId);
+        if (disabled == null) return NotFound();
+        return Ok(new { disabled });
+    }
+
+    public class AddSharedUserDTO
+    {
+        public int GuestUserId { get; set; }
     }
 
     [Authorize]
@@ -1005,6 +1096,38 @@ public class MainController(
     }
 
     [Authorize]
+    [HttpPost("api/faces/delete-batch")]
+    public async Task<IActionResult> DeleteFacesBatch([FromBody] List<int> faceIds)
+    {
+        var deleted = 0;
+        foreach (var faceId in faceIds)
+        {
+            await personService.DeleteFaceAsync(faceId);
+            deleted++;
+        }
+        return Ok(new { success = true, message = $"Deleted {deleted} face(s)" });
+    }
+
+    [Authorize]
+    [HttpPost("api/faces/reassign-batch")]
+    public async Task<IActionResult> ReassignFacesBatch([FromBody] BatchReassignRequest request)
+    {
+        var reassigned = 0;
+        foreach (var faceId in request.FaceIds)
+        {
+            await personService.ReassignFaceAsync(faceId, request.PersonId);
+            reassigned++;
+        }
+        return Ok(new { success = true, message = $"Reassigned {reassigned} face(s)" });
+    }
+
+    public class BatchReassignRequest
+    {
+        public List<int> FaceIds { get; set; }
+        public int PersonId { get; set; }
+    }
+
+    [Authorize]
     [HttpPost("api/persons")]
     public async Task<IActionResult> CreatePerson([FromBody] PersonDTO dto)
     {
@@ -1029,6 +1152,15 @@ public class MainController(
     {
         var shots = await personService.GetShotsForPersonAsync(personId);
         return Ok(shots);
+    }
+
+    [Authorize]
+    [HttpGet("api/persons/{personId}/quality-metrics")]
+    public async Task<IActionResult> GetPersonQualityMetrics(int personId)
+    {
+        var metrics = await personService.GetPersonQualityMetricsAsync(personId);
+        if (metrics == null) return NotFound();
+        return Ok(metrics);
     }
 
     [Authorize]
@@ -1069,6 +1201,7 @@ public class MainController(
                 height = fd.Height,
                 imageWidth = imageWidth,  // ORIGINAL image dimensions
                 imageHeight = imageHeight, // ORIGINAL image dimensions
+                personId = fd.PersonId,
                 personName = fd.Person != null ? (fd.Person.FirstName + " " + fd.Person.LastName).Trim() : null
             })
             .ToListAsync();
@@ -1159,11 +1292,22 @@ public class MainController(
 
     [Authorize]
     [HttpGet("persons")]
-    public async Task<IActionResult> PersonsList(int page = 1, int pageSize = 24)
+    public async Task<IActionResult> PersonsList(int page = 1, int pageSize = 24, string search = null)
     {
         // Optimized query: only load what we need for display, excluding faces from shots marked as "no faces"
-        var personsQuery = dbContext.Persons
-            .AsNoTracking()
+        var baseQuery = dbContext.Persons.AsNoTracking();
+
+        // Apply search filter if provided
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            baseQuery = baseQuery.Where(p =>
+                p.FirstName.ToLower().Contains(searchLower) ||
+                p.LastName.ToLower().Contains(searchLower) ||
+                (p.FirstName + " " + p.LastName).ToLower().Contains(searchLower));
+        }
+
+        var personsQuery = baseQuery
             .Select(p => new
             {
                 Person = p,
@@ -1206,6 +1350,7 @@ public class MainController(
         ViewBag.TotalPages = totalPages;
         ViewBag.TotalCount = totalCount;
         ViewBag.PageSize = pageSize;
+        ViewBag.Search = search;
 
         return View(persons);
     }
@@ -1217,48 +1362,68 @@ public class MainController(
         var person = await dbContext.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.PersonId == id);
         if (person == null) return NotFound();
 
-        // Calculate quality metrics first to get outlier IDs for sorting
-        var qualityMetrics = await personService.GetPersonQualityMetricsAsync(id);
-        var outlierIds = qualityMetrics?.OutlierFaceIds ?? new List<int>();
-
-        // Base query for counting
-        var baseQuery = dbContext.FaceDetections
+        // Count total faces (lightweight query without loading Shot data)
+        var totalCount = await dbContext.FaceDetections
             .AsNoTracking()
-            .Include(fd => fd.Shot)
-            .Where(fd => fd.PersonId == id && fd.Shot != null && !fd.Shot.NoFaces);
+            .Where(fd => fd.PersonId == id && fd.Shot != null && !fd.Shot.NoFaces)
+            .CountAsync();
 
-        var totalCount = await baseQuery.CountAsync();
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
         // Ensure page is within valid range
         page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
 
-        // Query with outliers first, then chronologically - sorting BEFORE pagination
-        var validFaceDetections = await baseQuery
-            .OrderByDescending(fd => outlierIds.Contains(fd.FaceDetectionId))
-            .ThenBy(fd => fd.Shot.DateStart)
+        // Optimized query: only select needed fields, don't load FullScreen images
+        var validFaceDetections = await dbContext.FaceDetections
+            .AsNoTracking()
+            .Where(fd => fd.PersonId == id && fd.Shot != null && !fd.Shot.NoFaces)
+            .OrderBy(fd => fd.Shot.DateStart)
             .ThenBy(fd => fd.ShotId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(fd => new FaceDetection
+            {
+                FaceDetectionId = fd.FaceDetectionId,
+                ShotId = fd.ShotId,
+                PersonId = fd.PersonId,
+                IsConfirmed = fd.IsConfirmed,
+                Quality = fd.Quality,
+                DetectedAt = fd.DetectedAt,
+                Shot = new Shot
+                {
+                    ShotId = fd.Shot.ShotId,
+                    DateStart = fd.Shot.DateStart,
+                    Flip = fd.Shot.Flip,
+                    Rotate = fd.Shot.Rotate
+                    // Don't load Preview, FullScreen, or other large fields
+                }
+            })
             .ToListAsync();
 
-        // Get all persons for reassignment dropdown (exclude Person# unnamed persons)
-        var allPersons = await dbContext.Persons
+        // Only load named persons for dropdown (much smaller set)
+        var namedPersons = await dbContext.Persons
             .AsNoTracking()
             .Where(p => p.PersonId != id
-                && !((p.FirstName == null || p.FirstName == "Person" || p.FirstName == "")
-                    && (p.LastName ?? "").StartsWith("#")))
+                && p.FirstName != null
+                && p.FirstName != ""
+                && p.FirstName != "Person")
             .OrderBy(p => p.FirstName)
             .ThenBy(p => p.LastName)
+            .Select(p => new { p.PersonId, p.FirstName, p.LastName })
             .ToListAsync();
 
         ViewBag.Person = person;
-        ViewBag.AllPersons = allPersons;
+        ViewBag.AllPersons = namedPersons.Select(p => new Person
+        {
+            PersonId = p.PersonId,
+            FirstName = p.FirstName,
+            LastName = p.LastName
+        }).ToList();
         ViewBag.FaceCount = totalCount;
         ViewBag.CurrentPage = page;
         ViewBag.TotalPages = totalPages;
         ViewBag.PageSize = pageSize;
-        ViewBag.QualityMetrics = qualityMetrics;
+        ViewBag.QualityMetrics = null; // Load async via API if needed
 
         return View(validFaceDetections);
     }
@@ -1307,7 +1472,7 @@ public class MainController(
     [HttpPost("update_person_name/{id}")]
     public async Task<IActionResult> UpdatePersonName(int id, [FromBody] UpdatePersonNameDTO dto)
     {
-        var person = (await personService.GetAllPersonsAsync()).FirstOrDefault(p => p.PersonId == id);
+        var person = await dbContext.Persons.FindAsync(id);
         if (person == null) return NotFound();
 
         person.FirstName = string.IsNullOrWhiteSpace(dto.FirstName) ? "Person" : dto.FirstName;
@@ -1385,6 +1550,64 @@ public class MainController(
         public int UnassignedTotalCount { get; set; }
         public int UnassignedCurrentPage { get; set; }
         public int UnassignedTotalPages { get; set; }
+        public int PageSize { get; set; }
+        public List<Person> Persons { get; set; }
+    }
+
+    [Authorize]
+    [HttpGet("faces/unconfirmed")]
+    public async Task<IActionResult> UnconfirmedFaces(int page = 1, int pageSize = 48)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var (faces, total) = await faceClusteringService.GetUnconfirmedFacesAsync(userId.Value, page, pageSize);
+        var allPersons = await personService.GetAllPersonsAsync();
+        var filteredPersons = allPersons.Where(p => !p.LastName.StartsWith("#")).ToList();
+
+        var model = new FaceListViewModel
+        {
+            Faces = faces,
+            TotalCount = total,
+            CurrentPage = page,
+            TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+            PageSize = pageSize,
+            Persons = filteredPersons
+        };
+
+        return View(model);
+    }
+
+    [Authorize]
+    [HttpGet("faces/unassigned")]
+    public async Task<IActionResult> UnassignedFaces(int page = 1, int pageSize = 48)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var (faces, total) = await faceClusteringService.GetUnassignedFacesAsync(userId.Value, page, pageSize);
+        var allPersons = await personService.GetAllPersonsAsync();
+        var filteredPersons = allPersons.Where(p => !p.LastName.StartsWith("#")).ToList();
+
+        var model = new FaceListViewModel
+        {
+            Faces = faces,
+            TotalCount = total,
+            CurrentPage = page,
+            TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+            PageSize = pageSize,
+            Persons = filteredPersons
+        };
+
+        return View(model);
+    }
+
+    public class FaceListViewModel
+    {
+        public List<FaceDetection> Faces { get; set; }
+        public int TotalCount { get; set; }
+        public int CurrentPage { get; set; }
+        public int TotalPages { get; set; }
         public int PageSize { get; set; }
         public List<Person> Persons { get; set; }
     }
@@ -1759,6 +1982,311 @@ public class MainController(
     public class ExcludeBatchDTO
     {
         public List<int> ShotIds { get; set; } = new List<int>();
+    }
+
+    ///////////////////   ADMIN STATS  /////////////////////////////////////////
+
+    [Authorize]
+    [HttpGet("admin/stats")]
+    public async Task<IActionResult> AdminStats()
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        // Get bot user IDs for caption stats
+        var botUserIds = await dbContext.Users
+            .Where(u => u.Username.StartsWith("bot-"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+
+        // Get album basic stats
+        var albumStats = await dbContext.Albums
+            .Where(a => a.User.UserId == userId.Value)
+            .Select(a => new AlbumStatsDTO
+            {
+                AlbumId = a.AlbumId,
+                AlbumName = a.Name,
+                TotalShots = a.Shots!.Count(),
+                ProcessedShots = a.Shots!.Count(s => s.IsFaceProcessed),
+                ShotsWithFaces = a.Shots!.Count(s => s.IsFaceProcessed && !s.NoFaces),
+                ShotsWithoutFaces = a.Shots!.Count(s => s.NoFaces),
+                TotalComments = a.AlbumComments!.Count() + a.Shots!.SelectMany(s => s.ShotComments).Count(),
+                EarliestDate = a.Shots!.Min(s => (DateTime?)s.DateStart),
+                LatestDate = a.Shots!.Max(s => (DateTime?)s.DateStart)
+            })
+            .OrderByDescending(a => a.EarliestDate)
+            .ToListAsync();
+
+        // Get face counts per album separately
+        var faceCounts = await dbContext.FaceDetections
+            .Where(fd => fd.Shot.Album.User.UserId == userId.Value)
+            .GroupBy(fd => fd.Shot.AlbumId)
+            .Select(g => new { AlbumId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var faceCountDict = faceCounts.ToDictionary(x => x.AlbumId, x => x.Count);
+
+        // Get caption counts per album (shots with bot comments)
+        var captionCounts = await dbContext.ShotComments
+            .Where(c => botUserIds.Contains(c.AuthorId) && c.Shot.Album.User.UserId == userId.Value)
+            .GroupBy(c => c.Shot.AlbumId)
+            .Select(g => new { AlbumId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var captionCountDict = captionCounts.ToDictionary(x => x.AlbumId, x => x.Count);
+
+        foreach (var album in albumStats)
+        {
+            album.TotalFaces = faceCountDict.GetValueOrDefault(album.AlbumId, 0);
+            album.CaptionedShots = captionCountDict.GetValueOrDefault(album.AlbumId, 0);
+        }
+
+        // Get years stats - basic aggregations only
+        var yearStatsRaw = await dbContext.Shots
+            .Where(s => s.Album.User.UserId == userId.Value)
+            .GroupBy(s => s.DateStart.Year)
+            .Select(g => new YearStatsDTO
+            {
+                Year = g.Key,
+                TotalShots = g.Count(),
+                ProcessedShots = g.Count(s => s.IsFaceProcessed),
+                ShotsWithFaces = g.Count(s => s.IsFaceProcessed && !s.NoFaces),
+                ShotsWithoutFaces = g.Count(s => s.NoFaces),
+                TotalComments = g.SelectMany(s => s.ShotComments).Count(),
+                AlbumCount = g.Select(s => s.AlbumId).Distinct().Count()
+            })
+            .ToListAsync();
+
+        // Get face counts per year separately
+        var faceCountsByYear = await dbContext.FaceDetections
+            .Where(fd => fd.Shot.Album.User.UserId == userId.Value)
+            .GroupBy(fd => fd.Shot.DateStart.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var yearFaceDict = faceCountsByYear.ToDictionary(x => x.Year, x => x.Count);
+
+        // Get caption counts per year
+        var captionCountsByYear = await dbContext.ShotComments
+            .Where(c => botUserIds.Contains(c.AuthorId) && c.Shot.Album.User.UserId == userId.Value)
+            .GroupBy(c => c.Shot.DateStart.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var yearCaptionDict = captionCountsByYear.ToDictionary(x => x.Year, x => x.Count);
+
+        // Fill in all years from min to max, including years with 0 shots
+        var yearStatsDict = yearStatsRaw.ToDictionary(y => y.Year);
+        int minYear = yearStatsRaw.Any() ? yearStatsRaw.Min(y => y.Year) : DateTime.Now.Year;
+        int maxYear = yearStatsRaw.Any() ? yearStatsRaw.Max(y => y.Year) : DateTime.Now.Year;
+
+        var yearStats = new List<YearStatsDTO>();
+        for (int year = maxYear; year >= minYear; year--)
+        {
+            if (yearStatsDict.TryGetValue(year, out var existing))
+            {
+                existing.TotalFaces = yearFaceDict.GetValueOrDefault(year, 0);
+                existing.CaptionedShots = yearCaptionDict.GetValueOrDefault(year, 0);
+                yearStats.Add(existing);
+            }
+            else
+            {
+                // Year with no shots - add empty entry
+                yearStats.Add(new YearStatsDTO
+                {
+                    Year = year,
+                    TotalShots = 0,
+                    ProcessedShots = 0,
+                    ShotsWithFaces = 0,
+                    ShotsWithoutFaces = 0,
+                    TotalFaces = 0,
+                    TotalComments = 0,
+                    CaptionedShots = 0,
+                    AlbumCount = 0
+                });
+            }
+        }
+
+        var model = new AdminStatsViewModel
+        {
+            AlbumStats = albumStats,
+            YearStats = yearStats
+        };
+
+        return View(model);
+    }
+
+    [Authorize]
+    [HttpGet("admin/processing-histogram")]
+    public async Task<IActionResult> ProcessingHistogram(string period = "day", int days = 30)
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var startDate = DateTime.UtcNow.AddDays(-days);
+
+        // Get user's shot IDs
+        var userShotIds = await dbContext.Shots
+            .Where(s => s.Album.User.UserId == userId.Value)
+            .Select(s => s.ShotId)
+            .ToListAsync();
+
+        // Face detection stats
+        var faceDetections = await dbContext.FaceDetections
+            .Where(fd => userShotIds.Contains(fd.ShotId) && fd.DetectedAt >= startDate)
+            .Select(fd => fd.DetectedAt)
+            .ToListAsync();
+
+        // Caption stats (bot comments)
+        var botUsernames = await dbContext.Users
+            .Where(u => u.Username.StartsWith("bot-"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+
+        var captions = await dbContext.ShotComments
+            .Where(c => botUsernames.Contains(c.AuthorId) &&
+                       userShotIds.Contains(c.ShotId) &&
+                       c.Timestamp >= startDate)
+            .Select(c => c.Timestamp)
+            .ToListAsync();
+
+        // Group by period
+        var faceHistogram = GroupByPeriod(faceDetections, period);
+        var captionHistogram = GroupByPeriod(captions, period);
+
+        // Merge all dates
+        var allDates = faceHistogram.Keys.Union(captionHistogram.Keys).OrderBy(d => d).ToList();
+
+        var model = new ProcessingHistogramViewModel
+        {
+            Period = period,
+            Days = days,
+            Labels = allDates.Select(d => FormatLabel(d, period)).ToList(),
+            FaceDetectionCounts = allDates.Select(d => faceHistogram.GetValueOrDefault(d, 0)).ToList(),
+            CaptionCounts = allDates.Select(d => captionHistogram.GetValueOrDefault(d, 0)).ToList()
+        };
+
+        return View(model);
+    }
+
+    [Authorize]
+    [HttpGet("api/admin/processing-data")]
+    public async Task<IActionResult> GetProcessingData(string period = "day", int days = 30)
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var startDate = DateTime.UtcNow.AddDays(-days);
+
+        var userShotIds = await dbContext.Shots
+            .Where(s => s.Album.User.UserId == userId.Value)
+            .Select(s => s.ShotId)
+            .ToListAsync();
+
+        var faceDetections = await dbContext.FaceDetections
+            .Where(fd => userShotIds.Contains(fd.ShotId) && fd.DetectedAt >= startDate)
+            .Select(fd => fd.DetectedAt)
+            .ToListAsync();
+
+        var botUsernames = await dbContext.Users
+            .Where(u => u.Username.StartsWith("bot-"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+
+        var captions = await dbContext.ShotComments
+            .Where(c => botUsernames.Contains(c.AuthorId) &&
+                       userShotIds.Contains(c.ShotId) &&
+                       c.Timestamp >= startDate)
+            .Select(c => c.Timestamp)
+            .ToListAsync();
+
+        var faceHistogram = GroupByPeriod(faceDetections, period);
+        var captionHistogram = GroupByPeriod(captions, period);
+
+        var allDates = faceHistogram.Keys.Union(captionHistogram.Keys).OrderBy(d => d).ToList();
+
+        return Ok(new
+        {
+            labels = allDates.Select(d => FormatLabel(d, period)).ToList(),
+            faceDetection = allDates.Select(d => faceHistogram.GetValueOrDefault(d, 0)).ToList(),
+            captions = allDates.Select(d => captionHistogram.GetValueOrDefault(d, 0)).ToList()
+        });
+    }
+
+    private Dictionary<DateTime, int> GroupByPeriod(List<DateTime> dates, string period)
+    {
+        return period switch
+        {
+            "hour" => dates.GroupBy(d => new DateTime(d.Year, d.Month, d.Day, d.Hour, 0, 0))
+                          .ToDictionary(g => g.Key, g => g.Count()),
+            "day" => dates.GroupBy(d => d.Date)
+                         .ToDictionary(g => g.Key, g => g.Count()),
+            "week" => dates.GroupBy(d => d.Date.AddDays(-(int)d.DayOfWeek))
+                          .ToDictionary(g => g.Key, g => g.Count()),
+            "month" => dates.GroupBy(d => new DateTime(d.Year, d.Month, 1))
+                           .ToDictionary(g => g.Key, g => g.Count()),
+            _ => dates.GroupBy(d => d.Date)
+                     .ToDictionary(g => g.Key, g => g.Count())
+        };
+    }
+
+    private string FormatLabel(DateTime date, string period)
+    {
+        return period switch
+        {
+            "hour" => date.ToString("MM/dd HH:00"),
+            "day" => date.ToString("MM/dd"),
+            "week" => $"Week {date:MM/dd}",
+            "month" => date.ToString("MMM yyyy"),
+            _ => date.ToString("MM/dd")
+        };
+    }
+
+    public class AlbumStatsDTO
+    {
+        public int AlbumId { get; set; }
+        public string AlbumName { get; set; }
+        public int TotalShots { get; set; }
+        public int ProcessedShots { get; set; }
+        public int ShotsWithFaces { get; set; }
+        public int ShotsWithoutFaces { get; set; }
+        public int TotalFaces { get; set; }
+        public int TotalComments { get; set; }
+        public int CaptionedShots { get; set; }
+        public DateTime? EarliestDate { get; set; }
+        public DateTime? LatestDate { get; set; }
+        public double ProcessedPercentage => TotalShots > 0 ? Math.Round(ProcessedShots * 100.0 / TotalShots, 1) : 0;
+        public double CaptionedPercentage => TotalShots > 0 ? Math.Round(CaptionedShots * 100.0 / TotalShots, 1) : 0;
+    }
+
+    public class YearStatsDTO
+    {
+        public int Year { get; set; }
+        public int TotalShots { get; set; }
+        public int ProcessedShots { get; set; }
+        public int ShotsWithFaces { get; set; }
+        public int ShotsWithoutFaces { get; set; }
+        public int TotalFaces { get; set; }
+        public int TotalComments { get; set; }
+        public int CaptionedShots { get; set; }
+        public int AlbumCount { get; set; }
+        public double ProcessedPercentage => TotalShots > 0 ? Math.Round(ProcessedShots * 100.0 / TotalShots, 1) : 0;
+        public double CaptionedPercentage => TotalShots > 0 ? Math.Round(CaptionedShots * 100.0 / TotalShots, 1) : 0;
+    }
+
+    public class AdminStatsViewModel
+    {
+        public List<AlbumStatsDTO> AlbumStats { get; set; }
+        public List<YearStatsDTO> YearStats { get; set; }
+    }
+
+    public class ProcessingHistogramViewModel
+    {
+        public string Period { get; set; }
+        public int Days { get; set; }
+        public List<string> Labels { get; set; }
+        public List<int> FaceDetectionCounts { get; set; }
+        public List<int> CaptionCounts { get; set; }
     }
 
 }

@@ -7,6 +7,7 @@ ymaps.ready(initFunc);
 
 /**
  * Initialize a map with multiple placemarks and bounds
+ * Displays server-side clustered placemarks from PostGIS
  * @param jsShot - object containing map bounds and placemarks
  */
 function init_locations(jsModel, isInteractive) {
@@ -48,56 +49,53 @@ function init_locations(jsModel, isInteractive) {
 
   });
 
-  // Add placemarks from the model
-  jsModel.Placemarks.forEach(pm => {
-    const placemark = new ymaps.GeoObject({
-      geometry: {
-        type: "Point",
-        coordinates: [pm.Latitude, pm.Longitude]
-      },
-      properties: {
-        iconContent: pm.Label // Label shown on the map
-      }
-    }, {
-      preset: 'islands#invertedGreenClusterIcons',
-      draggable: false // Placemark is fixed, not draggable
+  // Add placemarks from the model (server-side clustered)
+  if (jsModel.Placemarks && jsModel.Placemarks.length > 0) {
+    jsModel.Placemarks.forEach(pm => {
+      const placemark = new ymaps.GeoObject({
+        geometry: {
+          type: "Point",
+          coordinates: [pm.Latitude, pm.Longitude]
+        },
+        properties: {
+          iconContent: pm.Label // Count label from server clustering
+        }
+      }, {
+        preset: 'islands#blueStretchyIcon',
+        draggable: false
+      });
+
+      // Event: Clicking on a placemark zooms to that area
+      placemark.events.add('click', e => {
+        const coords = e.get('target').geometry.getCoordinates();
+
+        const northEl = document.querySelector('#North');
+        const southEl = document.querySelector('#South');
+        const eastEl = document.querySelector('#East');
+        const westEl = document.querySelector('#West');
+
+        const lat = coords[0];
+        const lon = coords[1];
+        const delta = 0.5; // Zoom to ~50km area to see cluster contents
+
+        if (northEl && southEl && eastEl && westEl) {
+          northEl.value = lat + delta;
+          southEl.value = lat - delta;
+          eastEl.value  = lon + delta;
+          westEl.value  = lon - delta;
+        }
+
+        // Zoom to cluster area
+        const mapBounds = [
+          [lat - delta, lon - delta],
+          [lat + delta, lon + delta]
+        ];
+        myMap.setBounds(mapBounds, { checkZoomRange: true, duration: 300 });
+      });
+
+      myMap.geoObjects.add(placemark);
     });
-
-    // Event: Clicking on a placemark
-    placemark.events.add('click', e => {
-      const coords = e.get('target').geometry.getCoordinates();
-
-      // Ensure the coordinate input elements exist
-      const northEl = document.querySelector('#North');
-      const southEl = document.querySelector('#South');
-      const eastEl = document.querySelector('#East');
-      const westEl = document.querySelector('#West');
-
-      const lat = coords[0];
-      const lon = coords[1];
-      const delta = 0.01; // small offset in degrees (~1 km)
-
-      if (northEl && southEl && eastEl && westEl) {
-        northEl.value = lat + delta;
-        southEl.value = lat - delta;
-        eastEl.value  = lon + delta;
-        westEl.value  = lon - delta;
-      } else {
-        console.warn('Coordinate input elements not found.');
-      }
-
-      // Set map boundaries based on those coordinates
-      const bounds = [
-        [lat - delta, lon - delta], // southwest corner (South, West)
-        [lat + delta, lon + delta]  // northeast corner (North, East)
-      ];
-      myMap.setBounds(bounds, { checkZoomRange: true, duration: 300 });
-
-    });
-
-    // Add the placemark to the map
-    myMap.geoObjects.add(placemark);
-  });
+  }
 
   // Enable editing after all placemarks are added (if applicable)
   if (jsModel.EditLocation) {

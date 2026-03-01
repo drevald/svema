@@ -42,8 +42,46 @@
       <label class="form-label">Почта</label>
       <input asp-for="@Model.User.Email" class="form-control"/>
     </div>
-  </div>  
-  <div class="col-md-10 p-5"> 
+
+    <h5 class="mt-4 mb-3">Общий доступ</h5>
+    <div class="pb-3">
+      <label class="form-label">Добавить пользователя</label>
+      <div class="input-group">
+        <input type="text" id="userSearchInput" class="form-control" placeholder="Поиск по имени или email..." autocomplete="off"/>
+      </div>
+      <div id="userSearchResults" class="list-group mt-1" style="position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <div id="sharedUsersList">
+      @if (Model.SharedUsers != null && Model.SharedUsers.Count > 0) {
+        @foreach(var su in Model.SharedUsers) {
+          <div class="d-flex justify-content-between align-items-center mb-2 shared-user-item" data-id="@su.Id">
+            <span>@su.GuestUser?.Username</span>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-shared-user" data-id="@su.Id">Удалить</button>
+          </div>
+        }
+      } else {
+        <i class="text-muted">Нет пользователей с общим доступом</i>
+      }
+    </div>
+
+    <h5 class="mt-4 mb-3">Поделились со мной</h5>
+    <div id="sharedByUsersList">
+      @if (Model.SharedByUsers != null && Model.SharedByUsers.Count > 0) {
+        @foreach(var su in Model.SharedByUsers) {
+          <div class="d-flex justify-content-between align-items-center mb-2 shared-by-item" data-id="@su.Id" data-disabled="@su.DisabledByGuest.ToString().ToLower()">
+            <span class="@(su.DisabledByGuest ? "text-muted text-decoration-line-through" : "")">@su.HostUser?.Username</span>
+            <button type="button" class="btn btn-sm @(su.DisabledByGuest ? "btn-outline-success" : "btn-outline-secondary") toggle-shared-library" data-id="@su.Id">
+              @(su.DisabledByGuest ? "Включить" : "Отключить")
+            </button>
+          </div>
+        }
+      } else {
+        <i class="text-muted">Никто не поделился с вами библиотекой</i>
+      }
+    </div>
+  </div>
+  <div class="col-md-10 p-5">
     @if (@Model.Storages != null && @Model.Storages.Count > 0) {
     <table class="table table-condensed">
       <thead>
@@ -51,7 +89,7 @@
           <th>Auth Token</th>
           <th>Refresh Token</th>
           <th>Provider</th>
-          <th>Root</th>          
+          <th>Root</th>
         </tr>
       </thead>
         @foreach(var store in @Model.Storages) {
@@ -61,10 +99,132 @@
           <td>@store.Provider</td>
           <td>@store.Root</td>
         </tr>
-        }  
+        }
     </table>
     } else {
       <i>No storage found</i>
     }
   </div>
 </div>
+
+<script>
+(function() {
+  const searchInput = document.getElementById('userSearchInput');
+  const searchResults = document.getElementById('userSearchResults');
+  const sharedUsersList = document.getElementById('sharedUsersList');
+  let searchTimeout;
+
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+
+    if (query.length < 2) {
+      searchResults.innerHTML = '';
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) return;
+
+        const users = await response.json();
+        searchResults.innerHTML = users.map(u => `
+          <button type="button" class="list-group-item list-group-item-action" data-user-id="${u.userId}" data-username="${u.username}">
+            ${u.username} ${u.email ? '(' + u.email + ')' : ''}
+          </button>
+        `).join('');
+      } catch (e) {
+        console.error('Search error:', e);
+      }
+    }, 300);
+  });
+
+  searchResults.addEventListener('click', async function(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    const userId = btn.dataset.userId;
+    const username = btn.dataset.username;
+
+    try {
+      const response = await fetch('/api/shared-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestUserId: parseInt(userId) })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const emptyMsg = sharedUsersList.querySelector('i.text-muted');
+        if (emptyMsg) emptyMsg.remove();
+
+        const div = document.createElement('div');
+        div.className = 'd-flex justify-content-between align-items-center mb-2 shared-user-item';
+        div.dataset.id = result.id;
+        div.innerHTML = `
+          <span>${username}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger remove-shared-user" data-id="${result.id}">&times;</button>
+        `;
+        sharedUsersList.appendChild(div);
+
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+      }
+    } catch (e) {
+      console.error('Add shared user error:', e);
+    }
+  });
+
+  sharedUsersList.addEventListener('click', async function(e) {
+    const btn = e.target.closest('.remove-shared-user');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+
+    try {
+      const response = await fetch(`/api/shared-users/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        const item = sharedUsersList.querySelector(`.shared-user-item[data-id="${id}"]`);
+        if (item) item.remove();
+
+        if (!sharedUsersList.querySelector('.shared-user-item')) {
+          sharedUsersList.innerHTML = '<i class="text-muted">Нет пользователей с общим доступом</i>';
+        }
+      }
+    } catch (e) {
+      console.error('Remove shared user error:', e);
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!searchResults.contains(e.target) && e.target !== searchInput) {
+      searchResults.innerHTML = '';
+    }
+  });
+
+  document.getElementById('sharedByUsersList').addEventListener('click', async function(e) {
+    const btn = e.target.closest('.toggle-shared-library');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+
+    try {
+      const response = await fetch(`/api/shared-users/${id}/toggle-disabled`, { method: 'POST' });
+      if (response.ok) {
+        const { disabled } = await response.json();
+        const item = document.querySelector(`#sharedByUsersList .shared-by-item[data-id="${id}"]`);
+        const nameSpan = item.querySelector('span');
+
+        item.dataset.disabled = disabled;
+        nameSpan.classList.toggle('text-muted', disabled);
+        nameSpan.classList.toggle('text-decoration-line-through', disabled);
+        btn.textContent = disabled ? 'Включить' : 'Отключить';
+        btn.className = `btn btn-sm ${disabled ? 'btn-outline-success' : 'btn-outline-secondary'} toggle-shared-library`;
+      }
+    } catch (e) {
+      console.error('Toggle shared library error:', e);
+    }
+  });
+})();
+</script>

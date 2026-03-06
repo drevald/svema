@@ -1,0 +1,210 @@
+@model Svema.Controllers.MainController.ProcessingHistogramViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Processing Histogram";
+}
+
+<div class="container p-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Processing Histogram</h2>
+            <p class="text-muted">Activity of background services over time</p>
+        </div>
+        <div class="col text-end">
+            <a href="/admin/stats" class="btn btn-secondary">Back to Stats</a>
+        </div>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-auto">
+                            <label class="form-label">Period</label>
+                            <select name="period" class="form-select" onchange="this.form.submit()">
+                                @{
+                                    var periods = new[] { ("hour", "Hourly"), ("day", "Daily"), ("week", "Weekly"), ("month", "Monthly") };
+                                }
+                                @foreach (var (val, label) in periods)
+                                {
+                                    if (Model.Period == val)
+                                    {
+                                        <option value="@val" selected>@label</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@val">@label</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Time Range</label>
+                            <select name="days" class="form-select" onchange="this.form.submit()">
+                                @{
+                                    var dayOptions = new[] { (7, "Last 7 days"), (30, "Last 30 days"), (90, "Last 90 days"), (365, "Last year") };
+                                }
+                                @foreach (var (val, label) in dayOptions)
+                                {
+                                    if (Model.Days == val)
+                                    {
+                                        <option value="@val" selected>@label</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@val">@label</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="row">
+                <div class="col-6">
+                    <div class="card text-center bg-primary text-white">
+                        <div class="card-body">
+                            <h6>Face Detections</h6>
+                            <h3>@Model.FaceDetectionCounts.Sum()</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card text-center bg-success text-white">
+                        <div class="card-body">
+                            <h6>Captions Generated</h6>
+                            <h3>@Model.CaptionCounts.Sum()</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+        <div class="card-body">
+            <canvas id="processingChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Detailed Data</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm table-striped">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th>Period</th>
+                            <th>Face Detections</th>
+                            <th>Captions</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = Model.Labels.Count - 1; i >= 0; i--)
+                        {
+                            var faceCount = Model.FaceDetectionCounts[i];
+                            var captionCount = Model.CaptionCounts[i];
+                            <tr>
+                                <td>@Model.Labels[i]</td>
+                                <td>
+                                    @if (faceCount > 0)
+                                    {
+                                        <span class="badge bg-primary">@faceCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (captionCount > 0)
+                                    {
+                                        <span class="badge bg-success">@captionCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td><strong>@(faceCount + captionCount)</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('processingChart').getContext('2d');
+
+    const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Labels));
+    const faceData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FaceDetectionCounts));
+    const captionData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CaptionCounts));
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Face Detections',
+                    data: faceData,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Captions Generated',
+                    data: captionData,
+                    backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Processing Activity by @(char.ToUpper(Model.Period[0]) + Model.Period.Substring(1))'
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    title: {
+                        display: true,
+                        text: '@(Model.Period switch { "hour" => "Hour", "day" => "Date", "week" => "Week", "month" => "Month", _ => "Date" })'
+                    }
+                },
+                y: {
+                    stacked: false,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    },
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>

@@ -18,6 +18,8 @@ using Models;
 using Utils;
 using Common;
 using Services;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 namespace Svema.Controllers;
 
@@ -901,6 +903,12 @@ public class MainController(
         return View(dto);
     }
 
+    [HttpGet("downloads")]
+    public IActionResult Downloads()
+    {
+        return View();
+    }
+
     [Authorize]
     [HttpGet("api/users/search")]
     public IActionResult SearchUsers([FromQuery] string q)
@@ -1185,8 +1193,19 @@ public class MainController(
         var shot = await dbContext.Shots.FindAsync(shotId);
         if (shot?.FullScreen == null) return NotFound();
 
-        // Load ORIGINAL image to get dimensions (face coordinates are in original space)
+        // Load image to detect EXIF orientation (browser auto-applies EXIF, face detection did not)
         using var image = SixLabors.ImageSharp.Image.Load(shot.FullScreen);
+        int rawWidth = image.Width;
+        int rawHeight = image.Height;
+
+        // Read EXIF orientation before AutoOrient clears it
+        ushort exifOrientation = 1;
+        var exifProfile = image.Metadata.ExifProfile;
+        if (exifProfile != null && exifProfile.TryGetValue(ExifTag.Orientation, out var orientationValue))
+            exifOrientation = orientationValue.Value;
+
+        // Apply AutoOrient to get the browser-visible dimensions
+        image.Mutate(x => x.AutoOrient());
         int imageWidth = image.Width;
         int imageHeight = image.Height;
 
@@ -1195,18 +1214,85 @@ public class MainController(
             .Where(fd => fd.ShotId == shotId)
             .Select(fd => new
             {
-                x = fd.X,
-                y = fd.Y,
-                width = fd.Width,
-                height = fd.Height,
-                imageWidth = imageWidth,  // ORIGINAL image dimensions
-                imageHeight = imageHeight, // ORIGINAL image dimensions
+                fd.X,
+                fd.Y,
+                fd.Width,
+                fd.Height,
                 personId = fd.PersonId,
                 personName = fd.Person != null ? (fd.Person.FirstName + " " + fd.Person.LastName).Trim() : null
             })
             .ToListAsync();
 
-        return Ok(faceDetections);
+        // Compute final image dimensions after EXIF orient + user Rotate
+        int finalImageWidth = imageWidth;
+        int finalImageHeight = imageHeight;
+        if (shot.Rotate == 90 || shot.Rotate == 270)
+        {
+            finalImageWidth = imageHeight;
+            finalImageHeight = imageWidth;
+        }
+
+        // Transform face coords: EXIF orientation first, then user Rotate/Flip (same order as image serving pipeline)
+        var result = faceDetections.Select(fd =>
+        {
+            var (tx, ty, tw, th) = ApplyExifTransform(fd.X, fd.Y, fd.Width, fd.Height, exifOrientation, rawWidth, rawHeight);
+            var (ux, uy, uw, uh) = ApplyUserRotateFlip(tx, ty, tw, th, shot.Rotate, shot.Flip, imageWidth, imageHeight);
+            return new
+            {
+                x = ux,
+                y = uy,
+                width = uw,
+                height = uh,
+                imageWidth = finalImageWidth,
+                imageHeight = finalImageHeight,
+                fd.personId,
+                fd.personName
+            };
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    private static (int x, int y, int w, int h) ApplyExifTransform(int x, int y, int w, int h, ushort orientation, int rawW, int rawH)
+    {
+        return orientation switch
+        {
+            1 => (x, y, w, h),                                  // Normal — no change
+            2 => (rawW - x - w, y, w, h),                       // Flip horizontal
+            3 => (rawW - x - w, rawH - y - h, w, h),            // Rotate 180°
+            4 => (x, rawH - y - h, w, h),                       // Flip vertical
+            5 => (y, x, h, w),                                   // Transpose (90° CCW + flip horizontal)
+            6 => (rawH - y - h, x, h, w),                       // Rotate 90° CW
+            7 => (rawH - y - h, rawW - x - w, h, w),            // Transverse (90° CW + flip horizontal)
+            8 => (y, rawW - x - w, h, w),                       // Rotate 90° CCW
+            _ => (x, y, w, h)
+        };
+    }
+
+    private static (int x, int y, int w, int h) ApplyUserRotateFlip(int x, int y, int w, int h, int rotate, bool flip, int imgW, int imgH)
+    {
+        int nx = x, ny = y, nw = w, nh = h;
+        int curW = imgW, curH = imgH;
+
+        switch (rotate)
+        {
+            case 90:
+                nx = curH - y - h; ny = x; nw = h; nh = w;
+                curW = imgH; curH = imgW;
+                break;
+            case 180:
+                nx = curW - x - w; ny = curH - y - h;
+                break;
+            case 270:
+                nx = y; ny = curW - x - w; nw = h; nh = w;
+                curW = imgH; curH = imgW;
+                break;
+        }
+
+        if (flip)
+            nx = curW - nx - nw;
+
+        return (nx, ny, nw, nh);
     }
 
     [Authorize]

@@ -146,75 +146,19 @@
 <script>
     let facesVisible = false;
     let faceData = null;
-    let faceRects = []; // Stores transformed face rectangles for click detection
+    let faceRects = []; // Stores face rectangles for click detection
     const shotId = @Model.ShotId;
-    const flip = @(Model.Flip ? "true" : "false");
-    const rotate = @Model.Rotate;
     const canvas = document.getElementById('faceCanvas');
     const ctx = canvas.getContext('2d');
     const photoView = document.querySelector('.photo-view');
 
-    // Transform face coordinates based on rotation and flip
-    function transformFaceCoordinates(face, imageWidth, imageHeight, rotate, flip) {
-        let x = face.x;
-        let y = face.y;
-        let width = face.width;
-        let height = face.height;
-        let currentWidth = imageWidth;
-        let currentHeight = imageHeight;
-
-        // Apply rotation first (same order as ImageUtils.GetTransformedImage)
-        // Rotation transformation for bounding boxes
-        if (rotate === 90) {
-            // 90° clockwise: (x,y) in WxH -> (H-y-height, x) in HxW
-            const newX = imageHeight - y - height;
-            const newY = x;
-            x = newX;
-            y = newY;
-            // Swap width and height
-            [width, height] = [height, width];
-            // Swap image dimensions
-            [currentWidth, currentHeight] = [imageHeight, imageWidth];
-        } else if (rotate === 180) {
-            // 180°: (x,y) in WxH -> (W-x-width, H-y-height) in WxH
-            x = imageWidth - x - width;
-            y = imageHeight - y - height;
-            [currentWidth, currentHeight] = [imageWidth, imageHeight];
-        } else if (rotate === 270) {
-            // 270° clockwise (or 90° counter-clockwise): (x,y) in WxH -> (y, W-x-width) in HxW
-            const newX = y;
-            const newY = imageWidth - x - width;
-            x = newX;
-            y = newY;
-            // Swap width and height
-            [width, height] = [height, width];
-            // Swap image dimensions
-            [currentWidth, currentHeight] = [imageHeight, imageWidth];
-        } else {
-            // No rotation
-            [currentWidth, currentHeight] = [imageWidth, imageHeight];
-        }
-
-        // Apply flip after rotation (same order as ImageUtils.GetTransformedImage)
-        if (flip) {
-            x = currentWidth - x - width;
-        }
-
-        return { x, y, width, height, transformedImageWidth: currentWidth, transformedImageHeight: currentHeight };
-    }
-
     // Fetch face detections
     async function loadFaceDetections() {
-        console.log('Loading face detections for shot:', shotId);
         if (faceData) return;
         try {
             const response = await fetch(`/api/shots/${shotId}/faces`);
-            console.log('API response status:', response.status);
             if (response.ok) {
                 faceData = await response.json();
-                console.log('Face data loaded:', faceData);
-            } else {
-                console.error('Failed to load face data');
             }
         } catch (error) {
             console.error('Error loading face detections:', error);
@@ -222,27 +166,21 @@
     }
 
     // Draw face rectangles
+    // The API already returns coordinates in final display space (EXIF + user rotate/flip applied)
     function drawFaces() {
         if (!faceData || faceData.length === 0) return;
 
-        // Get the actual image dimensions from the first face (all faces have same image dimensions)
-        if (faceData.length === 0) return;
-
+        // imageWidth/imageHeight from API are the final displayed image dimensions
         const imageWidth = faceData[0].imageWidth;
         const imageHeight = faceData[0].imageHeight;
-
-        // Transform first face to get the transformed image dimensions
-        const firstTransformed = transformFaceCoordinates(faceData[0], imageWidth, imageHeight, rotate, flip);
-        const transformedImageWidth = firstTransformed.transformedImageWidth;
-        const transformedImageHeight = firstTransformed.transformedImageHeight;
 
         const containerWidth = photoView.clientWidth;
         const containerHeight = photoView.clientHeight;
 
-        // Calculate scale to fit transformed image in container (same logic as background-size: contain)
-        const scale = Math.min(containerWidth / transformedImageWidth, containerHeight / transformedImageHeight);
-        const scaledWidth = transformedImageWidth * scale;
-        const scaledHeight = transformedImageHeight * scale;
+        // Calculate scale to fit image in container (same logic as background-size: contain)
+        const scale = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
+        const scaledWidth = imageWidth * scale;
+        const scaledHeight = imageHeight * scale;
 
         // Calculate offset to center image (same logic as background-position: center)
         const offsetX = (containerWidth - scaledWidth) / 2;
@@ -258,16 +196,12 @@
         // Reset face rectangles for click detection
         faceRects = [];
 
-        // Draw each face rectangle
+        // Draw each face rectangle (coordinates already in final display space from API)
         faceData.forEach(face => {
-            // Transform face coordinates based on rotation and flip
-            const transformed = transformFaceCoordinates(face, imageWidth, imageHeight, rotate, flip);
-
-            // Scale transformed coordinates to match display
-            const x = offsetX + (transformed.x * scale);
-            const y = offsetY + (transformed.y * scale);
-            const width = transformed.width * scale;
-            const height = transformed.height * scale;
+            const x = offsetX + (face.x * scale);
+            const y = offsetY + (face.y * scale);
+            const width = face.width * scale;
+            const height = face.height * scale;
 
             // Store for click detection
             faceRects.push({
@@ -298,18 +232,14 @@
 
     // Toggle button handler
     document.getElementById('toggleFacesBtn').addEventListener('click', async function () {
-        console.log('Toggle faces button clicked');
         await loadFaceDetections();
-        console.log('Face data after load:', faceData);
         facesVisible = !facesVisible;
 
         if (facesVisible) {
-            console.log('Drawing faces...');
             drawFaces();
             this.classList.remove('btn-info');
             this.classList.add('btn-success');
         } else {
-            console.log('Clearing faces...');
             clearFaces();
             this.classList.remove('btn-success');
             this.classList.add('btn-info');

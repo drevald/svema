@@ -1,0 +1,144 @@
+@model IEnumerable<Services.BloatedPersonInfo>
+@{
+    Layout = "_Layout";
+    var totalBloated = ViewBag.TotalBloated ?? 0;
+}
+
+<div class="container p-5">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Bloated Persons - Quality Review <small class="text-muted">(@totalBloated found)</small></h2>
+            <p class="text-muted">
+                These persons have quality issues indicating they may contain unrelated faces.
+                Review and delete those that are clearly incorrect.
+            </p>
+        </div>
+        <div class="col text-end">
+            <a class="btn btn-secondary" href="/persons">Back to All Persons</a>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-success" role="alert">
+            <h4 class="alert-heading">No Bloated Persons Found!</h4>
+            <p>All person clusters appear to be of good quality. The system has not detected any bloated persons.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Severity</th>
+                        <th>Person</th>
+                        <th>Faces</th>
+                        <th>Min Pairwise Sim</th>
+                        <th>Avg Pairwise Sim</th>
+                        <th>Dispersion</th>
+                        <th>Std Dev</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in Model)
+                    {
+                        var severityClass = person.Severity switch
+                        {
+                            "CRITICAL" => "table-danger",
+                            "HIGH" => "table-warning",
+                            "MEDIUM" => "table-info",
+                            _ => ""
+                        };
+
+                        var severityBadge = person.Severity switch
+                        {
+                            "CRITICAL" => "danger",
+                            "HIGH" => "warning",
+                            "MEDIUM" => "info",
+                            _ => "secondary"
+                        };
+
+                        <tr class="@severityClass">
+                            <td>
+                                <span class="badge bg-@severityBadge">@person.Severity</span>
+                            </td>
+                            <td>
+                                <strong>@person.FirstName @person.LastName</strong>
+                                <br>
+                                <small class="text-muted">ID: @person.PersonId</small>
+                            </td>
+                            <td>
+                                <strong>@person.FaceCount</strong>
+                            </td>
+                            <td>
+                                <span class="@(person.MinPairwiseSimilarity < 0.10 ? "text-danger fw-bold" : "")">
+                                    @person.MinPairwiseSimilarity.ToString("F3")
+                                </span>
+                                @if (person.MinPairwiseSimilarity < 0.10)
+                                {
+                                    <br><small class="text-danger">Unrelated faces!</small>
+                                }
+                            </td>
+                            <td>
+                                @person.AvgPairwiseSimilarity.ToString("F3")
+                            </td>
+                            <td>
+                                <span class="@(person.Dispersion > 0.40 ? "text-warning" : "")">
+                                    @person.Dispersion.ToString("F3")
+                                </span>
+                            </td>
+                            <td>
+                                @person.StdDevPairwise.ToString("F3")
+                            </td>
+                            <td>
+                                <a href="/person/@person.PersonId" class="btn btn-sm btn-primary" target="_blank">
+                                    Review
+                                </a>
+                                <a href="/delete_person/@person.PersonId" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete @person.FirstName @person.LastName with @person.FaceCount faces?')">
+                                    Delete
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-info mt-4" role="alert">
+            <h5>Understanding the Metrics:</h5>
+            <ul class="mb-0">
+                <li><strong>Min Pairwise Similarity:</strong> Lowest similarity between any two faces in the cluster.
+                    <ul>
+                        <li>&lt; 0.10 = Unrelated faces present (CRITICAL)</li>
+                        <li>0.10-0.15 = Very suspicious</li>
+                        <li>0.15-0.25 = May contain errors</li>
+                        <li>&gt; 0.25 = Generally OK</li>
+                    </ul>
+                </li>
+                <li><strong>Avg Pairwise Similarity:</strong> Average similarity between all face pairs.
+                    <ul>
+                        <li>&gt; 0.40 = Good cluster</li>
+                        <li>0.30-0.40 = Acceptable</li>
+                        <li>&lt; 0.30 = Suspect cluster</li>
+                    </ul>
+                </li>
+                <li><strong>Dispersion:</strong> How spread out the cluster is (0-1).
+                    <ul>
+                        <li>&lt; 0.35 = Tight, cohesive cluster</li>
+                        <li>0.35-0.45 = Moderate spread</li>
+                        <li>&gt; 0.45 = Very spread out, likely bloated</li>
+                    </ul>
+                </li>
+                <li><strong>Std Dev:</strong> Variance in pairwise similarities.
+                    <ul>
+                        <li>Low = Consistent cluster</li>
+                        <li>High = Heterogeneous, possibly bloated</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    }
+</div>

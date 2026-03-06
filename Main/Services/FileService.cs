@@ -118,6 +118,8 @@ public class FileService : Service
 
     private void ProcessImage(Image image)
     {
+        image.Mutate(x => x.AutoOrient());
+
         float ratio = (float)image.Width / image.Height;
 
         // Resize for preview (200px max)
@@ -143,6 +145,9 @@ public class FileService : Service
 
     private byte[] GetFullSizeImage(Image image)
     {
+        // Normalize EXIF orientation into pixels so stored image has no EXIF rotation
+        image.Mutate(x => x.AutoOrient());
+
         // Define max width and height
         int maxWidth = 1920;
         int maxHeight = 1080;

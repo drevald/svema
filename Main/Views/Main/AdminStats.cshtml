@@ -1,0 +1,241 @@
+@model Svema.Controllers.MainController.AdminStatsViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Admin Statistics";
+}
+
+<div class="container p-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Admin Statistics</h2>
+            <p class="text-muted">Face recognition processing status and comments overview</p>
+        </div>
+        <div class="col text-end">
+            <a href="/admin/processing-histogram" class="btn btn-primary">View Processing Histogram</a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Albums</h5>
+                    <h2 class="text-primary">@Model.AlbumStats.Count</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Shots</h5>
+                    <h2 class="text-info">@Model.AlbumStats.Sum(a => a.TotalShots)</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Processed</h5>
+                    <h2 class="text-success">@Model.AlbumStats.Sum(a => a.ProcessedShots)</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Faces</h5>
+                    <h2 class="text-warning">@Model.AlbumStats.Sum(a => a.TotalFaces)</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="statsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="albums-tab" data-bs-toggle="tab" data-bs-target="#albums" type="button" role="tab">
+                Albums (@Model.AlbumStats.Count)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="years-tab" data-bs-toggle="tab" data-bs-target="#years" type="button" role="tab">
+                Years (@Model.YearStats.Count)
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="statsTabContent">
+        <!-- Albums Tab -->
+        <div class="tab-pane fade show active" id="albums" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Album</th>
+                            <th>Date Range</th>
+                            <th>Shots</th>
+                            <th>Face Detection</th>
+                            <th>Captions</th>
+                            <th>Faces</th>
+                            <th>Comments</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var album in Model.AlbumStats)
+                        {
+                            var progressClass = album.ProcessedPercentage >= 100 ? "bg-success" :
+                                               album.ProcessedPercentage >= 50 ? "bg-warning" : "bg-danger";
+                            <tr>
+                                <td>
+                                    <a href="/view_album?id=@album.AlbumId">@album.AlbumName</a>
+                                </td>
+                                <td>
+                                    @if (album.EarliestDate.HasValue)
+                                    {
+                                        <small>@album.EarliestDate.Value.ToString("yyyy-MM-dd")</small>
+                                        @if (album.LatestDate.HasValue && album.LatestDate != album.EarliestDate)
+                                        {
+                                            <small> - @album.LatestDate.Value.ToString("yyyy-MM-dd")</small>
+                                        }
+                                    }
+                                </td>
+                                <td>@album.TotalShots</td>
+                                <td style="min-width: 120px;">
+                                    <div class="progress" style="height: 20px;" title="@album.ProcessedShots / @album.TotalShots processed">
+                                        <div class="progress-bar @progressClass" role="progressbar"
+                                             style="width: @album.ProcessedPercentage%"
+                                             aria-valuenow="@album.ProcessedPercentage" aria-valuemin="0" aria-valuemax="100">
+                                            @album.ProcessedPercentage%
+                                        </div>
+                                    </div>
+                                    @if (album.ShotsWithFaces > 0)
+                                    {
+                                        <small class="text-muted">@album.ShotsWithFaces with faces</small>
+                                    }
+                                </td>
+                                @{
+                                    var captionClass = album.CaptionedPercentage >= 100 ? "bg-success" :
+                                                       album.CaptionedPercentage >= 50 ? "bg-info" : "bg-secondary";
+                                }
+                                <td style="min-width: 120px;">
+                                    <div class="progress" style="height: 20px;" title="@album.CaptionedShots / @album.TotalShots captioned">
+                                        <div class="progress-bar @captionClass" role="progressbar"
+                                             style="width: @album.CaptionedPercentage%"
+                                             aria-valuenow="@album.CaptionedPercentage" aria-valuemin="0" aria-valuemax="100">
+                                            @album.CaptionedPercentage%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (album.TotalFaces > 0)
+                                    {
+                                        <span class="badge bg-info">@album.TotalFaces</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (album.TotalComments > 0)
+                                    {
+                                        <span class="badge bg-secondary">@album.TotalComments</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/detect_persons_album?id=@album.AlbumId" class="btn btn-sm btn-outline-primary"
+                                       title="Process faces">
+                                        Process
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Years Tab -->
+        <div class="tab-pane fade" id="years" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Year</th>
+                            <th>Albums</th>
+                            <th>Shots</th>
+                            <th>Face Detection</th>
+                            <th>Captions</th>
+                            <th>Faces</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var year in Model.YearStats)
+                        {
+                            var progressClass = year.ProcessedPercentage >= 100 ? "bg-success" :
+                                               year.ProcessedPercentage >= 50 ? "bg-warning" : "bg-danger";
+                            <tr>
+                                <td><strong>@year.Year</strong></td>
+                                <td>@year.AlbumCount</td>
+                                <td>@year.TotalShots</td>
+                                <td style="min-width: 120px;">
+                                    <div class="progress" style="height: 20px;" title="@year.ProcessedShots / @year.TotalShots processed">
+                                        <div class="progress-bar @progressClass" role="progressbar"
+                                             style="width: @year.ProcessedPercentage%"
+                                             aria-valuenow="@year.ProcessedPercentage" aria-valuemin="0" aria-valuemax="100">
+                                            @year.ProcessedPercentage%
+                                        </div>
+                                    </div>
+                                    @if (year.ShotsWithFaces > 0)
+                                    {
+                                        <small class="text-muted">@year.ShotsWithFaces with faces</small>
+                                    }
+                                </td>
+                                @{
+                                    var yearCaptionClass = year.CaptionedPercentage >= 100 ? "bg-success" :
+                                                           year.CaptionedPercentage >= 50 ? "bg-info" : "bg-secondary";
+                                }
+                                <td style="min-width: 120px;">
+                                    <div class="progress" style="height: 20px;" title="@year.CaptionedShots / @year.TotalShots captioned">
+                                        <div class="progress-bar @yearCaptionClass" role="progressbar"
+                                             style="width: @year.CaptionedPercentage%"
+                                             aria-valuenow="@year.CaptionedPercentage" aria-valuemin="0" aria-valuemax="100">
+                                            @year.CaptionedPercentage%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (year.TotalFaces > 0)
+                                    {
+                                        <span class="badge bg-info">@year.TotalFaces</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (year.TotalComments > 0)
+                                    {
+                                        <span class="badge bg-secondary">@year.TotalComments</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

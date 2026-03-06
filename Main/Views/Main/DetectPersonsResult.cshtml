@@ -1,0 +1,56 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Результаты распознавания лиц";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Результаты распознавания лиц</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Альбом: @ViewBag.AlbumName</h5>
+
+                    <table class="table table-bordered mt-4">
+                        <tbody>
+                            <tr>
+                                <td><strong>Обработано фото</strong></td>
+                                <td>@ViewBag.TotalShots</td>
+                            </tr>
+                            <tr class="@(ViewBag.FacesDetected > 0 ? "table-success" : "")">
+                                <td><strong>Обнаружено лиц</strong></td>
+                                <td>@ViewBag.FacesDetected</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Фото с лицами</strong></td>
+                                <td>@ViewBag.ShotsWithFaces</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Фото без лиц</strong></td>
+                                <td>@ViewBag.ShotsWithoutFaces</td>
+                            </tr>
+                            <tr class="@(ViewBag.NewPersons > 0 ? "table-info" : "")">
+                                <td><strong>Создано новых персон</strong></td>
+                                <td>@ViewBag.NewPersons</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    @if (ViewBag.TotalShots == 0)
+                    {
+                        <div class="alert alert-info">
+                            Все фото в этом альбоме уже обработаны.
+                        </div>
+                    }
+                </div>
+                <div class="card-footer">
+                    <a href="/view_album?id=@ViewBag.AlbumId" class="btn btn-secondary">Вернуться к альбому</a>
+                    <a href="/persons" class="btn btn-primary">Список персон</a>
+                    <a href="/review_faces" class="btn btn-outline-primary">Проверить лица</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

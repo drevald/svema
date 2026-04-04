@@ -523,7 +523,9 @@ public class MainController(
             Longitude = shot.Longitude,
             Latitude = shot.Latitude,
             Zoom = shot.Zoom,
-            IsCover = album != null && shot.ShotId == album.PreviewId
+            IsCover = album != null && shot.ShotId == album.PreviewId,
+            HasNext = shotService.GetNextShot(shot.AlbumId, shot.ShotId) != null,
+            HasPrev = shotService.GetPreviousShot(shot.AlbumId, shot.ShotId) != null
         };
         return View(dto);
     }
@@ -847,6 +849,30 @@ public class MainController(
         }
 
         return Redirect($"/view_shot?id={id}&token={token}");
+    }
+
+    [Authorize]
+    [HttpGet("edit_next_shot")]
+    public IActionResult EditNextShot(int id)
+    {
+        var shot = shotService.GetShot(id);
+        if (shot == null) return Redirect("/edit_shot?id=" + id);
+
+        var nextShot = shotService.GetNextShot(shot.AlbumId, shot.ShotId);
+
+        return Redirect($"/edit_shot?id={nextShot?.ShotId ?? id}");
+    }
+
+    [Authorize]
+    [HttpGet("edit_prev_shot")]
+    public IActionResult EditPrevShot(int id)
+    {
+        var shot = shotService.GetShot(id);
+        if (shot == null) return Redirect("/edit_shot?id=" + id);
+
+        var prevShot = shotService.GetPreviousShot(shot.AlbumId, shot.ShotId);
+
+        return Redirect($"/edit_shot?id={prevShot?.ShotId ?? id}");
     }
 
     [Authorize]

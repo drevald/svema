@@ -194,6 +194,7 @@ public class Person
 }
 
 [Table("users")]
+[Index(nameof(Username), IsUnique = true)]
 public class User
 {
     [Column("id")]

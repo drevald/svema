@@ -81,7 +81,7 @@
           <div class="col-sm-6">
             <label class="form-label">Дата, до</label>
             <input asp-for="DateEnd" class="form-control" asp-format="{0:yyyy-MM-dd}"/>
-          </div>          
+          </div>
 
           <div class="col-sm-12">
             <label class="form-label">Место</label>
@@ -100,12 +100,12 @@
           <div class="col-sm-6">
               <label class="form-label">Долгота</label>
               <input asp-for="Longitude" class="form-control"/>
-          </div> 
+          </div>
 
           <div class="col-sm-6">
               <label class="form-label">Широта</label>
               <input asp-for="Latitude" class="form-control" />
-          </div> 
+          </div>
 
           <div class="col-12">
             <label class="form-label">Карта</label>
@@ -115,19 +115,37 @@
           <div class="col-sm-12">
             <label class="form-label">Название места</label>
             <input asp-for="LocationName" class="form-control"/>
-          </div> 
+          </div>
 
         </div>
       </form>
     </div>
 
     <div class="col p-5">
+      <input asp-for="Flip" type="hidden" />
+      <input asp-for="Rotate" type="hidden" />
+      <div class="mb-2 d-flex justify-content-between">
+        <div>
+          <a class="btn btn-primary btn-sm px-3" href="/orig?id=@Model.ShotId">Ориг</a>
+          <a class="btn btn-primary btn-sm px-3 @(!Model.HasPrev ? "disabled" : "")" href="/edit_prev_shot?id=@Model.ShotId">Пред</a>
+          <a class="btn btn-primary btn-sm px-3 @(!Model.HasNext ? "disabled" : "")" href="/edit_next_shot?id=@Model.ShotId">След</a>
+          <button type="button" class="btn btn-info btn-sm" id="toggleFacesBtn">Toggle Faces</button>
+          <button type="button" class="btn btn-warning btn-sm" id="noFacesBtn">No Faces</button>
+        </div>
+        <div>
+          <a class="btn btn-primary btn-sm px-3" href="javascript:flipShot()">Отразить</a>
+          <a class="btn btn-primary btn-sm px-3" href="javascript:rotateShot()">Повернуть</a>
+          <a class="btn btn-danger btn-sm px-3" href="/delete_shot?id=@Model.ShotId" onclick="return confirm('Удалить снимок?')">Удалить</a>
+        </div>
+      </div>
       <div class="card border-0" style="height: calc(100% - 65px);">
-        <div class="card-body" style="
-        background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate'); 
-        background-position: center;
-        background-repeat: no-repeat; 
-        background-size: contain;">
+        <div id="shotPreview" class="card-body photo-view position-relative p-0"
+          style="background-image: url('/shot?id=@Model.ShotId&flip=@Model.Flip&rotate=@Model.Rotate');
+          background-position: center;
+          background-repeat: no-repeat;
+          background-size: contain;">
+          <canvas id="faceCanvas"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer;"></canvas>
         </div>
       </div>
     </div>
@@ -135,3 +153,153 @@
   </div>
 
 </form>
+
+<script>
+function rotateShot() {
+    const input = document.getElementById('Rotate');
+    input.value = (parseInt(input.value) + 90) % 360;
+    refreshShotPreview();
+}
+
+function flipShot() {
+    const input = document.getElementById('Flip');
+    input.value = (input.value === 'true') ? 'false' : 'true';
+    refreshShotPreview();
+}
+
+function refreshShotPreview() {
+    const shotId = document.getElementById('ShotId').value;
+    const flip = document.getElementById('Flip').value;
+    const rotate = document.getElementById('Rotate').value;
+    document.getElementById('shotPreview').style.backgroundImage =
+        `url('/shot?id=${shotId}&flip=${flip}&rotate=${rotate}')`;
+}
+
+let facesVisible = false;
+let faceData = null;
+let faceRects = [];
+const shotId = @Model.ShotId;
+const canvas = document.getElementById('faceCanvas');
+const ctx = canvas.getContext('2d');
+const photoView = document.querySelector('.photo-view');
+
+async function loadFaceDetections() {
+    if (faceData) return;
+    try {
+        const response = await fetch(`/api/shots/${shotId}/faces`);
+        if (response.ok) {
+            faceData = await response.json();
+        }
+    } catch (error) {
+        console.error('Error loading face detections:', error);
+    }
+}
+
+function drawFaces() {
+    if (!faceData || faceData.length === 0) return;
+
+    const imageWidth = faceData[0].imageWidth;
+    const imageHeight = faceData[0].imageHeight;
+    const containerWidth = photoView.clientWidth;
+    const containerHeight = photoView.clientHeight;
+    const scale = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
+    const scaledWidth = imageWidth * scale;
+    const scaledHeight = imageHeight * scale;
+    const offsetX = (containerWidth - scaledWidth) / 2;
+    const offsetY = (containerHeight - scaledHeight) / 2;
+
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    faceRects = [];
+
+    faceData.forEach(face => {
+        const x = offsetX + (face.x * scale);
+        const y = offsetY + (face.y * scale);
+        const width = face.width * scale;
+        const height = face.height * scale;
+
+        faceRects.push({ x, y, width, height, personId: face.personId, personName: face.personName, area: width * height });
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, width, height);
+
+        if (face.personName) {
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '16px Arial';
+            ctx.fillText(face.personName, x, y - 5);
+        }
+    });
+}
+
+function clearFaces() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+document.getElementById('toggleFacesBtn').addEventListener('click', async function () {
+    await loadFaceDetections();
+    facesVisible = !facesVisible;
+    if (facesVisible) {
+        drawFaces();
+        this.classList.remove('btn-info');
+        this.classList.add('btn-success');
+    } else {
+        clearFaces();
+        this.classList.remove('btn-success');
+        this.classList.add('btn-info');
+    }
+});
+
+window.addEventListener('resize', () => {
+    if (facesVisible) drawFaces();
+});
+
+canvas.addEventListener('click', (e) => {
+    if (!facesVisible || faceRects.length === 0) return;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const clickedFaces = faceRects.filter(face =>
+        clickX >= face.x && clickX <= face.x + face.width &&
+        clickY >= face.y && clickY <= face.y + face.height
+    );
+    if (clickedFaces.length === 0) return;
+    const topFace = clickedFaces.reduce((smallest, face) => face.area < smallest.area ? face : smallest);
+    if (topFace.personId) window.location.href = `/person/${topFace.personId}`;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!facesVisible || faceRects.length === 0) { canvas.style.cursor = 'default'; return; }
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const isOverFace = faceRects.some(face =>
+        face.personId &&
+        mouseX >= face.x && mouseX <= face.x + face.width &&
+        mouseY >= face.y && mouseY <= face.y + face.height
+    );
+    canvas.style.cursor = isOverFace ? 'pointer' : 'default';
+});
+
+document.getElementById('noFacesBtn').addEventListener('click', async function () {
+    if (confirm('Mark this shot as "No Faces"? This will remove all face detections and exclude it from future face detection.')) {
+        try {
+            const response = await fetch(`/shot/${shotId}/exclude-from-face-detection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                location.reload();
+            } else {
+                alert('Failed to mark shot as no faces');
+            }
+        } catch (error) {
+            console.error('Error marking shot as no faces:', error);
+            alert('Error marking shot as no faces');
+        }
+    }
+});
+</script>

@@ -253,6 +253,8 @@ public class ShotDTO
     public String CameraModel { get; set; }
     public String CameraManufacturer { get; set; }
     public String OrigPath { get; set; }
+    public bool HasNext { get; set; }
+    public bool HasPrev { get; set; }
     public ShotDTO()
     {
 

@@ -156,6 +156,8 @@ public class ShotService : Service
         shot.Longitude = dto.Longitude;
         shot.Latitude = dto.Latitude;
         shot.Zoom = dto.Zoom;
+        shot.Flip = dto.Flip;
+        shot.Rotate = dto.Rotate;
 
         dbContext.SaveChanges();
     }

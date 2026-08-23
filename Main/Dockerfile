@@ -17,6 +17,6 @@ COPY --from=build /app/wwwroot /wwwroot/
 WORKDIR /app
 ENV PORT=80
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-ENV Logging__LogLevel__Microsoft=Information
+ENV Logging__LogLevel__Microsoft.EntityFrameworkCore=Warning
 
 CMD [ "/app/Svema" ]

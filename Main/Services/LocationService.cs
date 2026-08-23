@@ -17,7 +17,7 @@ public class LocationService : Service
     }
 
     //To get clustered view of locations on map
-    public List<LocationDTO> GetClusteredShotsWithLabels(String username, bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax)
+    public List<LocationDTO> GetClusteredShotsWithLabels(String username, bool onlyMine, double longitudeMin, double longitudeMax, double latitudeMin, double latitudeMax, AlbumsListDTO dto = null)
     {
         var filters = new List<string>();
         filters.Add("s.longitude BETWEEN @longitudeMin AND @longitudeMax");
@@ -45,10 +45,32 @@ public class LocationService : Service
             )");
         }
 
+        // Apply the same content filters as the album list
+        var provider = System.Globalization.CultureInfo.InvariantCulture;
+        DateTime? dateStart = null;
+        DateTime? dateEnd = null;
+        if (dto != null)
+        {
+            if (!string.IsNullOrEmpty(dto.DateStart) &&
+                DateTime.TryParseExact(dto.DateStart, "yyyy", provider, System.Globalization.DateTimeStyles.None, out var ds))
+                dateStart = ds;
+            if (!string.IsNullOrEmpty(dto.DateEnd) &&
+                DateTime.TryParseExact(dto.DateEnd, "yyyy", provider, System.Globalization.DateTimeStyles.None, out var de))
+                dateEnd = de.AddYears(1); // exclusive upper bound: < start of next year
+            if (!string.IsNullOrEmpty(dto.Camera))
+                filters.Add("s.camera_model = @camera");
+            if (!string.IsNullOrEmpty(dto.CommentFilter))
+                filters.Add("EXISTS (SELECT 1 FROM shot_comments sc WHERE sc.shot_id = s.id AND LOWER(sc.text) LIKE '%' || @commentFilter || '%')");
+        }
+        if (dateStart.HasValue)
+            filters.Add("s.date_start >= @dateStart");
+        if (dateEnd.HasValue)
+            filters.Add("s.date_end < @dateEnd");
+
         string whereClause = string.Join(" AND ", filters);
 
         string sql = $@"
-        SELECT 
+        SELECT
             COUNT(*) AS count,
             ST_X(ST_Centroid(ST_Collect(geom))) AS lon,
             ST_Y(ST_Centroid(ST_Collect(geom))) AS lat
@@ -86,6 +108,14 @@ public class LocationService : Service
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMin", latitudeMin));
                 command.Parameters.Add(new NpgsqlParameter("@latitudeMax", latitudeMax));
                 command.Parameters.Add(new NpgsqlParameter("@username", username));
+                if (dto != null && !string.IsNullOrEmpty(dto.Camera))
+                    command.Parameters.Add(new NpgsqlParameter("@camera", dto.Camera));
+                if (dto != null && !string.IsNullOrEmpty(dto.CommentFilter))
+                    command.Parameters.Add(new NpgsqlParameter("@commentFilter", dto.CommentFilter.ToLower()));
+                if (dateStart.HasValue)
+                    command.Parameters.Add(new NpgsqlParameter("@dateStart", dateStart.Value));
+                if (dateEnd.HasValue)
+                    command.Parameters.Add(new NpgsqlParameter("@dateEnd", dateEnd.Value));
 
                 using (var reader = command.ExecuteReader())
                 {

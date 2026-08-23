@@ -33,7 +33,7 @@ builder.Logging.AddSimpleConsole(options =>
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 builder.Logging.AddConsole();
-builder.Logging.AddFile("Logs/svema-.txt", minimumLevel: LogLevel.Debug);
+builder.Logging.AddFile("Logs/svema-.txt", minimumLevel: LogLevel.Warning);
 
 builder.Configuration.AddEnvironmentVariables();
 var config = builder.Configuration;

@@ -50,7 +50,7 @@ function playRandomSlideshow() {
         <div class="col-sm-6">
           <label class="form-label">Год, от</label>
           <select asp-for="DateStart" class="form-select" id="DateStart"
-            onchange="document.getElementById('DateEnd').selectedIndex = this.selectedIndex - 1;form.this.submit();"
+            onchange="document.getElementById('DateEnd').selectedIndex = this.selectedIndex - 1; this.form.submit();"
             required>
             <option>&nbsp;</option>
             @{
@@ -66,7 +66,7 @@ function playRandomSlideshow() {
 
         <div class="col-sm-6">
           <label class="form-label">Год, до</label>
-          <select asp-for="DateEnd" class="form-select" id="DateEnd" required>
+          <select asp-for="DateEnd" class="form-select" id="DateEnd" onchange="this.form.submit();" required>
             <option>&nbsp;</option>
             @{
             var start1 = 1950;
@@ -96,7 +96,7 @@ function playRandomSlideshow() {
 
         <div class="col-sm-12">
           <label class="form-label">Камера</label>
-          <select asp-for="Camera" class="form-select">
+          <select asp-for="Camera" class="form-select" onchange="this.form.submit();">
             <option>&nbsp;</option>
             @foreach(var camera in @Model.Cameras) {
             if (!string.IsNullOrWhiteSpace(camera))
@@ -109,12 +109,13 @@ function playRandomSlideshow() {
 
         <div class="col-sm-12">
           <label class="form-label">Комментарий</label>
-          <input type="text" asp-for="CommentFilter" class="form-control" placeholder="Поиск по комментариям...">
+          <input type="text" asp-for="CommentFilter" class="form-control" placeholder="Поиск по комментариям..."
+            oninput="clearTimeout(window._commentTimer); window._commentTimer = setTimeout(() => this.form.submit(), 600);">
         </div>
 
         <div class="col-sm-12">
           <label class="form-label">Место</label>
-          <select asp-for="LocationId" class="form-select" id="state" onchange="javascript:show(this.selectedIndex, jsModel.Locations, 1)"
+          <select asp-for="LocationId" class="form-select" id="state" onchange="show(this.selectedIndex, jsModel.Locations, 1); this.form.submit();"
             required>
             <option></option>
             @foreach(var location in @Model.Locations) {

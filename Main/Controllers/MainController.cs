@@ -180,13 +180,40 @@ public class MainController(
         var username = GetUsername() ?? string.Empty;
         var result = albumService.BuildAlbumsListAsync(dto, username, onlyMine);
 
-        // Use server-side PostGIS clustering for large datasets
-        var placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North);
-        var rect = GeoRect.FromPlacemarks(placemarks, 0.1);
-        result.North = rect.North;
-        result.South = rect.South;
-        result.West = rect.West;
-        result.East = rect.East;
+        logger.LogInformation("Albums: {AlbumCount}, filters: dateStart={DateStart}, dateEnd={DateEnd}, camera={Camera}, comment={Comment}",
+            result.Albums.Count, dto.DateStart, dto.DateEnd, dto.Camera, dto.CommentFilter);
+
+        List<LocationDTO> placemarks;
+        try
+        {
+            placemarks = locationService.GetClusteredShotsWithLabels(username, onlyMine, dto.West, dto.East, dto.South, dto.North, dto);
+            logger.LogInformation("Placemarks: {PlacemarkCount} for bounds N={N} S={S} E={E} W={W}",
+                placemarks.Count, dto.North, dto.South, dto.East, dto.West);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "GetClusteredShotsWithLabels failed");
+            placemarks = new List<LocationDTO>();
+        }
+
+        // On initial load (default world bounds), auto-fit map to data extent.
+        // On user-driven requests (zoomed/panned), preserve the user's map view.
+        bool isDefaultBounds = dto.North >= 89 && dto.South <= -89 && dto.East >= 179 && dto.West <= -179;
+        if (isDefaultBounds)
+        {
+            var rect = GeoRect.FromPlacemarks(placemarks, 0.1);
+            result.North = rect.North;
+            result.South = rect.South;
+            result.West = rect.West;
+            result.East = rect.East;
+        }
+        else
+        {
+            result.North = dto.North;
+            result.South = dto.South;
+            result.West = dto.West;
+            result.East = dto.East;
+        }
         result.Placemarks = placemarks;
 
         return result;

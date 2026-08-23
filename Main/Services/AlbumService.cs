@@ -246,7 +246,8 @@ public class AlbumService : Service
         {
             if (DateTime.TryParseExact(dto.DateEnd, "yyyy", provider, DateTimeStyles.None, out var end))
             {
-                query = query.Where(s => s.DateEnd <= end);
+                var endExclusive = end.AddYears(1);
+                query = query.Where(s => s.DateEnd < endExclusive);
             }
         }
 

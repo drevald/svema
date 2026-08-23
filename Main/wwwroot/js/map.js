@@ -12,6 +12,9 @@ ymaps.ready(initFunc);
  */
 function init_locations(jsModel, isInteractive) {
 
+  console.log('[Map] bounds: N=' + jsModel.North + ' S=' + jsModel.South + ' E=' + jsModel.East + ' W=' + jsModel.West);
+  console.log('[Map] placemarks:', jsModel.Placemarks ? jsModel.Placemarks.length : 0, jsModel.Placemarks);
+
   // Get bounding coordinates from model
   const north = jsModel.North;
   const south = jsModel.South;
@@ -25,7 +28,6 @@ function init_locations(jsModel, isInteractive) {
   myMap = new ymaps.Map("map", {
     bounds: bounds
   }, {
-    checkZoomRange: true,
     zoomMargin: [10]
   });
 
@@ -43,9 +45,12 @@ function init_locations(jsModel, isInteractive) {
     document.querySelector('#East').value = east;
     document.querySelector('#West').value = west;
 
-    if(isInteractive && document.querySelector('input[name="refresh"]')) {
-      document.querySelector('input[name="refresh"]').click();
-    }
+    // Auto-submit form after user stops moving the map
+    clearTimeout(window._mapBoundsTimer);
+    window._mapBoundsTimer = setTimeout(function () {
+      var form = document.querySelector('form');
+      if (form) form.submit();
+    }, 800);
 
   });
 
@@ -284,11 +289,13 @@ function disableEditing() {
  */
 function show(i, jsModel, shift) {
 
-  // If first location, reset map center and remove all objects
+  // If blank selected, reset bounds to full world and return
   if (i == 0) {
-    myMap.setCenter([jsModel[i - shift].Latitude, jsModel[i - shift].Longitude]);
-    myMap.setZoom(jsModel[i - shift].Zoom);
-    myMap.geoObjects.removeAll();
+    document.querySelector('#North').value = 90;
+    document.querySelector('#South').value = -90;
+    document.querySelector('#East').value = 180;
+    document.querySelector('#West').value = -180;
+    return;
   }
 
   // If marker doesn't exist, create it
